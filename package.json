@@ -1,0 +1,32 @@
+{
+  "name": "ehime-tourism-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "愛媛観光支援 Web アプリ (通常観光モード / お遍路モード)。Vercel デプロイ、AWS 依存はモック抽象化。",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "6.6.3",
+    "@testing-library/react": "16.0.1",
+    "@testing-library/user-event": "14.5.2",
+    "@types/react": "18.3.12",
+    "@types/react-dom": "18.3.1",
+    "@vitejs/plugin-react": "4.3.3",
+    "fast-check": "3.23.1",
+    "jsdom": "25.0.1",
+    "typescript": "5.6.3",
+    "vite": "5.4.10",
+    "vitest": "2.1.4"
+  }
+}

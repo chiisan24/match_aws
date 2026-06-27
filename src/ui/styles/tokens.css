@@ -1,0 +1,112 @@
+/*
+ * Ehime design tokens (Req 18.1, 18.2).
+ *
+ * A calm blue-green palette evoking the sea, mountains, Dogo Onsen and shrines,
+ * warmed with a mikan-orange accent. Values are deliberately a little organic
+ * (off-grid spacing, soft asymmetric radii, layered tinted shadows) so the UI
+ * reads as hand-crafted rather than machine-generated.
+ *
+ * These custom properties are the single source of truth for color, spacing,
+ * radius, typography and elevation. The TypeScript mirror in `tokens.ts`
+ * re-exports the same values for use in component logic / tests.
+ */
+
+:root {
+  /* ---- Sea & onsen blue-greens (core palette) ---- */
+  --color-teal-900: #143f3c; /* deep cedar-shaded water */
+  --color-teal-800: #1d544f;
+  --color-teal-700: #2b7a78; /* primary brand teal */
+  --color-teal-600: #379490;
+  --color-teal-500: #3aafa9; /* bright shallow sea */
+  --color-teal-300: #8fd3ce;
+  --color-teal-100: #def2f1; /* onsen steam */
+  --color-teal-50: #f0f9f8;
+
+  /* ---- Mountain greens (subtle support) ---- */
+  --color-moss-700: #4a6b3f;
+  --color-moss-500: #6f9460;
+  --color-moss-100: #e6efdf;
+
+  /* ---- Mikan accent (warm, used sparingly) ---- */
+  --color-mikan-700: #c96a14;
+  --color-mikan-500: #f08a24; /* primary accent */
+  --color-mikan-300: #f8b56b;
+  --color-mikan-100: #fde7cf;
+
+  /* ---- Shrine / temple vermilion (rare, ceremonial) ---- */
+  --color-vermilion-500: #b5462f;
+
+  /* ---- Warm paper neutrals (handmade feel) ---- */
+  --color-paper: #fbf7f0; /* washi-like background */
+  --color-paper-deep: #f3ece0;
+  --color-surface: #fffdf9; /* card surface, slightly warm white */
+  --color-ink: #2a2a28; /* near-black, soft */
+  --color-ink-soft: #5a5750;
+  --color-ink-faint: #8a857c;
+  --color-line: rgba(43, 122, 120, 0.18); /* hairline borders */
+
+  /* ---- Semantic ---- */
+  --color-bg: var(--color-paper);
+  --color-text: var(--color-ink);
+  --color-primary: var(--color-teal-700);
+  --color-primary-ink: #ffffff;
+  --color-accent: var(--color-mikan-500);
+  --color-danger: #c0492f;
+  --color-success: var(--color-moss-700);
+
+  /* ---- Typography ---- */
+  /* Humanist / rounded-friendly stack. Avoids flat clinical geometric fonts. */
+  --font-sans: "Hiragino Maru Gothic ProN", "Hiragino Kaku Gothic ProN",
+    "Yu Gothic", "Noto Sans JP", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-display: "Hiragino Maru Gothic ProN", "Hiragino Kaku Gothic ProN",
+    "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.5rem;
+
+  --leading-snug: 1.4;
+  --leading-normal: 1.7; /* generous, breathable body text */
+
+  --weight-regular: 400;
+  --weight-medium: 600;
+  --weight-bold: 700;
+
+  /* ---- Spacing (slightly organic, not a rigid 8px grid) ---- */
+  --space-0: 0;
+  --space-1: 0.375rem; /* 6px  */
+  --space-2: 0.625rem; /* 10px */
+  --space-3: 1rem; /* 16px */
+  --space-4: 1.5rem; /* 24px */
+  --space-5: 2.25rem; /* 36px */
+  --space-6: 3.25rem; /* 52px */
+
+  /* ---- Radius (soft, gently asymmetric for a hand-drawn feel) ---- */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-pill: 999px;
+  /* Asymmetric "lozenge" radius used on cards / buttons for a crafted look */
+  --radius-blob: 18px 20px 16px 22px;
+
+  /* ---- Elevation (tinted, soft — not a generic flat drop shadow) ---- */
+  --shadow-sm: 0 2px 6px rgba(20, 63, 60, 0.08);
+  --shadow-md: 0 8px 22px rgba(20, 63, 60, 0.12);
+  --shadow-lg: 0 16px 40px rgba(20, 63, 60, 0.16);
+  --shadow-accent: 0 6px 18px rgba(240, 138, 36, 0.28);
+
+  /* ---- Motion ---- */
+  --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur-base: 220ms;
+
+  /* ---- Layout ---- */
+  --app-max-width: 28rem; /* mobile-first single column */
+  --bottom-nav-height: 4.25rem;
+  --focus-ring: 0 0 0 3px rgba(58, 175, 169, 0.45);
+}
