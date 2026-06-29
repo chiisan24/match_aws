@@ -17,25 +17,29 @@ import { AwsMapLocationAdapter } from "./map";
 import { AwsStorageAdapter } from "./storage";
 import { AwsAuthAdapter } from "./auth";
 import { AwsTranslateAdapter } from "./translate";
+import { AwsImageAdapter } from "./image";
 
 export { AwsChatAdapter } from "./chat";
 export { AwsMapLocationAdapter } from "./map";
 export { AwsStorageAdapter } from "./storage";
 export { AwsAuthAdapter } from "./auth";
 export { AwsTranslateAdapter } from "./translate";
+export { AwsImageAdapter } from "./image";
 
 /**
  * Builds the AWS-backed gateway. The return type is annotated as `AwsGateway`,
  * so if any aws adapter drifts from its port contract this fails to compile
- * (Req 16.4). `env` is accepted for the eventual real wiring (region/endpoint)
- * even though the current stubs don't read it yet.
+ * (Req 16.4). `env` is read by the image adapter (serverless API endpoint) and
+ * is available for the eventual real wiring of the other adapters (region /
+ * endpoint).
  */
-export function createAwsGateway(_env: AwsEnv): AwsGateway {
+export function createAwsGateway(env: AwsEnv): AwsGateway {
   return {
     chat: new AwsChatAdapter(),
     map: new AwsMapLocationAdapter(),
     storage: new AwsStorageAdapter(),
     auth: new AwsAuthAdapter(),
     translate: new AwsTranslateAdapter(),
+    image: new AwsImageAdapter(env),
   };
 }

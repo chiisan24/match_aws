@@ -13,12 +13,14 @@ import { MockChatAdapter } from "./chat";
 import { MockMapLocationAdapter } from "./map";
 import { MockAuthAdapter } from "./auth";
 import { MockTranslateAdapter } from "./translate";
+import { MockImageAdapter } from "./image";
 
 export { MockStorageAdapter } from "./storage";
 export { MockChatAdapter } from "./chat";
 export { MockMapLocationAdapter } from "./map";
 export { MockAuthAdapter } from "./auth";
 export { MockTranslateAdapter } from "./translate";
+export { MockImageAdapter } from "./image";
 
 // Fixed mock datasets, exposed for reuse by UI/dev tooling and tests.
 export { EHIME_TEMPLES } from "./temples";
@@ -40,5 +42,6 @@ export function createMockGateway(): AwsGateway {
     storage,
     auth: new MockAuthAdapter(storage),
     translate: new MockTranslateAdapter(),
+    image: new MockImageAdapter(),
   };
 }

@@ -79,6 +79,39 @@ export interface Review {
 }
 
 // ---------------------------------------------------------------------------
+// AI 画像自動生成 (著作権フリー画像)
+// ---------------------------------------------------------------------------
+
+/**
+ * A request to generate a royalty-free image for a spot/temple that has no
+ * usable photo yet. `id` is the stable subject id and is used as the cache /
+ * dedup key (and, on the AWS path, as the S3 object key) so the same subject is
+ * only generated once.
+ */
+export interface ImagePrompt {
+  /** Stable id of the subject (spot/temple id). Cache & dedup key. */
+  id: string;
+  /** Human-readable subject name, e.g. "道後温泉エリア". */
+  subject: string;
+  /** Optional descriptive context to steer generation (e.g. the ja blurb). */
+  description?: string;
+  /** Optional category hint used to theme the generated scene. */
+  category?: Spot["category"];
+}
+
+/**
+ * A generated, royalty-free image. `src` is usable directly as an `<img src>`
+ * value — either an inline `data:` URL (mock / inline base64) or an `https`
+ * URL (e.g. an S3 object produced by the serverless backend).
+ */
+export interface GeneratedImage {
+  /** Image source usable directly in `<img src>`. */
+  src: string;
+  /** How the image was produced (for UI hints / debugging). */
+  source: "ai-mock" | "ai-bedrock";
+}
+
+// ---------------------------------------------------------------------------
 // Favorites, shiori (itineraries) & visit records
 // ---------------------------------------------------------------------------
 

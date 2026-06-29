@@ -2362,3 +2362,15 @@ UI_LABELS["share.openedEmpty"] = {
   en: "This plan has no spots.",
   iyo: "このプランには場所が入っとらんよ。",
 };
+
+// ---- AI 画像自動生成 (著作権フリー画像) ------------------------------------
+UI_LABELS["image.generating"] = {
+  ja: "写真を生成中…",
+  en: "Generating photo…",
+  "zh-Hans": "正在生成照片…",
+  "zh-Hant": "正在生成照片…",
+  ko: "사진 생성 중…",
+  fr: "Génération de la photo…",
+  ar: "جارٍ إنشاء الصورة…",
+  iyo: "写真を作りよるけん…",
+};

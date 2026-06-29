@@ -12,6 +12,7 @@ import {
 } from "../ui/screens";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { createGateway } from "./gateway";
+import { ImageProvider } from "./ImageContext";
 import { ModeProvider, useMode } from "./ModeContext";
 import { PilgrimageProvider } from "./PilgrimageContext";
 import { TourismProvider } from "./TourismContext";
@@ -43,18 +44,20 @@ export function App(): JSX.Element {
     <I18nProvider storage={gateway.storage} translate={gateway.translate}>
       <ModeProvider storage={gateway.storage}>
         <AuthProvider auth={gateway.auth}>
-          <TourismProvider chat={gateway.chat} storage={gateway.storage}>
-            {/* Shared お遍路 state — the visited set read by the 札所マップ
-                filter plus the progress store (selected 対象県, 達成率) and the
-                visit-record seam the 巡礼進捗ダッシュボード (task 10.4) and
-                デジタル納経帳 (task 10.5) build on. Persisted via the storage
-                port under "progress" / "visitRecords". */}
-            <PilgrimageProvider storage={gateway.storage}>
-              <main className="app-shell">
-                <AppFlow map={gateway.map} chat={gateway.chat} storage={gateway.storage} />
-              </main>
-            </PilgrimageProvider>
-          </TourismProvider>
+          <ImageProvider image={gateway.image}>
+            <TourismProvider chat={gateway.chat} storage={gateway.storage}>
+              {/* Shared お遍路 state — the visited set read by the 札所マップ
+                  filter plus the progress store (selected 対象県, 達成率) and the
+                  visit-record seam the 巡礼進捗ダッシュボード (task 10.4) and
+                  デジタル納経帳 (task 10.5) build on. Persisted via the storage
+                  port under "progress" / "visitRecords". */}
+              <PilgrimageProvider storage={gateway.storage}>
+                <main className="app-shell">
+                  <AppFlow map={gateway.map} chat={gateway.chat} storage={gateway.storage} />
+                </main>
+              </PilgrimageProvider>
+            </TourismProvider>
+          </ImageProvider>
         </AuthProvider>
       </ModeProvider>
     </I18nProvider>

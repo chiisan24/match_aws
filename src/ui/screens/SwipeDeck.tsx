@@ -41,12 +41,13 @@ import {
 } from "react";
 
 import { useTourism } from "../../app/TourismContext";
+import { useGeneratedImage } from "../../app/ImageContext";
 import {
   classifySwipe,
   generateRecommendations,
   type SwipeDir,
 } from "../../domain/swipe";
-import type { LangCode, Spot } from "../../domain/types";
+import type { ImagePrompt, LangCode, Spot } from "../../domain/types";
 import { EHIME_SPOTS } from "../../adapters/mock/spots";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
@@ -400,26 +401,64 @@ export function SwipeDeck({ onBackToChat }: SwipeDeckProps): JSX.Element {
 }
 
 /**
- * A spot photo that renders the real image when one is provided and resolves,
- * and otherwise the on-brand placeholder (Req 4.7). Tracks its own load-error
- * state so a broken/missing URL degrades gracefully.
+ * A spot photo that renders the real image when one is provided and resolves.
+ * When no usable image exists it asks the {@link useGeneratedImage} hook to
+ * auto-generate a royalty-free photo (mock SVG by default, Amazon Bedrock when
+ * AWS is configured), showing a "生成中" placeholder meanwhile and the on-brand
+ * placeholder if generation fails (Req 4.7).
  */
 function SpotPhoto({ spot }: { spot: Spot }): JSX.Element {
+  const { t } = useI18n();
   const [errored, setErrored] = useState(false);
   const url = spot.imageUrls[0];
+  const hasRealImage = Boolean(url) && !errored;
 
-  if (!url || errored) {
+  // Only request generation when there is no usable real photo.
+  const prompt = useMemo<ImagePrompt | null>(
+    () =>
+      hasRealImage
+        ? null
+        : {
+            id: spot.id,
+            subject: spot.name,
+            description: spot.localizedDescriptions.ja,
+            category: spot.category,
+          },
+    [hasRealImage, spot.id, spot.name, spot.category, spot.localizedDescriptions],
+  );
+  const generated = useGeneratedImage(prompt, !hasRealImage);
+
+  if (hasRealImage) {
     return (
-      <PlaceholderImage motif="spot" label={spot.name} aspectRatio="4 / 3" />
+      <img
+        className="swipe-card__photo"
+        src={url}
+        alt={spot.name}
+        loading="lazy"
+        onError={() => setErrored(true)}
+      />
     );
   }
+
+  if (generated.status === "ready") {
+    return (
+      <img
+        className="swipe-card__photo"
+        src={generated.image.src}
+        alt={spot.name}
+        loading="lazy"
+      />
+    );
+  }
+
   return (
-    <img
-      className="swipe-card__photo"
-      src={url}
-      alt={spot.name}
-      loading="lazy"
-      onError={() => setErrored(true)}
+    <PlaceholderImage
+      motif="spot"
+      label={spot.name}
+      aspectRatio="4 / 3"
+      sublabel={
+        generated.status === "loading" ? t("image.generating") : undefined
+      }
     />
   );
 }

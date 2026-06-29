@@ -7,8 +7,10 @@
 import type {
   ChatReply,
   ChatSession,
+  GeneratedImage,
   GeoPoint,
   Geofence,
+  ImagePrompt,
   LangCode,
   OfflineEntry,
   PilgrimagePlan,
@@ -67,6 +69,22 @@ export interface TranslatePort {
 }
 
 /**
+ * AI 画像自動生成 (著作権フリー画像)。スポット/札所に使える写真が無いとき、
+ * 生成 AI で著作権フリーの画像を作って表示するためのポート。
+ *
+ * - mock アダプタ: 自前生成の SVG（カテゴリ別テーマ）を data URL で返す。
+ *   外部依存なし・完全にロイヤリティフリーなので Vercel の既定構成でも動く。
+ * - aws アダプタ: サーバレス API 経由で Amazon Bedrock (Titan Image Generator)
+ *   を呼び、生成画像を返す（生成結果は S3 にキャッシュする想定 — Req 16.3）。
+ *
+ * 生成できない/未設定のときは `null` を返し、UI はプレースホルダーへ退避する
+ * (Req 4.7)。
+ */
+export interface ImagePort {
+  generateImage(prompt: ImagePrompt): Promise<GeneratedImage | null>;
+}
+
+/**
  * The AWS_Gateway aggregate — bundles the five ports the application depends on
  * (Req 16.1). `createGateway(env)` returns one of these, backed by either the
  * mock adapters (default / no AWS env) or the aws adapters (env present).
@@ -82,6 +100,7 @@ export interface AwsGateway {
   readonly storage: StoragePort;
   readonly auth: AuthPort;
   readonly translate: TranslatePort;
+  readonly image: ImagePort;
 }
 
 /** The set of port names that make up an {@link AwsGateway}. */
@@ -91,4 +110,5 @@ export const GATEWAY_PORT_NAMES = [
   "storage",
   "auth",
   "translate",
+  "image",
 ] as const satisfies ReadonlyArray<keyof AwsGateway>;
