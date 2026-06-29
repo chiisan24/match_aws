@@ -59,12 +59,7 @@ export function LanguageSelect({
       {/* ---- Welcome banner: ようこそ愛媛へ + Ehime image ---- */}
       <div className="lang-select__welcome">
         <div className="lang-select__hero">
-          <PlaceholderImage
-            motif="temple"
-            label="愛媛・道後温泉"
-            sublabel="写真は準備中です"
-            aspectRatio="16 / 9"
-          />
+          <WelcomeHero />
         </div>
         <p className="lang-select__kicker">{t("welcome.kicker")}</p>
         <h1 className="lang-select__welcome-title">{t("welcome.place")}</h1>
@@ -167,5 +162,35 @@ function LanguageTile({
         <span className="lang-tile__sub">{option.sublabel}</span>
       )}
     </button>
+  );
+}
+
+/**
+ * Welcome hero image. Renders the real Ehime photo when it resolves and falls
+ * back to the on-brand {@link PlaceholderImage} on load error — mirroring the
+ * SpotPhoto pattern (Req 4.7), so a missing file never breaks the screen.
+ */
+function WelcomeHero(): JSX.Element {
+  const [errored, setErrored] = useState(false);
+
+  if (errored) {
+    return (
+      <PlaceholderImage
+        motif="temple"
+        label="愛媛・道後温泉"
+        sublabel="写真は準備中です"
+        aspectRatio="16 / 9"
+      />
+    );
+  }
+  return (
+    <img
+      className="lang-select__hero-img"
+      src="/images/ehime/welcome-ehime.jpg"
+      alt="愛媛・道後温泉"
+      style={{ aspectRatio: "16 / 9", width: "100%", objectFit: "cover" }}
+      loading="lazy"
+      onError={() => setErrored(true)}
+    />
   );
 }
