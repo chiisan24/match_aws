@@ -51,7 +51,11 @@ export function App(): JSX.Element {
                 port under "progress" / "visitRecords". */}
             <PilgrimageProvider storage={gateway.storage}>
               <main className="app-shell">
-                <AppFlow map={gateway.map} chat={gateway.chat} storage={gateway.storage} />
+                <AppFlow
+                  map={gateway.map}
+                  chat={gateway.chat}
+                  storage={gateway.storage}
+                />
               </main>
             </PilgrimageProvider>
           </TourismProvider>
