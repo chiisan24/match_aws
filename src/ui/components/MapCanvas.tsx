@@ -4,7 +4,7 @@
  * Two rendering modes, chosen at runtime:
  *
  *  - **Real map mode** (`enabled`, default `awsEnv.mapEnabled`): mounts an
- *    interactive **MapLibre GL JS** map with open tiles (OpenStreetMap by
+ *    interactive **MapLibre GL JS** map with open tiles (OpenFreeMap by
  *    default, or `awsEnv.mapStyleUrl`). Pins / current-location / zones are
  *    rendered as React overlays whose pixel positions are projected from their
  *    geo coordinates and kept in sync on every map move/zoom (Req 20.1–20.3).
@@ -99,19 +99,19 @@ function buildProjector(points: GeoPoint[]): ((p: GeoPoint) => Pct) | null {
   });
 }
 
-/** Built-in keyless OpenStreetMap raster style (Req 20.5). */
-const OSM_STYLE = {
-  version: 8,
-  sources: {
-    osm: {
-      type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "© OpenStreetMap contributors",
-    },
-  },
-  layers: [{ id: "osm", type: "raster", source: "osm" }],
-} as const;
+/**
+ * Built-in keyless default map style (Req 20.5).
+ *
+ * NOTE: We intentionally do NOT use OpenStreetMap's public raster tile server
+ * (`tile.openstreetmap.org`) here. OSM's tile usage policy forbids hotlinking
+ * from apps and they actively enforce it — cross-origin browser requests are
+ * answered with an `x-blocked: Access denied` response, so the tiles never
+ * render (the map and pins still load, leaving only the surface background
+ * visible). Instead we default to **OpenFreeMap**, which is free, requires no
+ * API key, sends permissive CORS headers, and permits direct browser use.
+ * Override with `VITE_MAP_STYLE_URL` to use your own/keyed style.
+ */
+const DEFAULT_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 
 const CURRENT_KEY = "__current__";
 
@@ -188,7 +188,6 @@ export function MapCanvas<T extends MapItem>({
       try {
         const mod = await import("maplibre-gl");
         const maplibregl = (mod.default ?? mod) as typeof import("maplibre-gl");
-        await import("maplibre-gl/dist/maplibre-gl.css");
         if (cancelled || !glRef.current) return;
 
         const allPoints = [
@@ -199,7 +198,7 @@ export function MapCanvas<T extends MapItem>({
 
         const map = new maplibregl.Map({
           container: glRef.current,
-          style: (awsEnv.mapStyleUrl ?? OSM_STYLE) as never,
+          style: (awsEnv.mapStyleUrl ?? DEFAULT_STYLE_URL) as never,
           center: [center.lng, center.lat],
           zoom: 9,
         });
@@ -212,7 +211,14 @@ export function MapCanvas<T extends MapItem>({
         });
         map.on("move", recompute);
         map.on("zoom", recompute);
-      } catch {
+        // Surface tile/style errors to the console instead of failing silently.
+        map.on("error", (e: { error?: unknown }) => {
+          console.error("[MapCanvas] MapLibre runtime error:", e?.error ?? e);
+        });
+      } catch (err) {
+        // Log the real cause before degrading to the mock surface, so a broken
+        // map is debuggable instead of silently disappearing (Req 20.7).
+        console.error("[MapCanvas] Failed to initialize MapLibre GL JS:", err);
         if (!cancelled) setFailed(true);
       }
     })();
