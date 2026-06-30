@@ -13,7 +13,7 @@ on-brand なプレースホルダー `PlaceholderImage` に自動フォールバ
 
 | filename | 被写体 (photo) | 使う画面 |
 | --- | --- | --- |
-| `welcome-ehime.jpg` | 愛媛の象徴的な風景（道後温泉など）ウェルカム用 | 言語選択 (LanguageSelect) ヒーロー |
+| `welcome-ehime.jpg` | 愛媛の象徴的な風景（城・瀬戸内海・しまなみ海道の橋・みかん）。縦長(ポートレート)推奨 | 言語選択 (LanguageSelect) ヒーロー |
 | `matsuyama-castle.jpg` | 松山城 | スワイプ (SwipeDeck) / お気に入り |
 | `imabari-castle.jpg` | 今治城（海城） | スワイプ / お気に入り |
 | `uwajima-castle.jpg` | 宇和島城（現存天守） | スワイプ / お気に入り |

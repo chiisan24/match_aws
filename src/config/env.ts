@@ -21,6 +21,19 @@ export interface AwsEnv {
   readonly locationMapName: string | undefined;
   /** Amazon Location Service place index resource name. */
   readonly locationPlaceIndex: string | undefined;
+  /**
+   * Whether screens may render a real interactive map (MapLibre GL JS) instead
+   * of the mock surface (Req 20). Defaults to ON; set `VITE_MAP_ENABLED=false`
+   * to force the mock surface. The map still falls back to the mock surface
+   * automatically when WebGL is unavailable (e.g. under jsdom). Independent of
+   * `hasAwsConfig` — the map uses open tiles (OpenStreetMap), not AWS.
+   */
+  readonly mapEnabled: boolean;
+  /**
+   * Optional MapLibre style URL overriding the built-in OpenStreetMap raster
+   * style (e.g. a MapTiler/own style). Public URLs / public-scoped keys only.
+   */
+  readonly mapStyleUrl: string | undefined;
   /** When true, mock adapters are used even if AWS values are present. */
   readonly forceMock: boolean;
   /**
@@ -41,18 +54,22 @@ function readRaw(): Omit<AwsEnv, "hasAwsConfig"> {
     apiEndpoint: env.VITE_AWS_API_ENDPOINT || undefined,
     locationMapName: env.VITE_AWS_LOCATION_MAP_NAME || undefined,
     locationPlaceIndex: env.VITE_AWS_LOCATION_PLACE_INDEX || undefined,
+    mapEnabled: env.VITE_MAP_ENABLED !== "false",
+    mapStyleUrl: env.VITE_MAP_STYLE_URL || undefined,
     forceMock,
   };
 }
 
 /**
- * Builds the AWS environment view. Real AWS adapters require, at minimum, a
- * region and an API endpoint; otherwise we stay on mocks.
+ * Builds the AWS environment view. The client only needs to know the base URL
+ * of the serverless API that fronts the AI features (chat / plan / translate /
+ * image). When that endpoint is present we use the real AI adapters; AWS
+ * region & credentials live server-side (in the Vercel Functions), never in the
+ * browser bundle. With no endpoint configured the app stays on mocks.
  */
 export function readAwsEnv(): AwsEnv {
   const raw = readRaw();
-  const hasAwsConfig =
-    !raw.forceMock && Boolean(raw.region) && Boolean(raw.apiEndpoint);
+  const hasAwsConfig = !raw.forceMock && Boolean(raw.apiEndpoint);
   return { ...raw, hasAwsConfig };
 }
 

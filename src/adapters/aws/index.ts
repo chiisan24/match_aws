@@ -1,13 +1,16 @@
 /**
- * AWS adapters — real implementations of the ports (Bedrock / Location Service /
- * DynamoDB / S3 / Translate). Selected by `createGateway` when AWS connection
- * info is present (Req 16.3).
+ * AWS adapters — real implementations of the ports.
  *
- * These are contract stubs for now: each class `implements` its port so the
- * compiler keeps it aligned with the shared contract (Req 16.4), but the
- * methods throw `AWS_NOT_CONFIGURED` at runtime until the real AWS wiring is
- * implemented in a later phase. The default app path uses the mock gateway
- * (Req 16.2, 17.3), so the build stays green today.
+ * The AI-facing ports are live: `chat` (Amazon Bedrock / Claude), `translate`
+ * (Amazon Translate) and `image` (Amazon Bedrock / Titan Image Generator) call
+ * the app's serverless API (Vercel Functions), which talks to AWS server-side
+ * so no credentials ever reach the browser (Req 16.3, 19).
+ *
+ * The non-AI ports (`map` / `storage` / `auth`) are still contract stubs: each
+ * class `implements` its port for compile-time contract verification (Req 16.4)
+ * but throws `AWS_NOT_CONFIGURED` at runtime. The hybrid `createGateway` keeps
+ * those backed by the mock adapters until they are wired, so the app stays fully
+ * functional while the AI features run for real.
  */
 
 import type { AwsGateway } from "../../ports";
@@ -35,11 +38,11 @@ export { AwsImageAdapter } from "./image";
  */
 export function createAwsGateway(env: AwsEnv): AwsGateway {
   return {
-    chat: new AwsChatAdapter(),
+    chat: new AwsChatAdapter(env),
     map: new AwsMapLocationAdapter(),
     storage: new AwsStorageAdapter(),
     auth: new AwsAuthAdapter(),
-    translate: new AwsTranslateAdapter(),
+    translate: new AwsTranslateAdapter(env),
     image: new AwsImageAdapter(env),
   };
 }

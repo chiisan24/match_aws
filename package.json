@@ -13,6 +13,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.682.0",
+    "@aws-sdk/client-translate": "^3.682.0",
+    "maplibre-gl": "^4.7.1",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
@@ -22,6 +25,7 @@
     "@testing-library/user-event": "14.5.2",
     "@types/react": "18.3.12",
     "@types/react-dom": "18.3.1",
+    "@vercel/node": "^3.2.24",
     "@vitejs/plugin-react": "4.3.3",
     "fast-check": "3.23.1",
     "jsdom": "25.0.1",

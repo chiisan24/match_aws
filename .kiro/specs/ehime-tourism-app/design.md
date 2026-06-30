@@ -155,15 +155,31 @@ interface TranslatePort {
 | `FavoritesView` | お気に入り一覧・タブ分類・詳細 | 5 |
 | `ShioriEditor` | しおり項目追加・並べ替え・削除 | 6 |
 | `PlanShare` | プラン共有リンク生成・閲覧 | 7 |
-| `TempleMap` | 札所ピン・詳細・フィルタ・現在地 | 8 |
+| `TempleMap` | 札所ピン・詳細・フィルタ・現在地 | 8, 20 |
 | `ProgressDashboard` | 達成率・残数・今日/今月集計 | 9 |
 | `NokyochoView` | 訪問記録の保存・一覧・詳細 | 10 |
 | `VisitTrackerScroll` | 行った/行ってないスクロール設定 | 11 |
 | `PilgrimagePlanner` | 条件入力・当日プラン生成・タイムライン | 12 |
 | `ArrivalSheet` | 到着自動表示・記録/しおり追加 | 13 |
-| `LayeredMap` | 情報レイヤー重畳・絞り込み | 14 |
+| `LayeredMap` | 情報レイヤー重畳・絞り込み | 14, 20 |
+| `MapCanvas` | 実地図タイル描画（Amazon Location + MapLibre）。ピン/現在地/レイヤーを地理座標に重畳。未設定/失敗時はモックサーフェスへ退避 | 20 |
 | `AuthGate` | メールログイン・セッション保持 | 15 |
 | デザイントークン / 共通 UI | 配色・トーン・スワイプ UI | 18 |
+
+### 実地図描画（Map_Renderer / Req 20）
+
+`TempleMap` / `LayeredMap` の地図表示は、共有プレゼンテーション層 **`MapCanvas`** に集約する。`MapCanvas` は地理座標（緯度経度）でピン・現在地・レイヤー要素を受け取り、次の 2 モードのいずれかで描画する。
+
+- **実地図モード（MapLibre GL JS）**: 実地図描画が有効化されている場合。**MapLibre GL JS** で **オープンな地図タイル源（既定: OpenStreetMap ラスタタイル、APIキー不要）** を読み込み、ピン/現在地は MapLibre の Marker として地理座標に配置する。ズーム/パンしても整合を保つ（Req 20.1–20.3）。Amazon Location Service など特定クラウドには依存しない。
+- **モックサーフェスモード（フォールバック）**: 実地図が無効、または WebGL 初期化に失敗した場合。既存の百分率投影サーフェス（`temple-map__surface` と `buildProjector`）をそのまま用い、`data-testid` 等の既存契約を維持する（Req 20.4 / 20.7、Req 8.5 / 16.2 / 17.3 整合）。テスト環境（jsdom は WebGL 非対応）でも自動的にこのモードになるため、既存テストは不変。
+
+**有効化と既定（Req 20.1 / 20.5）**: 実地図モードは環境変数フラグ `VITE_MAP_ENABLED="true"` で有効化する（既定は無効＝モックサーフェス）。タイル/スタイルは既定で内蔵の OpenStreetMap ラスタスタイルを用い、`VITE_MAP_STYLE_URL`（任意）で別スタイルへ差し替え可能。ブラウザに AWS 認証情報や秘匿キーは保持しない（OSM 既定タイルはキー不要）。
+
+**現在地（Req 20.6）**: 実 `MapLocationPort` アダプタの `getCurrentLocation` はブラウザ `navigator.geolocation` を用い、未許可/不可ならモック現在地へフォールバックする。`getTemples` は当面 A7 の愛媛 26 札所キュレーションデータを返す。
+
+**依存追加**: `maplibre-gl`（実地図描画）のみ。タイル源が OSM のため追加の認可ライブラリやクラウド SDK は不要。
+
+**環境変数（クライアント / Req 17.2 整合）**: `VITE_MAP_ENABLED`（実地図有効化）・`VITE_MAP_STYLE_URL`（任意のスタイル差し替え）。AI 用の `VITE_AWS_API_ENDPOINT` とは独立に判定する。OSM の公開タイルは利用ポリシー順守の範囲（MVP/デモ）で用い、本番大規模時は自前/商用タイルへ差し替える。
 
 ### ドメイン層の主な純粋関数
 

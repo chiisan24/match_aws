@@ -1,39 +1,64 @@
 /**
  * `createGateway(env)` — the AWS_Gateway factory.
  *
- * Selects between the mock and aws adapter families based on whether AWS
- * connection info is present:
- *   - No AWS env (the default on Vercel) -> mock gateway (Req 16.2, 17.3).
- *   - AWS env present                    -> aws gateway (Req 16.3).
+ * Selects backends based on environment:
+ *   - No API endpoint (the default on Vercel) -> mock AI ports (Req 16.2, 17.3).
+ *   - `VITE_AWS_API_ENDPOINT` set -> real AI ports (chat / translate / image)
+ *     over the serverless backend (Req 16.3).
+ *   - `VITE_MAP_ENABLED` set -> real interactive-map location port (browser
+ *     geolocation + curated temples; tiles via MapLibre/OSM in MapCanvas, Req 20).
+ *   Any non-AI ports that are not swapped in stay on the mock adapters, so the
+ *   app keeps working as features are enabled independently.
  *
  * Contract verification (Req 16.4, 16.5) is enforced two ways:
- *   1. Type level — `createMockGateway()` and `createAwsGateway()` are both
- *      annotated to return `AwsGateway`, and the adapter classes `implements`
- *      their ports. Any drift between the mock and aws contracts is a compile
- *      error, so `tsc --noEmit` (part of `npm run build`) fails the build/deploy.
- *   2. Runtime — `verifyGatewayContract` checks that the mock and aws gateways
- *      expose the same ports with the same method names, throwing if they
- *      diverge. This guards against drift that escapes the type system.
+ *   1. Type level — the adapter classes `implements` their ports, and the
+ *      factories are annotated `AwsGateway`. Any drift is a compile error, so
+ *      `tsc --noEmit` (part of `npm run build`) fails the build/deploy.
+ *   2. Runtime — `verifyGatewayContract` checks that the assembled gateway
+ *      exposes the same ports with the same method names as the mock reference,
+ *      throwing if they diverge.
  */
 
 import type { AwsGateway } from "../ports";
 import { GATEWAY_PORT_NAMES } from "../ports";
 import { awsEnv, type AwsEnv } from "../config/env";
 import { createMockGateway } from "../adapters/mock";
-import { createAwsGateway } from "../adapters/aws";
+import {
+  AwsChatAdapter,
+  AwsTranslateAdapter,
+  AwsImageAdapter,
+  AwsMapLocationAdapter,
+} from "../adapters/aws";
 
 /**
  * Returns the gateway appropriate for the given environment. Defaults to the
  * process AWS env, so `createGateway()` with no argument does the right thing.
  */
 export function createGateway(env: AwsEnv = awsEnv): AwsGateway {
+  let gateway: AwsGateway = createMockGateway();
+  let customized = false;
+
+  // Real AI ports over the serverless backend (Bedrock / Translate).
   if (env.hasAwsConfig) {
-    const gateway = createAwsGateway(env);
-    // Fail fast if the real adapters have drifted from the mock contract.
-    verifyGatewayContract(gateway);
-    return gateway;
+    gateway = {
+      ...gateway,
+      chat: new AwsChatAdapter(env),
+      translate: new AwsTranslateAdapter(env),
+      image: new AwsImageAdapter(env),
+    };
+    customized = true;
   }
-  return createMockGateway();
+
+  // Real interactive map → browser-backed location port (Req 20). Independent
+  // of the AI backend; tiles are open (OSM) and need no AWS.
+  if (env.mapEnabled) {
+    gateway = { ...gateway, map: new AwsMapLocationAdapter() };
+    customized = true;
+  }
+
+  // Fail fast if any swapped-in adapter has drifted from the mock contract.
+  if (customized) verifyGatewayContract(gateway);
+  return gateway;
 }
 
 /** Lists the own + prototype method names of an object, sorted for comparison. */

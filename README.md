@@ -4,7 +4,8 @@
 
 - フロントエンド: React + TypeScript（Vite）
 - デプロイ先: **Vercel**
-- AWS 依存（AI チャット / 地図・現在地 / データ永続化 / 認証 / 翻訳）は `AWS_Gateway` の背後に抽象化。**環境変数が未設定なら自動でモックにフォールバック**し、AWS なしでも全機能が動作します。
+- AI機能（チャット相談 / お遍路プラン生成 / 翻訳 / 写真自動生成）は **Vercel の Serverless Functions（`api/`）経由で Amazon Bedrock・Amazon Translate を実呼び出し**します。AWS 認証情報はサーバ側のみで保持し、ブラウザには出しません。
+- 環境変数 `VITE_AWS_API_ENDPOINT` が**未設定なら自動でモックにフォールバック**し、AWS なしでも全機能が動作します。地図・現在地・認証・永続化は現状モックのままです。
 
 ## ローカル開発
 
@@ -45,14 +46,47 @@ public/
    - Build Command: `npm run build`
    - Output Directory: `dist`
 4. 環境変数は **未設定のままで OK**（モックで全機能が動作します）。
-   - 後で AWS を接続する場合のみ、`.env.example` の `VITE_AWS_*` を Vercel の Environment Variables に設定します。
 5. 「Deploy」を押すと数分で公開 URL が発行されます。
 
 以降は `main` ブランチへ push するたびに Vercel が自動で再デプロイします。
 
+## AI機能（Bedrock）を本番接続する
+
+AI機能を実際に動かすには、AWS 側の準備と Vercel の環境変数設定が必要です。
+
+1. **AWS 準備**
+   - 利用リージョン（例: `us-east-1`）で **Amazon Bedrock のモデルアクセス**を有効化します。
+     - チャット/プラン: 任意の Anthropic Claude モデル（既定 `anthropic.claude-3-5-haiku-20241022-v1:0`）
+     - 画像生成: `amazon.titan-image-generator-v1`
+   - Bedrock 呼び出し（`bedrock:InvokeModel`）と Amazon Translate（`translate:TranslateText`）の権限を持つ IAM ユーザーのアクセスキーを発行します。
+2. **Vercel の Environment Variables に設定**（`.env.example` 参照）
+   - クライアント: `VITE_AWS_API_ENDPOINT=/api`
+   - サーバ（VITE_ 接頭辞なし）: `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`
+   - 任意: `BEDROCK_CHAT_MODEL_ID` / `BEDROCK_IMAGE_MODEL_ID` / `BEDROCK_REGION`
+3. 再デプロイすると、チャット・プラン・翻訳・写真生成が実際の Bedrock / Translate を使って動作します。
+   - `VITE_AWS_API_ENDPOINT` を外す（または `VITE_FORCE_MOCK=true`）と、いつでもモックに戻せます。
+
+### API エンドポイント（`api/`）
+
+| エンドポイント | 用途 | 呼び出す AWS サービス |
+| --- | --- | --- |
+| `POST /api/chat` | AIチャット相談・スポット候補選定 | Bedrock (Claude) |
+| `POST /api/plan` | 今日のお遍路プラン生成 | Bedrock (Claude) |
+| `POST /api/translate` | 多言語翻訳 | Amazon Translate |
+| `POST /api/images/generate` | 著作権フリー写真の自動生成 | Bedrock (Titan Image Generator) |
+
 ## 現状のスコープ
 
-- MVP 実装済み: 言語選択 / モード切替 / AIチャット / スワイプ発見 / お気に入り / しおり / プラン共有 / 札所マップ / 巡礼進捗 / デジタル納経帳 / 訪問管理 / 重ねるマップ / メール認証（すべてモックで動作）
-- 後続フェーズ（モックで実装済み・本番は後日）: 今日のお遍路プラン（AI生成）/ 札所到着自動表示（ジオフェンス）
-- マッチング画像: `public/images/ehime/` に実写真を配置すると表示。未配置時はプレースホルダーに自動フォールバック。
-- AWS 実接続と既存基盤 `waskiro` との突合は後日。
+- MVP 実装済み: 言語選択 / モード切替 / AIチャット / スワイプ発見 / お気に入り / しおり / プラン共有 / 札所マップ / 巡礼進捗 / デジタル納経帳 / 訪問管理 / 重ねるマップ / メール認証
+- **AI機能は本番実装済み**: チャット相談・お遍路プラン生成・翻訳・写真自動生成は Bedrock / Translate を実呼び出し（`VITE_AWS_API_ENDPOINT=/api` と AWS 認証情報を設定したとき）。未設定時はモックで動作。
+- マッチング画像: `public/images/ehime/` に実写真を配置すると優先表示。未配置時は AI 自動生成、生成不可ならプレースホルダーに自動フォールバック。
+- 認証 / データ永続化は現状モック（AWS 実接続は後日）。地図は `VITE_MAP_ENABLED=true` で実地図（MapLibre GL JS + OpenStreetMap）に切替可能。
+
+## 地図（MapLibre GL JS）を有効化する
+
+地図画面（札所マップ・重ねるマップ）は、既定ではモック地図サーフェスで描画します。本物の地図を出すには、環境変数を設定するだけです（AWS不要・APIキー不要）。
+
+- `VITE_MAP_ENABLED=true` … MapLibre GL JS ＋ OpenStreetMap タイルで実地図を描画
+- `VITE_MAP_STYLE_URL=`（任意）… 別の MapLibre スタイル URL に差し替え（公開URL/公開スコープのキーのみ）
+
+有効化すると、ピン・現在地・レイヤーが実地図の地理座標に重畳され、ズーム/パンできます。現在地はブラウザの位置情報（許可時）を使用し、不可ならモック現在地へフォールバック。WebGL 非対応環境や初期化失敗時は自動でモック地図に退避します。MapLibre は遅延ロードのため、無効時はメインバンドルに含まれません。OSM の公開タイルは利用ポリシー順守の範囲（MVP/デモ）で使用し、本番大規模時は自前/商用タイルへ差し替えてください。
