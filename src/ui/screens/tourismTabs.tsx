@@ -46,7 +46,9 @@ export const TOURISM_TAB_CONTENT: Partial<
   Record<TourismTab, TourismTabRenderer>
 > = {
   chat: ({ goToTab }) => <ChatAdvisor onOpenSwipe={() => goToTab("swipe")} />,
-  swipe: ({ goToTab }) => <SwipeDeck onBackToChat={() => goToTab("chat")} />,
+  swipe: ({ goToTab }) => (
+    <SwipeDeck onBackToChat={() => goToTab("chat")} />
+  ),
   favorites: () => <FavoritesView />,
   shiori: () => <ShioriEditor />,
 };
