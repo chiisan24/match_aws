@@ -233,6 +233,29 @@ graph TD
     - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 11.1, 11.2, 11.3, 11.4_
   - [ ]* 10.6 納経帳一覧/永続化失敗の例示テスト
     - 一覧網羅・初回スクロール画面・永続化失敗時 UI 維持（EXAMPLE/EDGE_CASE）
+
+- [ ] 20. 実地図描画（MapLibre GL JS / Req 20）
+  - [x] 20.1 env に地図設定を追加
+    - `src/config/env.ts` に `mapEnabled`（`VITE_MAP_ENABLED === "true"`）と `mapStyleUrl`（`VITE_MAP_STYLE_URL`、任意）を読み込み、AI 用 `hasAwsConfig` とは独立に算出
+    - `.env.example` に `VITE_MAP_ENABLED` / `VITE_MAP_STYLE_URL` を追記（既定は無効＝モック地図。OSM 既定タイルはキー不要）
+    - _Requirements: 20.1, 20.5, 17.2_
+  - [x] 20.2 `MapCanvas` コンポーネントを実装（MapLibre GL JS + OpenStreetMap）
+    - `maplibre-gl` を追加。既定で内蔵の OSM ラスタスタイル（`VITE_MAP_STYLE_URL` があれば優先）を読み込む
+    - ピン/現在地/レイヤー要素を地理座標の Marker として重畳、ズーム/パンで整合維持
+    - _Requirements: 20.1, 20.2, 20.3, 20.5_
+  - [x] 20.3 フォールバックとエラー退避
+    - 実地図無効／WebGL 初期化失敗時は既存のモックサーフェス（`buildProjector` / `temple-map__surface`）へ退避し、`data-testid` 等の既存契約を維持（jsdom テストは自動的にモックモード）
+    - _Requirements: 20.4, 20.7, 8.5_
+  - [x] 20.4 `TempleMap` / `LayeredMap` を `MapCanvas` へ統合
+    - 既存のピン選択・詳細・フィルタ・ルート強調・レイヤー重畳の挙動を保持したまま地図描画のみ差し替え
+    - _Requirements: 8.1, 8.2, 8.3, 14.1, 14.2, 14.3, 20.2_
+  - [x] 20.5 実 `MapLocationPort` アダプタ（現在地）を実装
+    - `getCurrentLocation` を `navigator.geolocation` で実装（未許可/不可はモック現在地へフォールバック）、`getTemples` は愛媛26札所データを継続
+    - createGateway のハイブリッド構成へ組み込み（地図/現在地ポートを実装に差し替え、未設定時はモック）
+    - _Requirements: 8.4, 8.5, 20.6, 16.2, 16.3_
+  - [x]* 20.6 地図描画のスモークテスト
+    - 実地図無効 → モックサーフェス描画、有効 → MapCanvas マウントの分岐（SMOKE / INTEGRATION）
+    - **Validates: Requirements 20.1, 20.4**
     - _Requirements: 10.2, 11.1, 11.2_
 
 - [x] 11. お遍路モード: プラン・到着表示・重ねるマップ

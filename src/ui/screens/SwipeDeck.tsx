@@ -41,19 +41,18 @@ import {
 } from "react";
 
 import { useTourism } from "../../app/TourismContext";
+import { useGeneratedImage } from "../../app/ImageContext";
 import {
   classifySwipe,
   generateRecommendations,
   type SwipeDir,
 } from "../../domain/swipe";
-import type { LangCode, Spot } from "../../domain/types";
+import type { ImagePrompt, LangCode, Spot } from "../../domain/types";
 import { EHIME_SPOTS } from "../../adapters/mock/spots";
-import { fetchSpotImage } from "../../adapters/spotImages";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Tag } from "../components/Tag";
 import { PlaceholderImage } from "../components/PlaceholderImage";
-import { SpotImage } from "../components/SpotImage";
 
 /** Past this pointer travel (px) a release commits to a swipe. */
 const SWIPE_THRESHOLD = 72;
@@ -256,7 +255,7 @@ export function SwipeDeck({ onBackToChat }: SwipeDeckProps): JSX.Element {
           {/* Peek of the next card for a layered, hand-stacked feel. */}
           {deck[index + 1] && (
             <div className="swipe-card swipe-card--peek" aria-hidden="true">
-              <SpotPhoto spot={deck[index + 1]!} showCredit={false} />
+              <SpotPhoto spot={deck[index + 1]!} />
             </div>
           )}
 
@@ -383,7 +382,7 @@ export function SwipeDeck({ onBackToChat }: SwipeDeckProps): JSX.Element {
               {recommendations.map((spot) => (
                 <li key={spot.id} className="swipe__recommend-item">
                   <span className="swipe__recommend-thumb">
-                    <SpotPhoto spot={spot} showCredit={false} />
+                    <SpotPhoto spot={spot} />
                   </span>
                   <span className="swipe__recommend-meta">
                     <span className="swipe__recommend-name">{spot.name}</span>
@@ -402,26 +401,64 @@ export function SwipeDeck({ onBackToChat }: SwipeDeckProps): JSX.Element {
 }
 
 /**
- * A spot photo that renders a real internet-fetched image when available, the
- * local image otherwise, and the on-brand placeholder as a last resort
- * (Req 4.7). Decorative / thumbnail uses pass `showCredit={false}` to keep the
- * caption from cluttering the layout.
+ * A spot photo that renders the real image when one is provided and resolves.
+ * When no usable image exists it asks the {@link useGeneratedImage} hook to
+ * auto-generate a royalty-free photo (mock SVG by default, Amazon Bedrock when
+ * AWS is configured), showing a "生成中" placeholder meanwhile and the on-brand
+ * placeholder if generation fails (Req 4.7).
  */
-function SpotPhoto({
-  spot,
-  showCredit = true,
-}: {
-  spot: Spot;
-  showCredit?: boolean;
-}): JSX.Element {
+function SpotPhoto({ spot }: { spot: Spot }): JSX.Element {
+  const { t } = useI18n();
+  const [errored, setErrored] = useState(false);
+  const url = spot.imageUrls[0];
+  const hasRealImage = Boolean(url) && !errored;
+
+  // Only request generation when there is no usable real photo.
+  const prompt = useMemo<ImagePrompt | null>(
+    () =>
+      hasRealImage
+        ? null
+        : {
+            id: spot.id,
+            subject: spot.name,
+            description: spot.localizedDescriptions.ja,
+            category: spot.category,
+          },
+    [hasRealImage, spot.id, spot.name, spot.category, spot.localizedDescriptions],
+  );
+  const generated = useGeneratedImage(prompt, !hasRealImage);
+
+  if (hasRealImage) {
+    return (
+      <img
+        className="swipe-card__photo"
+        src={url}
+        alt={spot.name}
+        loading="lazy"
+        onError={() => setErrored(true)}
+      />
+    );
+  }
+
+  if (generated.status === "ready") {
+    return (
+      <img
+        className="swipe-card__photo"
+        src={generated.image.src}
+        alt={spot.name}
+        loading="lazy"
+      />
+    );
+  }
+
   return (
-    <SpotImage
-      spot={spot}
-      imageSearch={fetchSpotImage}
+    <PlaceholderImage
       motif="spot"
+      label={spot.name}
       aspectRatio="4 / 3"
-      imageClassName="swipe-card__photo"
-      showCredit={showCredit}
+      sublabel={
+        generated.status === "loading" ? t("image.generating") : undefined
+      }
     />
   );
 }

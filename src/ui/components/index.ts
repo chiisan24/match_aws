@@ -36,10 +36,3 @@ export type {
   PlaceholderImageProps,
   PlaceholderMotif,
 } from "./PlaceholderImage";
-
-export { SpotImage } from "./SpotImage";
-export type {
-  SpotImageProps,
-  SpotImageSearch,
-  SpotImageSearchResult,
-} from "./SpotImage";

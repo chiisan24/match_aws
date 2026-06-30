@@ -53,6 +53,16 @@ const SEEDS: TempleSeed[] = [
   { number: 65, name: "三角寺", city: "四国中央市", lat: 33.9911, lng: 133.5392, parking: true, restrooms: true },
 ];
 
+/**
+ * Real Ehime temple photos dropped into `public/images/ehime/`. Keyed by temple
+ * number; any temple not listed here keeps its local placeholder path. Missing
+ * files degrade gracefully to {@link PlaceholderImage} via each `<img>` onError.
+ */
+const TEMPLE_IMAGE_OVERRIDES: Record<number, string[]> = {
+  // 第51番 石手寺 → real photo
+  51: ["/images/ehime/ishiteji-temple.jpg"],
+};
+
 function toTemple(seed: TempleSeed): Temple {
   const { number, name, city, lat, lng, parking, restrooms } = seed;
   return {
@@ -71,7 +81,7 @@ function toTemple(seed: TempleSeed): Temple {
     photoSpots: ["山門前", "本堂前"],
     parking,
     restrooms,
-    imageUrls: [`/images/placeholder/temple-${number}.svg`],
+    imageUrls: TEMPLE_IMAGE_OVERRIDES[number] ?? [`/images/placeholder/temple-${number}.svg`],
   };
 }
 

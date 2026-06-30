@@ -33,6 +33,7 @@ import type { MapLocationPort } from "../../ports";
 import { useI18n, useTranslate } from "../../i18n";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { MapCanvas } from "../components/MapCanvas";
 import { SectionHeader } from "../components/SectionHeader";
 import { Tag } from "../components/Tag";
 
@@ -126,42 +127,6 @@ function formatDistance(meters: number): string {
   return `${(meters / 1000).toFixed(1)} km`;
 }
 
-/** A pin's projected position as percentages within the map surface. */
-interface Projection {
-  xPct: number;
-  yPct: number;
-}
-
-/**
- * Projects geo coordinates onto a 0–100% box derived from the temple bounds
- * (plus the current location), with padding so pins never sit on the edge.
- * North maps to the top. Degenerate (single-point) spans collapse to centre.
- */
-function buildProjector(
-  points: GeoPoint[],
-): (p: GeoPoint) => Projection {
-  const lats = points.map((p) => p.lat);
-  const lngs = points.map((p) => p.lng);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const latSpan = maxLat - minLat;
-  const lngSpan = maxLng - minLng;
-  const pad = 10; // percent inset on each side
-
-  const scale = (value: number, min: number, span: number): number => {
-    if (span === 0) return 50;
-    return pad + ((value - min) / span) * (100 - pad * 2);
-  };
-
-  return (p: GeoPoint): Projection => ({
-    xPct: scale(p.lng, minLng, lngSpan),
-    // Invert latitude so north is at the top of the surface.
-    yPct: 100 - scale(p.lat, minLat, latSpan),
-  });
-}
-
 export function TempleMap({ map, visited }: TempleMapProps): JSX.Element {
   const { t, lang } = useI18n();
 
@@ -229,13 +194,12 @@ export function TempleMap({ map, visited }: TempleMapProps): JSX.Element {
     return filterTemples(temples, criteria);
   }, [temples, transport, maxMinutes, unvisitedOnly, visited, travelMinutes]);
 
-  // Projection is computed across all temples (+ current) so pins keep a stable
-  // position regardless of which subset is currently filtered in.
-  const project = useMemo(() => {
+  // Stable projection bounds across all temples (+ current), so pins keep a
+  // stable position regardless of which subset is filtered in.
+  const boundsPoints = useMemo<GeoPoint[]>(() => {
     const points: GeoPoint[] = temples.map((tm) => tm.location);
     if (current) points.push(current);
-    if (points.length === 0) return null;
-    return buildProjector(points);
+    return points;
   }, [temples, current]);
 
   // Clear a selection that gets filtered out so the detail panel stays honest.
@@ -293,53 +257,48 @@ export function TempleMap({ map, visited }: TempleMapProps): JSX.Element {
             {t("map.countShown").replace("{count}", String(visibleTemples.length))}
           </p>
 
-          <div
+          <MapCanvas
             className="temple-map__surface"
-            data-testid="temple-map-surface"
-            role="group"
-            aria-label={t("map.title")}
-          >
-            {/* Current location marker (Req 8.4). */}
-            {current && project && (
+            testId="temple-map-surface"
+            ariaLabel={t("map.title")}
+            items={visibleTemples}
+            boundsPoints={boundsPoints}
+            current={current}
+            renderCurrent={(style) => (
               <span
                 className="temple-map__here"
                 data-testid="current-location-marker"
-                style={positionStyle(project(current))}
+                style={style}
                 aria-label={t("map.youAreHere")}
                 title={t("map.currentLocation")}
               />
             )}
-
-            {/* Numbered temple pins (Req 8.1). */}
-            {project &&
-              visibleTemples.map((temple) => {
-                const pos = project(temple.location);
-                const isActive = temple.id === selectedId;
-                const onRoute = routeMemberIds.has(temple.id);
-                return (
-                  <button
-                    key={temple.id}
-                    type="button"
-                    className={
-                      "temple-map__pin" +
-                      (isActive ? " temple-map__pin--active" : "") +
-                      (onRoute ? " temple-map__pin--route" : "")
-                    }
-                    data-testid="temple-pin"
-                    style={positionStyle(pos)}
-                    aria-pressed={isActive}
-                    aria-label={`${temple.number} ${temple.name}`}
-                    onClick={() => setSelectedId(temple.id)}
-                  >
-                    {temple.number}
-                  </button>
-                );
-              })}
-
+            renderItem={(temple, style) => {
+              const isActive = temple.id === selectedId;
+              const onRoute = routeMemberIds.has(temple.id);
+              return (
+                <button
+                  type="button"
+                  className={
+                    "temple-map__pin" +
+                    (isActive ? " temple-map__pin--active" : "") +
+                    (onRoute ? " temple-map__pin--route" : "")
+                  }
+                  data-testid="temple-pin"
+                  style={style}
+                  aria-pressed={isActive}
+                  aria-label={`${temple.number} ${temple.name}`}
+                  onClick={() => setSelectedId(temple.id)}
+                >
+                  {temple.number}
+                </button>
+              );
+            }}
+          >
             {visibleTemples.length === 0 && (
               <p className="temple-map__empty">{t("map.empty")}</p>
             )}
-          </div>
+          </MapCanvas>
 
           {selected ? (
             <TempleDetail
@@ -368,11 +327,6 @@ export function TempleMap({ map, visited }: TempleMapProps): JSX.Element {
       )}
     </section>
   );
-}
-
-/** Inline style placing an absolutely-positioned element at a projection. */
-function positionStyle(p: Projection): React.CSSProperties {
-  return { left: `${p.xPct}%`, top: `${p.yPct}%` };
 }
 
 // ---------------------------------------------------------------------------

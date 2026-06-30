@@ -34,6 +34,7 @@ import type { MapLocationPort } from "../../ports";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { MapCanvas } from "../components/MapCanvas";
 import { SectionHeader } from "../components/SectionHeader";
 import { Tag } from "../components/Tag";
 
@@ -102,45 +103,6 @@ const PURPOSE_PRESETS: PurposePreset[] = [
 const CANDIDATE_RADIUS_METERS = 6_000;
 /** Max number of cross-attribute touring candidates surfaced (Req 14.4). */
 const MAX_CANDIDATES = 3;
-
-/** A pin's projected position as percentages within the map surface. */
-interface Projection {
-  xPct: number;
-  yPct: number;
-}
-
-/**
- * Projects geo coordinates onto a 0–100% box derived from the supplied points
- * (with padding so pins never sit on the edge). North maps to the top.
- * Degenerate (single-point) spans collapse to centre.
- */
-function buildProjector(points: GeoPoint[]): (p: GeoPoint) => Projection {
-  const lats = points.map((p) => p.lat);
-  const lngs = points.map((p) => p.lng);
-  const minLat = Math.min(...lats);
-  const maxLat = Math.max(...lats);
-  const minLng = Math.min(...lngs);
-  const maxLng = Math.max(...lngs);
-  const latSpan = maxLat - minLat;
-  const lngSpan = maxLng - minLng;
-  const pad = 10; // percent inset on each side
-
-  const scale = (value: number, min: number, span: number): number => {
-    if (span === 0) return 50;
-    return pad + ((value - min) / span) * (100 - pad * 2);
-  };
-
-  return (p: GeoPoint): Projection => ({
-    xPct: scale(p.lng, minLng, lngSpan),
-    // Invert latitude so north is at the top of the surface.
-    yPct: 100 - scale(p.lat, minLat, latSpan),
-  });
-}
-
-/** Inline style placing an absolutely-positioned element at a projection. */
-function positionStyle(p: Projection): React.CSSProperties {
-  return { left: `${p.xPct}%`, top: `${p.yPct}%` };
-}
 
 /** A cross-attribute touring candidate: an anchor plus nearby companions. */
 interface TouringCandidate {
@@ -256,14 +218,19 @@ export function LayeredMap({ map }: LayeredMapProps): JSX.Element {
     [allFeatures, activeLayers],
   );
 
-  // Projection spans every feature (+ current) so pins keep a stable position
-  // regardless of which layers are toggled on.
-  const project = useMemo(() => {
+  // Projection bounds span every feature (+ current) so pins keep a stable
+  // position regardless of which layers are toggled on.
+  const boundsPoints = useMemo<GeoPoint[]>(() => {
     const points: GeoPoint[] = allFeatures.map((f) => f.location);
     if (current) points.push(current);
-    if (points.length === 0) return null;
-    return buildProjector(points);
+    return points;
   }, [allFeatures, current]);
+
+  // Split visible features into hazard zones (drawn behind) and regular pins.
+  const hazardFeatures = useMemo<MapFeature[]>(
+    () => visibleFeatures.filter((f) => HAZARD_LAYERS.has(f.layer)),
+    [visibleFeatures],
+  );
 
   // Cross-attribute touring candidates for the active layer set (Req 14.4).
   const candidates = useMemo<TouringCandidate[]>(
@@ -336,56 +303,47 @@ export function LayeredMap({ map }: LayeredMapProps): JSX.Element {
             )}
           </p>
 
-          <div
+          <MapCanvas
             className="layered-map__surface"
-            data-testid="layered-map-surface"
-            role="group"
-            aria-label={t("lmap.title")}
-          >
-            {/* Current location marker. */}
-            {current && project && (
+            testId="layered-map-surface"
+            ariaLabel={t("lmap.title")}
+            items={visibleFeatures}
+            zones={hazardFeatures}
+            boundsPoints={boundsPoints}
+            current={current}
+            renderCurrent={(style) => (
               <span
                 className="layered-map__here"
                 data-testid="current-location-marker"
-                style={positionStyle(project(current))}
+                style={style}
                 aria-label={t("map.youAreHere")}
                 title={t("map.currentLocation")}
               />
             )}
-
-            {/* Hazard zones drawn behind the pins (Req 14.5). */}
-            {project &&
-              visibleFeatures
-                .filter((f) => HAZARD_LAYERS.has(f.layer))
-                .map((f) => (
-                  <span
-                    key={`zone-${f.id}`}
-                    className="layered-map__zone"
-                    data-testid="hazard-zone"
-                    style={positionStyle(project(f.location))}
-                    aria-hidden="true"
-                  />
-                ))}
-
-            {/* Layer feature pins — exactly filterByLayers(all, active). */}
-            {project &&
-              visibleFeatures.map((f) => (
-                <span
-                  key={f.id}
-                  className={`layered-map__pin layered-map__pin--${f.layer}`}
-                  data-testid="layer-pin"
-                  data-layer={f.layer}
-                  style={positionStyle(project(f.location))}
-                  title={f.label}
-                  aria-label={f.label}
-                  role="img"
-                />
-              ))}
-
+            renderZone={(_f, style) => (
+              <span
+                className="layered-map__zone"
+                data-testid="hazard-zone"
+                style={style}
+                aria-hidden="true"
+              />
+            )}
+            renderItem={(f, style) => (
+              <span
+                className={`layered-map__pin layered-map__pin--${f.layer}`}
+                data-testid="layer-pin"
+                data-layer={f.layer}
+                style={style}
+                title={f.label}
+                aria-label={f.label}
+                role="img"
+              />
+            )}
+          >
             {visibleFeatures.length === 0 && (
               <p className="layered-map__empty">{t("lmap.empty")}</p>
             )}
-          </div>
+          </MapCanvas>
 
           <p className="layered-map__phase-note">{t("lmap.phaseNote")}</p>
 

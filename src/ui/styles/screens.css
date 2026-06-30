@@ -30,6 +30,13 @@
   margin-bottom: var(--space-3);
 }
 
+.lang-select__hero-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .lang-select__kicker {
   margin: 0;
   color: var(--color-mikan-500);
@@ -829,6 +836,18 @@
       transparent 12px 24px
     ),
     linear-gradient(160deg, var(--color-teal-100, #d7ece9), var(--color-moss-100, #e4eed8));
+}
+
+/* Real interactive map layer (MapLibre GL JS, Req 20). Fills the surface and
+   sits behind the React-positioned pins. */
+.map-canvas__gl {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.map-canvas__gl .maplibregl-canvas {
+  outline: none;
 }
 
 .temple-map__pin {
