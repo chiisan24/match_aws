@@ -21,10 +21,16 @@ import { GATEWAY_PORT_NAMES } from "../ports";
 import { awsEnv, type AwsEnv } from "../config/env";
 import { createMockGateway } from "../adapters/mock";
 import { createAwsGateway } from "../adapters/aws";
+import { HttpChatAdapter } from "../adapters/http/chat";
 
 /**
  * Returns the gateway appropriate for the given environment. Defaults to the
  * process AWS env, so `createGateway()` with no argument does the right thing.
+ *
+ * Chat is always backed by the real AI endpoint (`/api/chat` → Bedrock) with
+ * the mock chat adapter as a transparent fallback, so AI 旅行相談 works in
+ * production while the rest of the gateway stays on mock adapters until AWS is
+ * fully configured.
  */
 export function createGateway(env: AwsEnv = awsEnv): AwsGateway {
   if (env.hasAwsConfig) {
@@ -33,7 +39,8 @@ export function createGateway(env: AwsEnv = awsEnv): AwsGateway {
     verifyGatewayContract(gateway);
     return gateway;
   }
-  return createMockGateway();
+  const mock = createMockGateway();
+  return { ...mock, chat: new HttpChatAdapter(mock.chat) };
 }
 
 /** Lists the own + prototype method names of an object, sorted for comparison. */

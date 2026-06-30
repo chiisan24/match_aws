@@ -48,10 +48,12 @@ import {
 } from "../../domain/swipe";
 import type { LangCode, Spot } from "../../domain/types";
 import { EHIME_SPOTS } from "../../adapters/mock/spots";
+import { fetchSpotImage } from "../../adapters/spotImages";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Tag } from "../components/Tag";
 import { PlaceholderImage } from "../components/PlaceholderImage";
+import { SpotImage } from "../components/SpotImage";
 
 /** Past this pointer travel (px) a release commits to a swipe. */
 const SWIPE_THRESHOLD = 72;
@@ -254,7 +256,7 @@ export function SwipeDeck({ onBackToChat }: SwipeDeckProps): JSX.Element {
           {/* Peek of the next card for a layered, hand-stacked feel. */}
           {deck[index + 1] && (
             <div className="swipe-card swipe-card--peek" aria-hidden="true">
-              <SpotPhoto spot={deck[index + 1]!} />
+              <SpotPhoto spot={deck[index + 1]!} showCredit={false} />
             </div>
           )}
 
@@ -381,7 +383,7 @@ export function SwipeDeck({ onBackToChat }: SwipeDeckProps): JSX.Element {
               {recommendations.map((spot) => (
                 <li key={spot.id} className="swipe__recommend-item">
                   <span className="swipe__recommend-thumb">
-                    <SpotPhoto spot={spot} />
+                    <SpotPhoto spot={spot} showCredit={false} />
                   </span>
                   <span className="swipe__recommend-meta">
                     <span className="swipe__recommend-name">{spot.name}</span>
@@ -400,26 +402,26 @@ export function SwipeDeck({ onBackToChat }: SwipeDeckProps): JSX.Element {
 }
 
 /**
- * A spot photo that renders the real image when one is provided and resolves,
- * and otherwise the on-brand placeholder (Req 4.7). Tracks its own load-error
- * state so a broken/missing URL degrades gracefully.
+ * A spot photo that renders a real internet-fetched image when available, the
+ * local image otherwise, and the on-brand placeholder as a last resort
+ * (Req 4.7). Decorative / thumbnail uses pass `showCredit={false}` to keep the
+ * caption from cluttering the layout.
  */
-function SpotPhoto({ spot }: { spot: Spot }): JSX.Element {
-  const [errored, setErrored] = useState(false);
-  const url = spot.imageUrls[0];
-
-  if (!url || errored) {
-    return (
-      <PlaceholderImage motif="spot" label={spot.name} aspectRatio="4 / 3" />
-    );
-  }
+function SpotPhoto({
+  spot,
+  showCredit = true,
+}: {
+  spot: Spot;
+  showCredit?: boolean;
+}): JSX.Element {
   return (
-    <img
-      className="swipe-card__photo"
-      src={url}
-      alt={spot.name}
-      loading="lazy"
-      onError={() => setErrored(true)}
+    <SpotImage
+      spot={spot}
+      imageSearch={fetchSpotImage}
+      motif="spot"
+      aspectRatio="4 / 3"
+      imageClassName="swipe-card__photo"
+      showCredit={showCredit}
     />
   );
 }

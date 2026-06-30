@@ -67,7 +67,7 @@ export interface TranslatePort {
 }
 
 /**
- * The AWS_Gateway aggregate — bundles the five ports the application depends on
+ * The AWS_Gateway aggregate — bundles the ports the application depends on
  * (Req 16.1). `createGateway(env)` returns one of these, backed by either the
  * mock adapters (default / no AWS env) or the aws adapters (env present).
  *
