@@ -11,21 +11,26 @@ import {
   BedrockRuntimeClient,
   InvokeModelCommand,
 } from "@aws-sdk/client-bedrock-runtime";
+import { awsCredentials, awsRegion } from "./_aws";
 
-/** Region for Bedrock — falls back to the function's AWS_REGION. */
-const REGION =
-  process.env.BEDROCK_REGION || process.env.AWS_REGION || "us-east-1";
+/** Region for Bedrock — BEDROCK_REGION → AWS_REGION → us-east-1. */
+const REGION = awsRegion();
 
 /** Default models (override via env in the Vercel dashboard). */
 export const CHAT_MODEL_ID =
   process.env.BEDROCK_CHAT_MODEL_ID ||
+  process.env.BEDROCK_MODEL_ID ||
   "anthropic.claude-3-5-haiku-20241022-v1:0";
 export const IMAGE_MODEL_ID =
   process.env.BEDROCK_IMAGE_MODEL_ID || "amazon.titan-image-generator-v1";
 
 let client: BedrockRuntimeClient | null = null;
 function bedrock(): BedrockRuntimeClient {
-  if (!client) client = new BedrockRuntimeClient({ region: REGION });
+  if (!client)
+    client = new BedrockRuntimeClient({
+      region: REGION,
+      credentials: awsCredentials(),
+    });
   return client;
 }
 

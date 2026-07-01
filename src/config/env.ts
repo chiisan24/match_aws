@@ -69,8 +69,15 @@ function readRaw(): Omit<AwsEnv, "hasAwsConfig"> {
  */
 export function readAwsEnv(): AwsEnv {
   const raw = readRaw();
-  const hasAwsConfig = !raw.forceMock && Boolean(raw.apiEndpoint);
-  return { ...raw, hasAwsConfig };
+  // In a production build (Vercel), default the serverless API base to the
+  // same-origin "/api" so the deployed app calls the real AI backend without
+  // needing a VITE_AWS_API_ENDPOINT dashboard variable. In dev (vite serve)
+  // this stays undefined, so the app runs on mocks unless the endpoint is set
+  // explicitly. `VITE_FORCE_MOCK=true` still forces mocks everywhere.
+  const apiEndpoint =
+    raw.apiEndpoint ?? (import.meta.env.PROD ? "/api" : undefined);
+  const hasAwsConfig = !raw.forceMock && Boolean(apiEndpoint);
+  return { ...raw, apiEndpoint, hasAwsConfig };
 }
 
 /** Eagerly evaluated singleton for convenient imports. */
