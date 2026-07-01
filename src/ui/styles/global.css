@@ -50,13 +50,15 @@ a {
   border-radius: var(--radius-sm);
 }
 
-/* App shell: mobile-first centered column over a soft sea-to-paper wash. */
+/* App shell: mobile-first centered column over a soft sea-to-paper wash.
+ * No bottom padding so the sticky bottom nav can sit flush against the
+ * viewport's bottom edge (no gap below the tab bar). */
 .app-shell {
   min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: var(--space-4) var(--space-3);
+  padding: var(--space-4) var(--space-3) 0;
   background:
     radial-gradient(
       120% 60% at 50% -10%,
