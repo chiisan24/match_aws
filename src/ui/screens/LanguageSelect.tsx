@@ -170,7 +170,7 @@ function LanguageTile({
  * back to the on-brand {@link PlaceholderImage} on load error — mirroring the
  * SpotPhoto pattern (Req 4.7), so a missing file never breaks the screen.
  *
- * Expects the photo at `public/images/ehime/welcome-ehime.jpg` (a portrait
+ * Expects the photo at `public/images/screens/welcome.jpg` (a portrait
  * Ehime scene — castle over the Seto Inland Sea with the Shimanami bridges and
  * mikan). Sized as a tall hero so the portrait image is shown without heavy
  * cropping.
@@ -192,7 +192,7 @@ function WelcomeHero(): JSX.Element {
   return (
     <img
       className="lang-select__hero-img"
-      src="/images/ehime/welcome-ehime.jpg"
+      src="/images/screens/welcome.jpg"
       alt={alt}
       style={{ aspectRatio: "3 / 4", width: "100%", objectFit: "cover" }}
       loading="lazy"
