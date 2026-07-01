@@ -266,13 +266,19 @@
  * BottomNav (scaffold)
  * ====================================================================== */
 .ek-bottom-nav {
-  position: sticky;
+  /* Pin to the viewport's bottom edge on every screen (no gap below the bar).
+   * Centered and width-matched to the app column so it lines up with content. */
+  position: fixed;
   bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
   display: flex;
   align-items: stretch;
   justify-content: space-around;
   gap: var(--space-1);
-  width: 100%;
+  width: calc(100% - 2 * var(--space-3));
+  max-width: var(--app-max-width);
   height: var(--bottom-nav-height);
   padding: var(--space-1) var(--space-2);
   background: var(--color-surface);
