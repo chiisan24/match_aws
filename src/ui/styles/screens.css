@@ -521,6 +521,18 @@
   opacity: 0.85;
 }
 
+/* Back-to-sightseeing sits on the dark card, so give it a visible resting
+ * state (light text + fill) while preserving the ghost hover colour change. */
+.login__back {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.55);
+}
+.login__back:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.24);
+  border-color: #fff;
+}
+
 /* Quiet hold while a remembered session rehydrates (avoids gate flash). */
 .app-loading {
   flex: 1;
