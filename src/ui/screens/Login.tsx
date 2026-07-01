@@ -157,7 +157,7 @@ export function Login({ onSuccess, onBack }: LoginProps): JSX.Element {
       </div>
 
       {onBack && (
-        <Button variant="ghost" block onClick={onBack}>
+        <Button variant="ghost" block onClick={onBack} className="login__back">
           {t("auth.backToTourism")}
         </Button>
       )}
