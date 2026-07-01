@@ -131,6 +131,15 @@
 
 .lang-tile--recommended.lang-tile--selected {
   border-color: var(--color-mikan-500);
+  /* stronger mikan fill + ring so the chosen 伊予弁 reads as clearly selected */
+  background:
+    radial-gradient(
+      130% 100% at 0% 0%,
+      var(--color-mikan-300),
+      var(--color-mikan-100) 70%
+    ),
+    var(--color-surface);
+  box-shadow: 0 0 0 3px var(--color-mikan-300), var(--shadow-md);
 }
 
 .lang-tile__badge {
