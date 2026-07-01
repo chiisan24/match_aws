@@ -6,6 +6,8 @@
  * first-run entry point.
  */
 
+import { useState } from "react";
+
 import type { AppMode } from "../../app/modeManager";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
@@ -21,6 +23,8 @@ export interface ModeSelectProps {
 interface ModeOption {
   mode: AppMode;
   motif: "temple" | "spot";
+  /** Real photo loaded from `public/images/screens/`; falls back gracefully. */
+  image: string;
   nameKey: string;
   descKey: string;
 }
@@ -29,12 +33,14 @@ const OPTIONS: ModeOption[] = [
   {
     mode: "tourism",
     motif: "spot",
+    image: "/images/screens/mode-tourism.jpg",
     nameKey: "mode.tourism.name",
     descKey: "mode.tourism.desc",
   },
   {
     mode: "pilgrimage",
     motif: "temple",
+    image: "/images/screens/mode-pilgrimage.jpg",
     nameKey: "mode.pilgrimage.name",
     descKey: "mode.pilgrimage.desc",
   },
@@ -58,10 +64,10 @@ export function ModeSelect({ onChoose }: ModeSelectProps): JSX.Element {
           <li key={opt.mode}>
             <Card blob raised interactive className="mode-card">
               <div className="mode-card__hero">
-                <PlaceholderImage
+                <ModeHero
+                  src={opt.image}
                   motif={opt.motif}
                   label={t(opt.nameKey)}
-                  aspectRatio="16 / 9"
                 />
               </div>
               <div className="mode-card__body">
@@ -83,5 +89,37 @@ export function ModeSelect({ onChoose }: ModeSelectProps): JSX.Element {
         ))}
       </ul>
     </section>
+  );
+}
+
+interface ModeHeroProps {
+  src: string;
+  motif: "temple" | "spot";
+  label: string;
+}
+
+/**
+ * Mode card hero image. Renders the real photo from `public/images/screens/`
+ * when it resolves and falls back to the on-brand {@link PlaceholderImage} on
+ * load error — mirroring the WelcomeHero pattern (Req 4.7) so a missing file
+ * never breaks the screen.
+ */
+function ModeHero({ src, motif, label }: ModeHeroProps): JSX.Element {
+  const [errored, setErrored] = useState(false);
+
+  if (errored) {
+    return (
+      <PlaceholderImage motif={motif} label={label} aspectRatio="16 / 9" />
+    );
+  }
+  return (
+    <img
+      className="mode-card__hero-img"
+      src={src}
+      alt={label}
+      style={{ aspectRatio: "16 / 9", width: "100%", objectFit: "cover" }}
+      loading="lazy"
+      onError={() => setErrored(true)}
+    />
   );
 }
