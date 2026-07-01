@@ -13,7 +13,6 @@ on-brand なプレースホルダー `PlaceholderImage` に自動フォールバ
 
 | filename | 被写体 (photo) | 使う画面 |
 | --- | --- | --- |
-| `welcome-ehime.jpg` | 愛媛の象徴的な風景（城・瀬戸内海・しまなみ海道の橋・みかん）。縦長(ポートレート)推奨 | 言語選択 (LanguageSelect) ヒーロー |
 | `matsuyama-castle.jpg` | 松山城 | スワイプ (SwipeDeck) / お気に入り |
 | `imabari-castle.jpg` | 今治城（海城） | スワイプ / お気に入り |
 | `uwajima-castle.jpg` | 宇和島城（現存天守） | スワイプ / お気に入り |
@@ -53,5 +52,7 @@ on-brand なプレースホルダー `PlaceholderImage` に自動フォールバ
 ### 動作の仕組み（フォールバック）
 - スワイプ画面 (`SwipeDeck` の `SpotPhoto`) とお気に入り (`FavoritesView` の
   `SpotThumb`) は `<img onError>` でプレースホルダーに切り替わります。
-- 言語選択ヒーロー (`LanguageSelect` の `WelcomeHero`) も同様にフォールバックします。
 - よって、画像ファイルが無い・読み込めない場合でも UI は壊れません。
+
+> 補足: 言語選択・モード選択画面の写真は `public/images/screens/` に配置します
+> （同フォルダの README 参照）。
