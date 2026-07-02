@@ -1,15 +1,17 @@
 /**
- * Fixed mock dataset of the 26 Ehime pilgrimage temples (札所 40–65).
+ * Fixed dataset of the 26 Ehime pilgrimage temples (札所 40–65).
  *
- * Data is realistic-but-clearly-mock: temple numbers (40–65) and names are
- * factual place identifiers, coordinates are approximate Ehime locations, and
- * the descriptions are short development-only placeholders (NOT verbatim
- * copies of any copyrighted source — paraphrased per design research notes).
- * `parking` / `restrooms` are dummy facility flags (Q2), and `imageUrls` point
- * at local placeholder assets (Req 4.7).
+ * Temple numbers (40–65), names, cities and approximate coordinates are factual
+ * place identifiers for mock rendering. The 説明・歴史・見どころ・写真スポット are
+ * merged from the pre-researched static file `src/data/templeDetails.ts` (Req:
+ * モックの解説文を実データへ差し替え); any temple without a curated entry falls
+ * back to a short generic description. `parking` / `restrooms` remain dummy
+ * facility flags (Q2), and `imageUrls` point at local placeholder assets unless
+ * a real photo override exists (Req 4.7).
  */
 
 import type { Temple } from "../../ports";
+import { TEMPLE_DETAILS } from "../../data/templeDetails";
 
 /** Compact seed row; expanded into a full {@link Temple} below. */
 interface TempleSeed {
@@ -65,20 +67,30 @@ const TEMPLE_IMAGE_OVERRIDES: Record<number, string[]> = {
 
 function toTemple(seed: TempleSeed): Temple {
   const { number, name, city, lat, lng, parking, restrooms } = seed;
+  // Prefer the pre-researched static detail file; fall back to mock text so any
+  // temple without a curated entry still renders (Req: 説明・歴史・見どころ・
+  // 写真スポットを実データへ差し替え).
+  const detail = TEMPLE_DETAILS[number];
   return {
     id: `ehime-${number}`,
     number,
     name,
     prefecture: "ehime",
     location: { lat, lng },
-    address: `愛媛県${city}（モックデータ）`,
+    address: `愛媛県${city}`,
     localizedDescriptions: {
-      ja: `${name}は四国八十八ヶ所霊場の第${number}番札所で、愛媛県${city}にあります。これは開発用のモック解説文です。`,
-      en: `${name} is temple No. ${number} of the Shikoku 88-temple pilgrimage, located in ${city}, Ehime. This is mock placeholder text for development.`,
+      ja:
+        detail?.descriptionJa ??
+        `${name}は四国八十八ヶ所霊場の第${number}番札所で、愛媛県${city}にあります。`,
+      en:
+        detail?.descriptionEn ??
+        `${name} is temple No. ${number} of the Shikoku 88-temple pilgrimage, located in ${city}, Ehime.`,
     },
-    history: `第${number}番札所「${name}」の縁起（モック）。本番では出典付きの解説に差し替えます。`,
-    highlights: ["本堂", "大師堂", "山門"],
-    photoSpots: ["山門前", "本堂前"],
+    history:
+      detail?.history ??
+      `第${number}番札所「${name}」の縁起。詳しい解説は準備中です。`,
+    highlights: detail?.highlights ?? ["本堂", "大師堂", "山門"],
+    photoSpots: detail?.photoSpots ?? ["山門前", "本堂前"],
     parking,
     restrooms,
     imageUrls: TEMPLE_IMAGE_OVERRIDES[number] ?? [`/images/placeholder/temple-${number}.svg`],
