@@ -1520,6 +1520,13 @@
   position: relative;
 }
 
+.visit-card__img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 5 / 3;
+  object-fit: cover;
+}
+
 .visit-card__stamp {
   position: absolute;
   inset-block-start: var(--space-2);
@@ -1625,6 +1632,50 @@
 .visit-choice:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+/* ---- Swipe-deck choices (お遍路マッチ) — clear, always-colored, no default
+ * selection so 行ってない never looks pre-picked. ---- */
+.visit-card__choices {
+  padding: 0;
+}
+
+.visit-card__choices .visit-choice {
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--text-md);
+}
+
+.visit-choice--no {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+  background: var(--color-surface);
+}
+.visit-choice--no:hover {
+  background: color-mix(in srgb, var(--color-danger) 10%, var(--color-surface));
+}
+
+.visit-choice--yes {
+  border-color: var(--color-teal-600);
+  color: var(--color-teal-800);
+  background: var(--color-teal-100);
+}
+.visit-choice--yes:hover {
+  background: color-mix(in srgb, var(--color-teal-600) 16%, var(--color-surface));
+}
+
+.visit-tracker__progress {
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-ink-faint);
+  font-weight: var(--weight-medium);
+}
+
+.visit-tracker__hint {
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-ink-faint);
 }
 
 /* =========================================================================

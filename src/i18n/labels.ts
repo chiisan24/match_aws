@@ -194,9 +194,9 @@ export const UI_LABELS: LangDict = {
     iyo: "お遍路モード",
   },
   "mode.pilgrimage.desc": {
-    ja: "札所マップ・巡礼進捗・デジタル納経帳で、巡るほど達成感を。",
-    en: "Temple map, progress and a digital nokyocho — feel it grow as you go.",
-    iyo: "札所マップや達成率で、巡るほど嬉しゅうなるけん。",
+    ja: "札所マップ・巡礼進捗・行った/行ってないマッチで、巡るほど達成感を。",
+    en: "Temple map, progress and a been-there/not-yet match — feel it grow as you go.",
+    iyo: "札所マップや達成率、行った/行ってないマッチで、巡るほど嬉しゅうなるけん。",
   },
   "mode.start": {
     ja: "このモードで始める",
@@ -310,13 +310,13 @@ export const UI_LABELS: LangDict = {
     iyo: "マップ",
   },
   "nav.pilgrimage.nokyocho": {
-    ja: "納経帳",
-    en: "Nokyocho",
-    "zh-Hans": "纳经帐",
-    ko: "납경장",
-    fr: "Nokyocho",
-    ar: "دفتر النوكيو",
-    iyo: "納経帳",
+    ja: "お遍路マッチ",
+    en: "Match",
+    "zh-Hans": "遍路配对",
+    ko: "오헨로 매치",
+    fr: "Match",
+    ar: "مطابقة",
+    iyo: "お遍路マッチ",
   },
   "nav.pilgrimage.mypage": {
     ja: "マイページ",
@@ -360,9 +360,9 @@ export const UI_LABELS: LangDict = {
     iyo: "札所マップ",
   },
   "panel.pilgrimage.nokyocho.title": {
-    ja: "デジタル納経帳",
-    en: "Digital nokyocho",
-    iyo: "デジタル納経帳",
+    ja: "お遍路マッチ",
+    en: "Ohenro match",
+    iyo: "お遍路マッチ",
   },
   "panel.pilgrimage.mypage.title": {
     ja: "マイページ",
@@ -1179,6 +1179,11 @@ UI_LABELS["visit.photoSoon"] = {
   en: "Photo coming soon",
   iyo: "写真はもうちょっと待ってな",
 };
+UI_LABELS["visit.photoSearching"] = {
+  ja: "名前で画像を検索中…",
+  en: "Searching for a photo by name…",
+  iyo: "名前で画像を探しよるけん…",
+};
 UI_LABELS["visit.done"] = {
   ja: "完了",
   en: "Done",
@@ -1188,6 +1193,38 @@ UI_LABELS["visit.finish"] = {
   ja: "この内容で設定を終える",
   en: "Finish setup",
   iyo: "この内容で設定を終えるけん",
+};
+UI_LABELS["visit.progress"] = {
+  // {current} / {total} replaced at render time.
+  ja: "{current} / {total} 枚目",
+  en: "Card {current} / {total}",
+  iyo: "{current} / {total} 枚目",
+};
+UI_LABELS["visit.cardRole"] = {
+  ja: "札所カード（左右にスワイプ）",
+  en: "Temple card (swipe left or right)",
+  iyo: "札所カード（左右にスワイプ）",
+};
+UI_LABELS["visit.hint"] = {
+  ja: "カードを右に「行った」／左に「行ってない」。ボタンや矢印キーでもOK。",
+  en: "Swipe right for 行った, left for 行ってない — buttons and arrow keys work too.",
+  iyo: "右に「行った」、左に「行ってない」。ボタンや矢印キーでもええよ。",
+};
+UI_LABELS["visit.restart"] = {
+  ja: "もう一度見直す",
+  en: "Review again",
+  iyo: "もう一回見直す",
+};
+UI_LABELS["visit.done.title"] = {
+  ja: "ぜんぶ確認しました",
+  en: "All done",
+  iyo: "ぜんぶ見たよ",
+};
+UI_LABELS["visit.done.lead"] = {
+  // {visited} / {total} replaced at render time.
+  ja: "{total} 札所のうち {visited} 札所を「行った」に設定しました。",
+  en: "Marked {visited} of {total} temples as visited.",
+  iyo: "{total} 札所のうち {visited} 札所を「行った」にしたよ。",
 };
 
 // ---- デジタル納経帳 / Digital nokyocho (Req 10.1–10.5) ---------------------

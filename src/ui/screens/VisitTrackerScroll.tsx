@@ -1,20 +1,19 @@
 /**
- * VisitTrackerScroll — the お遍路マッチ-style 行った/行ってない setup screen
- * (Req 11.1–11.4). This is where, on first entry into お遍路モード, the user
- * quickly sets the initial value of their巡礼進捗 by sweeping through every 札所
- * and tapping ○行った / ×行ってない — the matching-app feel from the mockup
- * (お遍路マッチ -愛媛-), but built from real, accessible buttons rather than a
- * drag-only gesture so it works with keyboard and screen readers.
+ * VisitTrackerScroll — the お遍路マッチ 行った/行ってない screen (Req 11.1–11.4),
+ * built as a マッチングアプリ風 swipe deck that mirrors the 通常観光モード
+ * {@link SwipeDeck}: one 札所 card at a time, decided by a **left/right swipe**
+ * (drag), by two clearly-labelled buttons, or by the ← / → arrow keys — so it
+ * reads at a glance and stays fully accessible.
  *
- * Behaviour:
- *  - Renders one card per 札所 (number badge, name, address, a hand-drawn
- *    placeholder photo) in a scrollable column (Req 11.1).
- *  - Each card offers two explicit choices: ×行ってない (unvisited) and
- *    ○行った (visited). Tapping ○行った marks the 札所 visited; tapping
- *    ×行ってない marks it unvisited, including reverting a previously-visited
- *    札所 (Req 11.2, 11.3). The active choice is reflected with `aria-pressed`.
- *  - A live header tally shows how many 札所 are set to 行った, and a 完了 button
- *    closes the setup and returns to the納経帳.
+ *   右スワイプ / → → ○行った (visited)
+ *   左スワイプ / ← → ×行ってない (not visited)
+ *
+ * Each decision marks the 札所 through `onSetVisited` (true/false), including
+ * reverting a previously-visited 札所 (Req 11.2, 11.3), then advances to the
+ * next card. A live tally shows how many 札所 are set to 行った, and finishing
+ * the deck shows a summary with a 見直す (restart) action. Nothing is
+ * pre-selected, so the first-run screen never looks like 行ってない is already
+ * chosen.
  *
  * State is owned by the shared pilgrimage store; this component is purely
  * prop-driven (temples + visited set + an `onSetVisited` callback) so it stays
@@ -24,11 +23,39 @@
  * choice always stands (Req 11.5).
  */
 
-import type { Temple } from "../../domain/types";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+
+import { useGeneratedImage } from "../../app/ImageContext";
+import type { ImagePrompt, Temple } from "../../domain/types";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { PlaceholderImage } from "../components/PlaceholderImage";
 import { SectionHeader } from "../components/SectionHeader";
+import { useWikipediaImage } from "./useWikipediaImage";
+
+/** Past this pointer travel (px) a release commits to a swipe. */
+const SWIPE_THRESHOLD = 72;
+
+/** The current drag offset applied to the top card. */
+interface DragOffset {
+  x: number;
+  y: number;
+}
+
+/** Which side a (potential) drag is leaning, for the live hint overlay. */
+function leaning(offset: DragOffset | null): "left" | "right" | null {
+  if (!offset) return null;
+  if (Math.abs(offset.x) < 14) return null;
+  return offset.x > 0 ? "right" : "left";
+}
 
 export interface VisitTrackerScrollProps {
   /** Temples to set 行った/行ってない for (the selected 対象県's 札所). */
@@ -52,8 +79,84 @@ export function VisitTrackerScroll({
 }: VisitTrackerScrollProps): JSX.Element {
   const { t, lang } = useI18n();
 
-  const ordered = [...temples].sort((a, b) => a.number - b.number);
+  const ordered = useMemo(
+    () => [...temples].sort((a, b) => a.number - b.number),
+    [temples],
+  );
   const visitedCount = ordered.filter((tm) => visited.has(tm.id)).length;
+
+  const [index, setIndex] = useState(0);
+  const [offset, setOffset] = useState<DragOffset | null>(null);
+  const dragStart = useRef<DragOffset | null>(null);
+
+  // Restart the deck whenever the temple set changes (e.g. loaded / area swap).
+  useEffect(() => {
+    setIndex(0);
+    setOffset(null);
+    dragStart.current = null;
+  }, [ordered]);
+
+  const current = ordered[index];
+  const exhausted = ordered.length > 0 && current == null;
+
+  const commit = useCallback(
+    (didVisit: boolean): void => {
+      const temple = ordered[index];
+      if (temple == null) return;
+      // 右=行った(true) / 左=行ってない(false). Records, then advances (Req 11.2/11.3).
+      onSetVisited(temple.id, didVisit);
+      setOffset(null);
+      dragStart.current = null;
+      setIndex((i) => i + 1);
+    },
+    [ordered, index, onSetVisited],
+  );
+
+  // ---- Pointer drag (left/right) ----------------------------------------
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>): void => {
+    if (exhausted) return;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    setOffset({ x: 0, y: 0 });
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>): void => {
+    if (!dragStart.current) return;
+    setOffset({
+      x: e.clientX - dragStart.current.x,
+      y: e.clientY - dragStart.current.y,
+    });
+  };
+  const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>): void => {
+    if (!dragStart.current) return;
+    const dx = e.clientX - dragStart.current.x;
+    dragStart.current = null;
+    if (Math.abs(dx) < SWIPE_THRESHOLD) {
+      setOffset(null); // not far enough — snap back
+      return;
+    }
+    commit(dx > 0); // right → 行った, left → 行ってない
+  };
+
+  // ---- Arrow-key enhancement --------------------------------------------
+  const onKeyDown = (e: ReactKeyboardEvent<HTMLDivElement>): void => {
+    if (exhausted) return;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      commit(true);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      commit(false);
+    }
+  };
+
+  const lean = leaning(offset);
+  const cardStyle = offset
+    ? {
+        transform: `translate(${offset.x}px, ${offset.y}px) rotate(${
+          offset.x / 22
+        }deg)`,
+      }
+    : undefined;
 
   return (
     <section className="visit-tracker" aria-labelledby="visit-tracker-heading">
@@ -80,108 +183,262 @@ export function VisitTrackerScroll({
         </p>
       ) : (
         <>
-          <p className="visit-tracker__tally" role="status" data-testid="visit-tally">
+          <p
+            className="visit-tracker__tally"
+            role="status"
+            data-testid="visit-tally"
+          >
             {t("visit.tally")
               .replace("{visited}", String(visitedCount))
               .replace("{total}", String(ordered.length))}
           </p>
 
-          <ul className="visit-tracker__deck" role="list">
-            {ordered.map((temple) => {
-              const isVisited = visited.has(temple.id);
-              const description =
-                temple.localizedDescriptions[
-                  lang as keyof typeof temple.localizedDescriptions
-                ] ??
-                temple.localizedDescriptions.ja ??
-                "";
-              return (
-                <li key={temple.id} className="visit-tracker__item">
-                  <article
-                    className={
-                      "visit-card" + (isVisited ? " visit-card--visited" : "")
-                    }
-                    data-testid="visit-card"
+          {/* Progress / live status for assistive tech. */}
+          <p className="visit-tracker__progress" role="status" aria-live="polite">
+            {exhausted
+              ? t("visit.done.title")
+              : t("visit.progress")
+                  .replace("{current}", String(index + 1))
+                  .replace("{total}", String(ordered.length))}
+          </p>
+
+          {exhausted ? (
+            <div className="swipe__done" data-testid="visit-done">
+              <PlaceholderImage
+                motif="temple"
+                label={t("visit.done.title")}
+                sublabel={t("visit.done.lead")
+                  .replace("{visited}", String(visitedCount))
+                  .replace("{total}", String(ordered.length))}
+                aspectRatio="4 / 3"
+              />
+              <div className="swipe__done-actions">
+                <Button variant="soft" onClick={() => setIndex(0)}>
+                  {t("visit.restart")}
+                </Button>
+                {onDone && (
+                  <Button variant="ghost" onClick={onDone}>
+                    {t("visit.done")}
+                  </Button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="swipe__stage">
+                {/* Peek of the next card for a layered, hand-stacked feel. */}
+                {ordered[index + 1] && (
+                  <div
+                    className="swipe-card swipe-card--peek"
+                    aria-hidden="true"
                   >
-                    <div className="visit-card__photo">
-                      <PlaceholderImage
-                        motif="temple"
-                        label={`${temple.number} ${temple.name}`}
-                        sublabel={t("visit.photoSoon")}
-                        aspectRatio="5 / 3"
-                      />
-                      {isVisited && (
-                        <span className="visit-card__stamp" aria-hidden="true">
-                          ○
-                        </span>
-                      )}
+                    <div className="swipe-card__photo-wrap">
+                      <TemplePhoto temple={ordered[index + 1]!} />
                     </div>
+                  </div>
+                )}
 
-                    <div className="visit-card__body">
-                      <p className="visit-card__no">
-                        <span className="visit-card__badge" aria-hidden="true">
-                          {temple.number}
-                        </span>
-                        {t("map.detail.number")} {temple.number}
-                      </p>
-                      <h3 className="visit-card__name">{temple.name}</h3>
-                      <p className="visit-card__address">{temple.address}</p>
-                      {description && (
-                        <p className="visit-card__desc">{description}</p>
-                      )}
-                    </div>
-
-                    <div
-                      className="visit-card__choices"
-                      role="group"
-                      aria-label={`${temple.number} ${temple.name}`}
+                <div
+                  className={`swipe-card${lean ? ` swipe-card--lean-${lean}` : ""}`}
+                  style={cardStyle}
+                  role="group"
+                  tabIndex={0}
+                  aria-roledescription={t("visit.cardRole")}
+                  aria-label={`${current!.number} ${current!.name}`}
+                  data-testid="visit-card"
+                  onPointerDown={onPointerDown}
+                  onPointerMove={onPointerMove}
+                  onPointerUp={onPointerUp}
+                  onPointerCancel={() => {
+                    dragStart.current = null;
+                    setOffset(null);
+                  }}
+                  onKeyDown={onKeyDown}
+                >
+                  {/* Directional badge that follows the drag (decorative). */}
+                  {lean && (
+                    <span
+                      className={`swipe-card__badge swipe-card__badge--${lean}`}
+                      aria-hidden="true"
                     >
-                      <button
-                        type="button"
-                        className={
-                          "visit-choice visit-choice--no" +
-                          (!isVisited ? " visit-choice--active" : "")
-                        }
-                        data-testid="visit-no"
-                        aria-pressed={!isVisited}
-                        aria-label={`${temple.name}：${t("visit.notVisited")}`}
-                        onClick={() => onSetVisited(temple.id, false)}
-                      >
-                        <span className="visit-choice__mark" aria-hidden="true">
-                          ×
-                        </span>
-                        {t("visit.notVisited")}
-                      </button>
-                      <button
-                        type="button"
-                        className={
-                          "visit-choice visit-choice--yes" +
-                          (isVisited ? " visit-choice--active" : "")
-                        }
-                        data-testid="visit-yes"
-                        aria-pressed={isVisited}
-                        aria-label={`${temple.name}：${t("visit.visited")}`}
-                        onClick={() => onSetVisited(temple.id, true)}
-                      >
-                        <span className="visit-choice__mark" aria-hidden="true">
-                          ○
-                        </span>
-                        {t("visit.visited")}
-                      </button>
-                    </div>
-                  </article>
-                </li>
-              );
-            })}
-          </ul>
+                      {lean === "right"
+                        ? t("visit.visited")
+                        : t("visit.notVisited")}
+                    </span>
+                  )}
 
-          {onDone && (
-            <Button variant="accent" block leading="🙏" onClick={onDone}>
-              {t("visit.finish")}
-            </Button>
+                  <div className="swipe-card__photo-wrap">
+                    <TemplePhoto temple={current!} />
+                    {visited.has(current!.id) && (
+                      <span className="visit-card__stamp" aria-hidden="true">
+                        ○
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="swipe-card__body">
+                    <p className="visit-card__no">
+                      <span className="visit-card__badge" aria-hidden="true">
+                        {current!.number}
+                      </span>
+                      {t("map.detail.number")} {current!.number}
+                    </p>
+                    <h3 className="swipe-card__name">{current!.name}</h3>
+                    <p className="visit-card__address">{current!.address}</p>
+                    {(() => {
+                      const description =
+                        current!.localizedDescriptions[
+                          lang as keyof typeof current.localizedDescriptions
+                        ] ??
+                        current!.localizedDescriptions.ja ??
+                        "";
+                      return description ? (
+                        <p className="swipe-card__desc">{description}</p>
+                      ) : null;
+                    })()}
+                  </div>
+                </div>
+              </div>
+
+              {/* Two clear choices — equivalent to the left/right swipe. */}
+              <div
+                className="visit-card__choices"
+                role="group"
+                aria-label={`${current!.number} ${current!.name}`}
+              >
+                <button
+                  type="button"
+                  className="visit-choice visit-choice--no"
+                  data-testid="visit-no"
+                  aria-label={`${current!.name}：${t("visit.notVisited")}`}
+                  onClick={() => commit(false)}
+                >
+                  <span className="visit-choice__mark" aria-hidden="true">
+                    ×
+                  </span>
+                  {t("visit.notVisited")}
+                </button>
+                <button
+                  type="button"
+                  className="visit-choice visit-choice--yes"
+                  data-testid="visit-yes"
+                  aria-label={`${current!.name}：${t("visit.visited")}`}
+                  onClick={() => commit(true)}
+                >
+                  <span className="visit-choice__mark" aria-hidden="true">
+                    ○
+                  </span>
+                  {t("visit.visited")}
+                </button>
+              </div>
+
+              <p className="visit-tracker__hint">{t("visit.hint")}</p>
+            </>
           )}
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * A temple photo. Priority: a curated local photo → a **name-searched** photo
+ * from Wikipedia (Req: 名前で調べて画像表示) → an AI-generated royalty-free
+ * photo (mock SVG by default, Amazon Bedrock when AWS is configured) → the
+ * on-brand placeholder. Mirrors the 通常観光モード SwipeDeck's SpotPhoto so
+ * お遍路マッチ cards look just as rich (Req 4.7).
+ */
+function TemplePhoto({ temple }: { temple: Temple }): JSX.Element {
+  const { t } = useI18n();
+  const [localErrored, setLocalErrored] = useState(false);
+  const [wikiErrored, setWikiErrored] = useState(false);
+
+  // A curated, non-placeholder local asset (e.g. 石手寺) wins outright.
+  const localUrl = temple.imageUrls[0];
+  const hasLocalReal =
+    Boolean(localUrl) &&
+    !localUrl.includes("/placeholder/") &&
+    !localErrored;
+
+  // Otherwise, look the temple up by name on Wikipedia for a real photo.
+  const wikiQuery = temple.name;
+  const wiki = useWikipediaImage(hasLocalReal ? null : wikiQuery, !hasLocalReal);
+  const wikiReady = wiki.status === "ready" && !wikiErrored;
+
+  // Only fall back to AI generation once the name search has produced nothing
+  // usable (miss or a broken image URL).
+  const needGenerate =
+    !hasLocalReal && (wiki.status === "error" || wikiErrored);
+  const prompt = useMemo<ImagePrompt | null>(
+    () =>
+      needGenerate
+        ? {
+            id: temple.id,
+            subject: `${temple.name}（第${temple.number}番札所）`,
+            description: temple.localizedDescriptions.ja,
+          }
+        : null,
+    [needGenerate, temple.id, temple.name, temple.number, temple.localizedDescriptions],
+  );
+  const generated = useGeneratedImage(prompt, needGenerate);
+
+  const alt = `${temple.number} ${temple.name}`;
+
+  if (hasLocalReal) {
+    return (
+      <img
+        className="visit-card__img"
+        src={localUrl}
+        alt={alt}
+        loading="lazy"
+        onError={() => setLocalErrored(true)}
+      />
+    );
+  }
+
+  if (wikiReady) {
+    return (
+      <img
+        className="visit-card__img"
+        src={wiki.src}
+        alt={alt}
+        loading="lazy"
+        onError={() => setWikiErrored(true)}
+      />
+    );
+  }
+
+  // Still searching the name on Wikipedia.
+  if (!needGenerate && (wiki.status === "loading" || wiki.status === "idle")) {
+    return (
+      <PlaceholderImage
+        motif="temple"
+        label={alt}
+        sublabel={t("visit.photoSearching")}
+        aspectRatio="5 / 3"
+      />
+    );
+  }
+
+  if (generated.status === "ready") {
+    return (
+      <img
+        className="visit-card__img"
+        src={generated.image.src}
+        alt={alt}
+        loading="lazy"
+      />
+    );
+  }
+
+  return (
+    <PlaceholderImage
+      motif="temple"
+      label={alt}
+      sublabel={
+        generated.status === "loading" ? t("image.generating") : t("visit.photoSoon")
+      }
+      aspectRatio="5 / 3"
+    />
   );
 }
