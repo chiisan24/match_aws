@@ -256,6 +256,18 @@ export function TourismProvider({
     createInitialState(lang),
   );
 
+  // Keep the chat session's language in sync with the active UI language so
+  // the AI backend (which replies in `session.lang`) answers in the language
+  // the user selected (Req 1.x / 19.x). Only rewrites when it actually changes
+  // to avoid needless renders.
+  useEffect(() => {
+    setState((s) =>
+      s.session.lang === lang
+        ? s
+        : { ...s, session: { ...s.session, lang } },
+    );
+  }, [lang]);
+
   // Guards saving until after the initial rehydration so a slow load never
   // clobbers persisted しおり with the empty initial value (Req 6.4).
   const shioriHydratedRef = useRef(false);

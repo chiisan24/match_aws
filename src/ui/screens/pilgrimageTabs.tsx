@@ -120,9 +120,10 @@ function MapTab({
 export const PILGRIMAGE_TAB_CONTENT: Partial<
   Record<PilgrimageTab, PilgrimageTabRenderer>
 > = {
-  home: ({ map, goToTab }) => (
+  home: ({ map, chat, goToTab }) => (
     <ProgressDashboard
       map={map}
+      chat={chat}
       onOpenMap={() => goToTab("map")}
       onOpenPlan={() => goToTab("mypage")}
     />

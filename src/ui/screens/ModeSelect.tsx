@@ -72,7 +72,9 @@ export function ModeSelect({ onChoose }: ModeSelectProps): JSX.Element {
               </div>
               <div className="mode-card__body">
                 <Tag tone={opt.mode === "pilgrimage" ? "accent" : "teal"}>
-                  {opt.mode === "pilgrimage" ? "お遍路" : "観光"}
+                  {opt.mode === "pilgrimage"
+                    ? t("mode.tag.pilgrimage")
+                    : t("mode.tag.tourism")}
                 </Tag>
                 <h2 className="mode-card__name">{t(opt.nameKey)}</h2>
                 <p className="mode-card__desc">{t(opt.descKey)}</p>
