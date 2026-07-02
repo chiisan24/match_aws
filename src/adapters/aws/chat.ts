@@ -42,20 +42,26 @@ interface PlanApiResponse {
   stops?: PlanStop[];
 }
 
+/**
+ * Resolves the serverless API base URL for a given operation. Kept as a
+ * module-level helper (not a class method) so it does not appear on the
+ * adapter's prototype — the runtime gateway contract check compares prototype
+ * method names against the mock, and an extra method would fail verification.
+ */
+function apiBase(env: AwsEnv, operation: string): string {
+  const endpoint = env.apiEndpoint;
+  if (!endpoint) throw new Error(AWS_NOT_CONFIGURED(operation));
+  return endpoint.replace(/\/+$/, "");
+}
+
 export class AwsChatAdapter implements ChatPort {
   constructor(private readonly env: AwsEnv) {}
-
-  private base(operation: string): string {
-    const endpoint = this.env.apiEndpoint;
-    if (!endpoint) throw new Error(AWS_NOT_CONFIGURED(operation));
-    return endpoint.replace(/\/+$/, "");
-  }
 
   async sendMessage(
     session: ChatSession,
     message: string,
   ): Promise<ChatReply> {
-    const base = this.base("ChatPort.sendMessage");
+    const base = apiBase(this.env, "ChatPort.sendMessage");
 
     // Full turn history + the new user message, plus a compact catalogue the
     // model can recommend from.
@@ -103,7 +109,7 @@ export class AwsChatAdapter implements ChatPort {
   }
 
   async generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan> {
-    const base = this.base("ChatPort.generatePilgrimagePlan");
+    const base = apiBase(this.env, "ChatPort.generatePilgrimagePlan");
 
     const temples = EHIME_TEMPLES.map((t) => ({
       id: t.id,

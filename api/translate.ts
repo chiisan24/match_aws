@@ -13,12 +13,17 @@ import {
   TranslateClient,
   TranslateTextCommand,
 } from "@aws-sdk/client-translate";
+import { awsCredentials, awsRegion } from "./_aws";
 
-const REGION = process.env.AWS_REGION || "us-east-1";
+const REGION = awsRegion();
 
 let client: TranslateClient | null = null;
 function translateClient(): TranslateClient {
-  if (!client) client = new TranslateClient({ region: REGION });
+  if (!client)
+    client = new TranslateClient({
+      region: REGION,
+      credentials: awsCredentials(),
+    });
   return client;
 }
 
