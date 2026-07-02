@@ -8,7 +8,7 @@
  */
 
 import type { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime";
-import { awsCredentials, awsRegion } from "./_aws";
+import { awsCredentials, awsRegion } from "./_aws.js";
 
 /** Region for Bedrock — BEDROCK_REGION → AWS_REGION → us-east-1. */
 const REGION = awsRegion();
