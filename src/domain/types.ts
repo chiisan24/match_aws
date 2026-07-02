@@ -198,6 +198,12 @@ export interface PlanInput {
   desiredTemples: string[];
   fitnessLevel: "low" | "mid" | "high";
   includeSightseeing: boolean;
+  /**
+   * Display language for the generated plan's labels (Req 1.x / 19.x). When
+   * omitted the backend defaults to Japanese. The UI stamps the active i18n
+   * language here so temple/meal/spot labels come back in the chosen language.
+   */
+  lang?: LangCode;
 }
 
 /** A single stop on a generated plan timeline. */

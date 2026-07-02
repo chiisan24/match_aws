@@ -121,7 +121,7 @@ export class AwsChatAdapter implements ChatPort {
     const res = await fetch(`${base}/plan`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input, temples }),
+      body: JSON.stringify({ input, temples, lang: input.lang ?? "ja" }),
     });
     if (!res.ok) {
       throw new Error(`Plan backend failed (${res.status} ${res.statusText}).`);
