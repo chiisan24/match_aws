@@ -9,16 +9,24 @@
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import {
-  TranslateClient,
-  TranslateTextCommand,
-} from "@aws-sdk/client-translate";
-import { awsCredentials, awsRegion } from "./_aws";
+import type { TranslateClient } from "@aws-sdk/client-translate";
+import { awsCredentials, awsRegion, errorDetail } from "./_aws";
 
 const REGION = awsRegion();
 
+// Lazy-load the AWS SDK inside the request path so a bundling/resolution failure
+// surfaces as a catchable error (visible in the response) instead of an opaque
+// FUNCTION_INVOCATION_FAILED at module load.
+let sdkPromise: Promise<typeof import("@aws-sdk/client-translate")> | null =
+  null;
+function loadSdk() {
+  if (!sdkPromise) sdkPromise = import("@aws-sdk/client-translate");
+  return sdkPromise;
+}
+
 let client: TranslateClient | null = null;
-function translateClient(): TranslateClient {
+async function translateClient(): Promise<TranslateClient> {
+  const { TranslateClient } = await loadSdk();
   if (!client)
     client = new TranslateClient({
       region: REGION,
@@ -73,8 +81,8 @@ export default async function handler(
       return;
     }
 
-    const out = await translateClient().send(
-      new TranslateTextCommand({
+    const out = await (await translateClient()).send(
+      new (await loadSdk()).TranslateTextCommand({
         Text: text,
         SourceLanguageCode: "auto",
         TargetLanguageCode: targetCode,
@@ -84,6 +92,6 @@ export default async function handler(
     res.status(200).json({ text: out.TranslatedText ?? text });
   } catch (err) {
     console.error("translate error", err);
-    res.status(502).json({ error: "Translate backend error" });
+    res.status(502).json({ error: "Translate backend error", detail: errorDetail(err) });
   }
 }

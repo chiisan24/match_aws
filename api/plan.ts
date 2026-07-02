@@ -10,6 +10,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { extractJson, invokeClaude } from "./_bedrock";
+import { errorDetail } from "./_aws";
 
 interface PlanInputBody {
   startPoint?: unknown;
@@ -86,6 +87,8 @@ export default async function handler(
     res.status(200).json({ stops: ordered });
   } catch (err) {
     console.error("plan error", err);
-    res.status(502).json({ error: "AI plan backend error" });
+    res
+      .status(502)
+      .json({ error: "AI plan backend error", detail: errorDetail(err) });
   }
 }

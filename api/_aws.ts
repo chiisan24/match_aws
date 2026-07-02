@@ -41,3 +41,14 @@ export function awsCredentials(): AwsCredentials | undefined {
     ...(sessionToken ? { sessionToken } : {}),
   };
 }
+
+/**
+ * Extracts a concise, safe error string for returning to the client during
+ * debugging. Prefers an AWS `name: message` form when available.
+ */
+export function errorDetail(err: unknown): string {
+  if (err instanceof Error) {
+    return err.name ? `${err.name}: ${err.message}` : err.message;
+  }
+  return String(err);
+}

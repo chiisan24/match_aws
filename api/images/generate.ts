@@ -12,6 +12,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { invokeTitanImage } from "../_bedrock";
+import { errorDetail } from "../_aws";
 
 interface ImageBody {
   id?: string;
@@ -73,6 +74,8 @@ export default async function handler(
     res.status(200).json({ base64 });
   } catch (err) {
     console.error("image generate error", err);
-    res.status(502).json({ error: "Image generation backend error" });
+    res
+      .status(502)
+      .json({ error: "Image generation backend error", detail: errorDetail(err) });
   }
 }
