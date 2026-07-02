@@ -11,8 +11,8 @@
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { invokeTitanImage } from "../_bedrock";
-import { errorDetail } from "../_aws";
+import { invokeTitanImage } from "../_bedrock.js";
+import { errorDetail } from "../_aws.js";
 
 interface ImageBody {
   id?: string;
