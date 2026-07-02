@@ -15,8 +15,8 @@ import {
   invokeClaude,
   normalizeMessages,
   type ClaudeMessage,
-} from "./_bedrock";
-import { errorDetail } from "./_aws";
+} from "./_bedrock.js";
+import { errorDetail } from "./_aws.js";
 
 interface CatalogItem {
   id: string;

@@ -9,8 +9,8 @@
  */
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { extractJson, invokeClaude } from "./_bedrock";
-import { errorDetail } from "./_aws";
+import { extractJson, invokeClaude } from "./_bedrock.js";
+import { errorDetail } from "./_aws.js";
 
 interface PlanInputBody {
   startPoint?: unknown;

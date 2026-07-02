@@ -10,7 +10,7 @@
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import type { TranslateClient } from "@aws-sdk/client-translate";
-import { awsCredentials, awsRegion, errorDetail } from "./_aws";
+import { awsCredentials, awsRegion, errorDetail } from "./_aws.js";
 
 const REGION = awsRegion();
 
