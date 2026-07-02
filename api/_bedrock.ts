@@ -7,10 +7,7 @@
  * bundled into the browser. Files prefixed with `_` are not routable endpoints.
  */
 
-import {
-  BedrockRuntimeClient,
-  InvokeModelCommand,
-} from "@aws-sdk/client-bedrock-runtime";
+import type { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime";
 import { awsCredentials, awsRegion } from "./_aws";
 
 /** Region for Bedrock — BEDROCK_REGION → AWS_REGION → us-east-1. */
@@ -24,8 +21,23 @@ export const CHAT_MODEL_ID =
 export const IMAGE_MODEL_ID =
   process.env.BEDROCK_IMAGE_MODEL_ID || "amazon.titan-image-generator-v1";
 
+/**
+ * Lazy-load the AWS SDK inside the request lifecycle instead of at module load.
+ * If resolving/bundling the SDK ever fails, it now throws where the route
+ * handlers can catch it (and return the real message) rather than crashing the
+ * whole function at import time with an opaque FUNCTION_INVOCATION_FAILED.
+ */
+let sdkPromise:
+  | Promise<typeof import("@aws-sdk/client-bedrock-runtime")>
+  | null = null;
+function loadSdk() {
+  if (!sdkPromise) sdkPromise = import("@aws-sdk/client-bedrock-runtime");
+  return sdkPromise;
+}
+
 let client: BedrockRuntimeClient | null = null;
-function bedrock(): BedrockRuntimeClient {
+async function bedrock(): Promise<BedrockRuntimeClient> {
+  const { BedrockRuntimeClient } = await loadSdk();
   if (!client)
     client = new BedrockRuntimeClient({
       region: REGION,
@@ -49,6 +61,7 @@ export async function invokeClaude(args: {
   messages: ClaudeMessage[];
   maxTokens?: number;
 }): Promise<string> {
+  const { InvokeModelCommand } = await loadSdk();
   const body = {
     anthropic_version: "bedrock-2023-05-31",
     max_tokens: args.maxTokens ?? 1024,
@@ -59,7 +72,7 @@ export async function invokeClaude(args: {
     })),
   };
 
-  const out = await bedrock().send(
+  const out = await (await bedrock()).send(
     new InvokeModelCommand({
       modelId: CHAT_MODEL_ID,
       contentType: "application/json",
@@ -86,6 +99,7 @@ export async function invokeTitanImage(args: {
   negativeText?: string;
   seed?: number;
 }): Promise<string | null> {
+  const { InvokeModelCommand } = await loadSdk();
   const body = {
     taskType: "TEXT_IMAGE",
     textToImageParams: {
@@ -102,7 +116,7 @@ export async function invokeTitanImage(args: {
     },
   };
 
-  const out = await bedrock().send(
+  const out = await (await bedrock()).send(
     new InvokeModelCommand({
       modelId: IMAGE_MODEL_ID,
       contentType: "application/json",

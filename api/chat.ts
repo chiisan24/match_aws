@@ -16,6 +16,7 @@ import {
   normalizeMessages,
   type ClaudeMessage,
 } from "./_bedrock";
+import { errorDetail } from "./_aws";
 
 interface CatalogItem {
   id: string;
@@ -96,6 +97,8 @@ export default async function handler(
     res.status(200).json({ reply: text });
   } catch (err) {
     console.error("chat error", err);
-    res.status(502).json({ error: "AI chat backend error" });
+    res
+      .status(502)
+      .json({ error: "AI chat backend error", detail: errorDetail(err) });
   }
 }
