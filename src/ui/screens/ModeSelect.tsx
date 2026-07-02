@@ -13,6 +13,7 @@ import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { PlaceholderImage } from "../components/PlaceholderImage";
+import { screenSrcSet, screenFallback } from "./screenImage";
 import { Tag } from "../components/Tag";
 
 export interface ModeSelectProps {
@@ -112,14 +113,28 @@ function ModeHero({ src, motif, label }: ModeHeroProps): JSX.Element {
       <PlaceholderImage motif={motif} label={label} aspectRatio="16 / 9" />
     );
   }
+  const widths = [400, 800, 1200];
+  const sizes = "(max-width: 30rem) 92vw, 26rem";
   return (
-    <img
-      className="mode-card__hero-img"
-      src={src}
-      alt={label}
-      style={{ aspectRatio: "16 / 9", width: "100%", objectFit: "cover" }}
-      loading="lazy"
-      onError={() => setErrored(true)}
-    />
+    <picture>
+      <source
+        type="image/webp"
+        srcSet={screenSrcSet(src, widths, "webp")}
+        sizes={sizes}
+      />
+      <img
+        className="mode-card__hero-img"
+        src={screenFallback(src, 800)}
+        srcSet={screenSrcSet(src, widths, "jpg")}
+        sizes={sizes}
+        alt={label}
+        width={1200}
+        height={675}
+        style={{ aspectRatio: "16 / 9", width: "100%", objectFit: "cover" }}
+        loading="lazy"
+        decoding="async"
+        onError={() => setErrored(true)}
+      />
+    </picture>
   );
 }
