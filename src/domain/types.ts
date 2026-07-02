@@ -218,6 +218,46 @@ export interface PilgrimagePlan {
   stops: PlanStop[];
 }
 
+/** Inputs for an AI next-temple navigation estimate (目安/参考情報). */
+export interface NextTempleNavInput {
+  /** The traveler's start point (current location), or null if unknown. */
+  from: GeoPoint | null;
+  /** The target (next) temple to navigate to. */
+  temple: {
+    id: string;
+    name: string;
+    number: number;
+    location: GeoPoint;
+    address?: string;
+    highlights?: string[];
+  };
+  /** Target display language for the text fields (highlights / note). */
+  lang?: LangCode;
+}
+
+/**
+ * AI-estimated navigation info for the next temple (Req: AI 算出).
+ *
+ * Every figure here is a **rough estimate for reference only** — the UI must
+ * always present it with a disclaimer. `aiGenerated` distinguishes a real AI
+ * backend result from the local heuristic fallback (used when AI is not
+ * configured or fails), but both are estimates and both carry the disclaimer.
+ */
+export interface NextTempleNavEstimate {
+  /** Estimated road distance in kilometers (null when the start is unknown). */
+  distanceKm: number | null;
+  /** Estimated driving time in minutes (null when unknown). */
+  carMinutes: number | null;
+  /** Estimated walking time in minutes (null when unknown). */
+  walkMinutes: number | null;
+  /** 見どころ / highlights in the target language. */
+  highlights: string[];
+  /** Short access / advice note in the target language (may be empty). */
+  note: string;
+  /** True when a real AI backend produced this; false for the local fallback. */
+  aiGenerated: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Auth & offline sync
 // ---------------------------------------------------------------------------

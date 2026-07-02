@@ -36,6 +36,8 @@ export {
   type TempleTravelTime,
 } from "./filter";
 export { isInsideGeofence, haversineDistanceMeters } from "./geofence";
+export { estimateLocalTempleNav } from "./templeNav";
+export type { LocalNavNumbers } from "./templeNav";
 export { filterByLayers } from "./layers";
 export { resolveLabel } from "./i18n";
 

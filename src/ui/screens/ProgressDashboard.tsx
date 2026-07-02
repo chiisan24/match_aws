@@ -24,7 +24,6 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { usePilgrimage, SHIKOKU_PREFECTURES } from "../../app/PilgrimageContext";
-import { haversineDistanceMeters } from "../../domain/geofence";
 import {
   areaAchievementRate,
   areaTotal,
@@ -36,8 +35,13 @@ import {
   visitedThisMonthCount,
   visitedTodayCount,
 } from "../../domain/progress";
-import type { GeoPoint, ShikokuPrefecture, Temple } from "../../domain/types";
-import type { MapLocationPort } from "../../ports";
+import type {
+  GeoPoint,
+  NextTempleNavEstimate,
+  ShikokuPrefecture,
+  Temple,
+} from "../../domain/types";
+import type { ChatPort, MapLocationPort } from "../../ports";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -48,15 +52,13 @@ import { Tag } from "../components/Tag";
 export interface ProgressDashboardProps {
   /** Map/location backend; inject `gateway.map` in the app, a fake in tests. */
   map: MapLocationPort;
+  /** AI backend used to estimate the 次の札所ナビ figures (mock by default). */
+  chat: ChatPort;
   /** Jump to the 札所マップ tab (the 次の札所ナビ route button). */
   onOpenMap: () => void;
   /** Open the 今日のお遍路プラン screen (the AIプラン teaser, Req 12 — task 11.1). */
   onOpenPlan?: () => void;
 }
-
-/** Assumed average speeds for mock travel-time estimates (mirrors TempleMap). */
-const CAR_METERS_PER_MIN = 600; // ~36 km/h
-const WALK_METERS_PER_MIN = 75; // ~4.5 km/h
 
 /** i18n key for each prefecture's display name. */
 const PREFECTURE_NAME_KEY: Record<ShikokuPrefecture, string> = {
@@ -68,10 +70,11 @@ const PREFECTURE_NAME_KEY: Record<ShikokuPrefecture, string> = {
 
 export function ProgressDashboard({
   map,
+  chat,
   onOpenMap,
   onOpenPlan,
 }: ProgressDashboardProps): JSX.Element {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { progress, area, setArea, visited, visitRecords } = usePilgrimage();
 
   const [temples, setTemples] = useState<Temple[]>([]);
@@ -126,6 +129,49 @@ export function ProgressDashboard({
       .sort((a, b) => a.number - b.number);
     return candidates[0] ?? null;
   }, [temples, visited]);
+
+  // AI-estimated navigation figures for the 次の札所ナビ card (距離・所要時間・
+  // 見どころ・注意書き). These are 目安/参考情報 — the card labels them as such.
+  // Never throws: the port falls back to a local estimate on any failure.
+  const [navEstimate, setNavEstimate] = useState<NextTempleNavEstimate | null>(
+    null,
+  );
+  const [navLoading, setNavLoading] = useState(false);
+
+  useEffect(() => {
+    if (!nextTemple) {
+      setNavEstimate(null);
+      setNavLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setNavLoading(true);
+    void (async () => {
+      try {
+        const estimate = await chat.estimateNextTempleNav({
+          from: current,
+          temple: {
+            id: nextTemple.id,
+            name: nextTemple.name,
+            number: nextTemple.number,
+            location: nextTemple.location,
+            address: nextTemple.address,
+            highlights: nextTemple.highlights,
+          },
+          lang,
+        });
+        if (!cancelled) setNavEstimate(estimate);
+      } catch {
+        // Defensive: the port shouldn't throw, but never break the dashboard.
+        if (!cancelled) setNavEstimate(null);
+      } finally {
+        if (!cancelled) setNavLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [chat, nextTemple, current, lang]);
 
   return (
     <section className="progress-dash" aria-labelledby="progress-dash-heading">
@@ -217,7 +263,8 @@ export function ProgressDashboard({
       {/* 次の札所ナビ */}
       <NextTempleCard
         temple={nextTemple}
-        current={current}
+        estimate={navEstimate}
+        loading={navLoading}
         allVisited={areaCount > 0 && areaRemaining === 0}
         shikokuLeft={shikokuLeft}
         onOpenMap={onOpenMap}
@@ -323,22 +370,24 @@ function StatTile({ label, value, unit, testId }: StatTileProps): JSX.Element {
 
 interface NextTempleCardProps {
   temple: Temple | null;
-  current: GeoPoint | null;
+  estimate: NextTempleNavEstimate | null;
+  loading: boolean;
   allVisited: boolean;
   shikokuLeft: number;
   onOpenMap: () => void;
   t: (key: string) => string;
 }
 
-/** Human-readable distance: metres under 1 km, otherwise one-decimal km. */
-function formatDistance(meters: number): string {
-  if (meters < 1000) return `${Math.round(meters)} m`;
-  return `${(meters / 1000).toFixed(1)} km`;
+/** Human-readable distance from an estimated kilometer figure. */
+function formatKm(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  return `${km.toFixed(1)} km`;
 }
 
 function NextTempleCard({
   temple,
-  current,
+  estimate,
+  loading,
   allVisited,
   shikokuLeft,
   onOpenMap,
@@ -376,14 +425,16 @@ function NextTempleCard({
     );
   }
 
-  const meters =
-    current != null
-      ? haversineDistanceMeters(current, temple.location)
-      : null;
-  const distance = meters != null ? formatDistance(meters) : "—";
-  const carMin = meters != null ? Math.max(0, Math.round(meters / CAR_METERS_PER_MIN)) : null;
-  const walkMin =
-    meters != null ? Math.max(0, Math.round(meters / WALK_METERS_PER_MIN)) : null;
+  // All figures below are AI/heuristic estimates surfaced with a disclaimer.
+  const distance =
+    estimate?.distanceKm != null ? formatKm(estimate.distanceKm) : "—";
+  const carMin = estimate?.carMinutes ?? null;
+  const walkMin = estimate?.walkMinutes ?? null;
+  // Prefer AI-provided highlights; fall back to the temple's own list.
+  const highlights =
+    estimate?.highlights && estimate.highlights.length > 0
+      ? estimate.highlights
+      : temple.highlights;
   const minutes = (min: number): string =>
     t("progress.next.minutesUnit").replace("{min}", String(min));
 
@@ -407,7 +458,9 @@ function NextTempleCard({
       <dl className="next-temple__facts">
         <div className="next-temple__fact">
           <dt>{t("map.detail.distance")}</dt>
-          <dd data-testid="next-temple-distance">{distance}</dd>
+          <dd data-testid="next-temple-distance">
+            {loading ? t("progress.next.estimating") : distance}
+          </dd>
         </div>
         {carMin != null && (
           <div className="next-temple__fact">
@@ -423,13 +476,13 @@ function NextTempleCard({
         )}
       </dl>
 
-      {temple.highlights.length > 0 && (
+      {highlights.length > 0 && (
         <div className="next-temple__highlights">
           <span className="next-temple__highlights-label">
             {t("progress.next.highlights")}
           </span>
           <div className="next-temple__tags">
-            {temple.highlights.map((h) => (
+            {highlights.map((h) => (
               <Tag key={h} tone="teal">
                 {h}
               </Tag>
@@ -437,6 +490,18 @@ function NextTempleCard({
           </div>
         </div>
       )}
+
+      {/* AI-provided access / advice note (目安/参考情報). */}
+      {estimate?.note && (
+        <p className="next-temple__note" data-testid="next-temple-note">
+          {estimate.note}
+        </p>
+      )}
+
+      {/* Disclaimer: these figures are an AI estimate for reference only. */}
+      <p className="next-temple__disclaimer" role="note">
+        {t("progress.next.aiNote")}
+      </p>
 
       <Button variant="accent" block leading="🧭" onClick={onOpenMap}>
         {t("progress.next.route")}

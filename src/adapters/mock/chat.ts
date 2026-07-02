@@ -12,11 +12,14 @@ import type {
   ChatReply,
   ChatSession,
   LangCode,
+  NextTempleNavEstimate,
+  NextTempleNavInput,
   PilgrimagePlan,
   PlanInput,
   PlanStop,
   Spot,
 } from "../../ports";
+import { estimateLocalTempleNav } from "../../domain/templeNav";
 import { EHIME_SPOTS } from "./spots";
 
 /**
@@ -147,6 +150,48 @@ export class MockChatAdapter implements ChatPort {
   async generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan> {
     return { stops: buildPlanStops(input) };
   }
+
+  async estimateNextTempleNav(
+    input: NextTempleNavInput,
+  ): Promise<NextTempleNavEstimate> {
+    return localNavEstimate(input);
+  }
+}
+
+/** Localized generic access note for the local (non-AI) nav estimate. */
+const NAV_NOTE: Partial<Record<LangCode, string>> = {
+  ja: "山門近くに駐車場がある札所が多いですが、時間帯により混雑します。時間には余裕をもって向かいましょう。",
+  iyo: "山門の近くに駐車場がある札所が多いけんど、時間帯によっては混むけん、余裕もって行きよ。",
+  en: "Many temples have parking near the main gate, but it can get busy at peak times — allow extra time to get there.",
+  "zh-Hans": "多数札所在山门附近设有停车场，但高峰时段较拥挤，请预留充裕时间前往。",
+  "zh-Hant": "多數札所在山門附近設有停車場，但尖峰時段較擁擠，請預留充裕時間前往。",
+  ko: "많은 사찰이 산문 근처에 주차장을 갖추고 있지만 혼잡할 수 있으니 여유 있게 출발하세요.",
+  th: "วัดหลายแห่งมีที่จอดรถใกล้ประตูหลัก แต่ช่วงเวลาเร่งด่วนอาจแออัด ควรเผื่อเวลาเดินทาง",
+  fr: "De nombreux temples disposent d'un parking près de la porte principale, mais il peut être bondé aux heures de pointe — prévoyez du temps.",
+  de: "Viele Tempel haben Parkplätze nahe dem Haupttor, die zu Stoßzeiten voll sein können — plane etwas Zeit ein.",
+  es: "Muchos templos tienen aparcamiento cerca de la puerta principal, pero puede llenarse en horas punta; deja tiempo de sobra.",
+  pt: "Muitos templos têm estacionamento perto do portão principal, mas pode lotar nos horários de pico — reserve tempo extra.",
+  vi: "Nhiều chùa có bãi đỗ xe gần cổng chính, nhưng có thể đông vào giờ cao điểm — hãy dự trù thêm thời gian.",
+  id: "Banyak kuil memiliki parkir dekat gerbang utama, tetapi bisa ramai saat jam sibuk — sediakan waktu lebih.",
+  ar: "توجد مواقف سيارات قرب البوابة الرئيسية في كثير من المعابد، لكنها قد تزدحم في أوقات الذروة — خصّص وقتًا إضافيًا.",
+  ru: "У многих храмов есть парковка у главных ворот, но в час пик бывает многолюдно — заложите время с запасом.",
+  hi: "कई मंदिरों में मुख्य द्वार के पास पार्किंग है, पर व्यस्त समय में भीड़ हो सकती है — पहुँचने के लिए अतिरिक्त समय रखें।",
+};
+
+/**
+ * Local heuristic next-temple estimate used by the mock adapter and as the
+ * fallback. Numbers come from the pure {@link estimateLocalTempleNav}; the
+ * highlights are echoed from the input and the note is a localized generic tip.
+ * Marked `aiGenerated: false` so the UI can label it honestly (still a 目安).
+ */
+function localNavEstimate(input: NextTempleNavInput): NextTempleNavEstimate {
+  const numbers = estimateLocalTempleNav(input.from, input.temple.location);
+  return {
+    ...numbers,
+    highlights: input.temple.highlights ?? [],
+    note: forLang(NAV_NOTE, input.lang ?? "ja"),
+    aiGenerated: false,
+  };
 }
 
 /** Localized labels for the mock plan timeline stops (Req 1.x / 19.x). */

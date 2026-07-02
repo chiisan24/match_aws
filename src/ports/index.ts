@@ -12,6 +12,8 @@ import type {
   Geofence,
   ImagePrompt,
   LangCode,
+  NextTempleNavEstimate,
+  NextTempleNavInput,
   OfflineEntry,
   PilgrimagePlan,
   PlanInput,
@@ -30,6 +32,16 @@ export type * from "../domain/types";
 export interface ChatPort {
   sendMessage(session: ChatSession, message: string): Promise<ChatReply>;
   generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan>;
+  /**
+   * Estimate the "next temple" navigation figures (distance / travel times /
+   * highlights / access note) for the 巡礼進捗ダッシュボード's 次の札所ナビ card.
+   * The result is a rough estimate for reference only (目安/参考情報) — callers
+   * must present it with a disclaimer. Implementations must never throw: on any
+   * failure they return a best-effort local estimate with `aiGenerated: false`.
+   */
+  estimateNextTempleNav(
+    input: NextTempleNavInput,
+  ): Promise<NextTempleNavEstimate>;
 }
 
 /** 地図/現在地・ジオフェンス (Req 8, 13). */

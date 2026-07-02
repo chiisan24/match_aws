@@ -1372,6 +1372,44 @@ UI_LABELS["progress.next.empty"] = {
   iyo: "この県の札所データはもうちょっと待ってな。愛媛県を選んだら始めれるよ。",
 };
 
+// 次の札所ナビ: AI 算出中の表示 & AI 目安の注意書き
+UI_LABELS["progress.next.estimating"] = {
+  ja: "AIが算出中…",
+  en: "Estimating with AI…",
+  "zh-Hans": "AI 正在推算…",
+  "zh-Hant": "AI 正在推算…",
+  ko: "AI가 계산 중…",
+  th: "AI กำลังประมาณ…",
+  fr: "Estimation par l'IA…",
+  de: "KI schätzt…",
+  es: "Estimando con IA…",
+  pt: "Estimando com IA…",
+  vi: "AI đang ước tính…",
+  id: "AI sedang memperkirakan…",
+  ar: "يقوم الذكاء الاصطناعي بالتقدير…",
+  ru: "ИИ выполняет расчёт…",
+  hi: "AI अनुमान लगा रहा है…",
+  iyo: "AIが算出しよるけん…",
+};
+UI_LABELS["progress.next.aiNote"] = {
+  ja: "※ 距離・所要時間・見どころはAIによる目安です。実際の交通・道路状況により異なる場合があります。",
+  en: "* Distance, times and highlights are AI estimates for reference only, and may differ from actual conditions.",
+  "zh-Hans": "※ 距离、所需时间和看点均为 AI 估算，仅供参考，可能与实际交通和道路情况不同。",
+  "zh-Hant": "※ 距離、所需時間與看點皆為 AI 估算，僅供參考，可能與實際交通與道路狀況不同。",
+  ko: "※ 거리·소요 시간·볼거리는 AI 추정치로 참고용이며 실제 교통·도로 상황과 다를 수 있습니다.",
+  th: "※ ระยะทาง เวลา และจุดเด่นเป็นการประมาณโดย AI เพื่อการอ้างอิงเท่านั้น อาจต่างจากสภาพจริง",
+  fr: "* Distance, durées et points d'intérêt sont des estimations de l'IA, à titre indicatif ; ils peuvent différer de la réalité.",
+  de: "* Entfernung, Zeiten und Highlights sind KI-Schätzungen als Richtwert und können von der Realität abweichen.",
+  es: "* La distancia, los tiempos y los lugares destacados son estimaciones de la IA, solo de referencia, y pueden diferir de la realidad.",
+  pt: "* Distância, tempos e destaques são estimativas da IA, apenas para referência, e podem diferir das condições reais.",
+  vi: "* Khoảng cách, thời gian và điểm nổi bật là ước tính của AI, chỉ để tham khảo và có thể khác thực tế.",
+  id: "* Jarak, waktu, dan sorotan adalah perkiraan AI hanya untuk referensi dan dapat berbeda dari kondisi sebenarnya.",
+  ar: "* المسافة والأوقات وأبرز المعالم تقديرات من الذكاء الاصطناعي للاسترشاد فقط، وقد تختلف عن الواقع.",
+  ru: "* Расстояние, время и достопримечательности — это оценки ИИ для справки; они могут отличаться от реальных условий.",
+  hi: "* दूरी, समय और मुख्य आकर्षण AI द्वारा अनुमानित हैं, केवल संदर्भ हेतु, और वास्तविक स्थिति से भिन्न हो सकते हैं।",
+  iyo: "※ 距離・時間・見どころはAIのだいたいの目安やけん。実際とは違うこともあるけんね。",
+};
+
 // 今日のおすすめAIプラン teaser (task 11.1 / post-MVP)
 UI_LABELS["progress.plan.title"] = {
   ja: "今日のおすすめAIプラン",
