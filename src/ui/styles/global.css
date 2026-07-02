@@ -115,3 +115,100 @@ a {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* =========================================================================
+ * Desktop layout (Req 18.2 companion — mobile-first, enhanced for wide screens)
+ *
+ * On viewports ≥ 64rem the app stops being a narrow centered phone column and
+ * becomes a proper desktop canvas: the per-mode shell turns into a two-region
+ * grid with the bottom nav repurposed as a persistent left sidebar and a wide
+ * content area, while card-centric screens (swipe / お遍路マッチ) keep a
+ * comfortable reading width so their cards never stretch too far.
+ * ====================================================================== */
+@media (min-width: 64rem) {
+  .app-shell {
+    padding: var(--space-5) var(--space-5) var(--space-5);
+    justify-content: flex-start;
+  }
+
+  /* Widen the primary app surface into a real desktop canvas. */
+  .app-shell > .mode-shell {
+    max-width: 72rem;
+  }
+
+  /* Two-region layout: persistent left sidebar (the repurposed bottom nav) and
+     a wide content column, with the header spanning the top. */
+  .mode-shell {
+    display: grid;
+    grid-template-columns: 15rem minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "header  header"
+      "sidebar content";
+    column-gap: var(--space-5);
+    row-gap: var(--space-4);
+    align-items: start;
+    min-height: auto;
+  }
+  .ek-app-header {
+    grid-area: header;
+  }
+  .mode-shell__content {
+    grid-area: content;
+    /* Stretch to fill the tall content row so full-height screens like チャット
+       reach top to bottom instead of floating in the middle. */
+    align-self: stretch;
+    min-height: 0;
+    /* No fixed bottom bar to clear on desktop. */
+    padding-bottom: var(--space-5);
+  }
+
+  /* Bottom nav → sticky vertical sidebar. */
+  .ek-bottom-nav {
+    grid-area: sidebar;
+    position: sticky;
+    top: var(--space-5);
+    left: auto;
+    transform: none;
+    z-index: 1;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+  }
+  .ek-bottom-nav__item {
+    flex: 0 0 auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    border-radius: var(--radius-md);
+  }
+  .ek-bottom-nav__item[aria-current="page"] {
+    background: var(--color-teal-100);
+  }
+  .ek-bottom-nav__item:hover {
+    background: var(--color-paper-deep);
+  }
+  .ek-bottom-nav__icon {
+    font-size: 1.2rem;
+  }
+
+  /* Keep card-centric screens at a readable width, centered in the wide
+     content column instead of stretching edge to edge. */
+  .swipe,
+  .visit-tracker,
+  .mode-panel {
+    max-width: 38rem;
+    margin-inline: auto;
+  }
+}
+
