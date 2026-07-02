@@ -41,6 +41,7 @@ import type {
   ShikokuPrefecture,
   Temple,
 } from "../../domain/types";
+import { cleanTempleAddress } from "../../domain/templeNav";
 import type { ChatPort, MapLocationPort } from "../../ports";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
@@ -384,6 +385,25 @@ function formatKm(km: number): string {
   return `${km.toFixed(1)} km`;
 }
 
+/**
+ * Format a minute count as an hours-and-minutes duration in the active language
+ * (e.g. 195 → 「約3時間15分」/ "about 3 h 15 min"). Under an hour it falls back
+ * to the minutes-only label; an exact hour omits the minutes part.
+ */
+function formatDuration(totalMinutes: number, t: (key: string) => string): string {
+  if (totalMinutes < 60) {
+    return t("progress.next.minutesUnit").replace("{min}", String(totalMinutes));
+  }
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  if (mins === 0) {
+    return t("progress.next.durationH").replace("{h}", String(hours));
+  }
+  return t("progress.next.durationHm")
+    .replace("{h}", String(hours))
+    .replace("{m}", String(mins));
+}
+
 function NextTempleCard({
   temple,
   estimate,
@@ -430,13 +450,17 @@ function NextTempleCard({
     estimate?.distanceKm != null ? formatKm(estimate.distanceKm) : "—";
   const carMin = estimate?.carMinutes ?? null;
   const walkMin = estimate?.walkMinutes ?? null;
+  // Prefer the AI-provided real address; fall back to the temple's own address
+  // with any development-only "（モックデータ）" marker stripped.
+  const address =
+    estimate?.address && estimate.address.trim() !== ""
+      ? estimate.address
+      : cleanTempleAddress(temple.address);
   // Prefer AI-provided highlights; fall back to the temple's own list.
   const highlights =
     estimate?.highlights && estimate.highlights.length > 0
       ? estimate.highlights
       : temple.highlights;
-  const minutes = (min: number): string =>
-    t("progress.next.minutesUnit").replace("{min}", String(min));
 
   return (
     <Card className="next-temple" data-testid="next-temple" blob raised>
@@ -453,7 +477,7 @@ function NextTempleCard({
         </span>
         {temple.name}
       </p>
-      <p className="next-temple__address">{temple.address}</p>
+      {address && <p className="next-temple__address">{address}</p>}
 
       <dl className="next-temple__facts">
         <div className="next-temple__fact">
@@ -465,13 +489,13 @@ function NextTempleCard({
         {carMin != null && (
           <div className="next-temple__fact">
             <dt>{t("map.detail.carTime")}</dt>
-            <dd>{minutes(carMin)}</dd>
+            <dd>{formatDuration(carMin, t)}</dd>
           </div>
         )}
         {walkMin != null && (
           <div className="next-temple__fact">
             <dt>{t("map.detail.walkTime")}</dt>
-            <dd>{minutes(walkMin)}</dd>
+            <dd>{formatDuration(walkMin, t)}</dd>
           </div>
         )}
       </dl>

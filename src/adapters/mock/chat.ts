@@ -19,7 +19,7 @@ import type {
   PlanStop,
   Spot,
 } from "../../ports";
-import { estimateLocalTempleNav } from "../../domain/templeNav";
+import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
 import { EHIME_SPOTS } from "./spots";
 
 /**
@@ -188,6 +188,7 @@ function localNavEstimate(input: NextTempleNavInput): NextTempleNavEstimate {
   const numbers = estimateLocalTempleNav(input.from, input.temple.location);
   return {
     ...numbers,
+    address: cleanTempleAddress(input.temple.address),
     highlights: input.temple.highlights ?? [],
     note: forLang(NAV_NOTE, input.lang ?? "ja"),
     aiGenerated: false,

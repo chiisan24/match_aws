@@ -46,6 +46,7 @@ interface NavResult {
   distanceKm: number | null;
   carMinutes: number | null;
   walkMinutes: number | null;
+  address: string;
   highlights: string[];
   note: string;
 }
@@ -80,6 +81,8 @@ export default async function handler(
       "『徒歩での所要時間(分)』を見積もってください。",
       "山道やアクセスの悪さも考慮し、直線距離より長めの道路距離になるのが自然です。",
       "出発地が不明(null)の場合は距離・時間は null にしてください。",
+      "address はその札所の実際の所在地（都道府県・市区町村・番地まで分かる範囲で）を記載してください。",
+      "『モックデータ』などの仮の表記は絶対に含めないこと。正確な住所が不明な場合は分かる範囲（市区町村まで）で構いません。",
       "highlights はその札所の代表的な見どころを2〜4個、簡潔に。",
       "note は現地アクセスや駐車・混雑などの短い注意・アドバイスを1〜2文で。",
       "",
@@ -87,7 +90,7 @@ export default async function handler(
       "現実的で保守的な値にしてください。",
       "",
       "出力は必ず次の JSON のみ（説明文やコードフェンス無し）:",
-      '{"distanceKm": 12.3, "carMinutes": 25, "walkMinutes": 160, "highlights": ["..."], "note": "..."}',
+      '{"distanceKm": 12.3, "carMinutes": 25, "walkMinutes": 160, "address": "...", "highlights": ["..."], "note": "..."}',
       "距離・時間が不明なときは該当フィールドを null に。",
     ].join("\n");
 
@@ -119,6 +122,8 @@ export default async function handler(
       distanceKm: num(parsed?.distanceKm) ?? straightLineKm,
       carMinutes: num(parsed?.carMinutes),
       walkMinutes: num(parsed?.walkMinutes),
+      address:
+        typeof parsed?.address === "string" ? parsed.address.trim() : "",
       highlights: Array.isArray(parsed?.highlights)
         ? parsed!.highlights!.filter((h) => typeof h === "string").slice(0, 4)
         : temple.highlights ?? [],

@@ -30,7 +30,7 @@ import type {
   Spot,
 } from "../../ports";
 import type { AwsEnv } from "../../config/env";
-import { estimateLocalTempleNav } from "../../domain/templeNav";
+import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
 import { EHIME_SPOTS } from "../mock/spots";
 import { EHIME_TEMPLES } from "../mock/temples";
 import { AWS_NOT_CONFIGURED } from "./not-configured";
@@ -49,6 +49,7 @@ interface NavApiResponse {
   distanceKm?: number | null;
   carMinutes?: number | null;
   walkMinutes?: number | null;
+  address?: string;
   highlights?: string[];
   note?: string;
 }
@@ -177,6 +178,7 @@ export class AwsChatAdapter implements ChatPort {
         );
       }
       const data = (await res.json()) as NavApiResponse;
+      const fallbackAddress = cleanTempleAddress(input.temple.address);
       return {
         distanceKm:
           typeof data.distanceKm === "number"
@@ -190,6 +192,10 @@ export class AwsChatAdapter implements ChatPort {
           typeof data.walkMinutes === "number"
             ? data.walkMinutes
             : local.walkMinutes,
+        address:
+          typeof data.address === "string" && data.address.trim() !== ""
+            ? data.address.trim()
+            : fallbackAddress,
         highlights: Array.isArray(data.highlights)
           ? data.highlights.filter((h) => typeof h === "string")
           : input.temple.highlights ?? [],
@@ -201,6 +207,7 @@ export class AwsChatAdapter implements ChatPort {
       // the 次の札所ナビ card always has figures (still shown as a 目安).
       return {
         ...local,
+        address: cleanTempleAddress(input.temple.address),
         highlights: input.temple.highlights ?? [],
         note: "",
         aiGenerated: false,

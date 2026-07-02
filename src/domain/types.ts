@@ -250,6 +250,12 @@ export interface NextTempleNavEstimate {
   carMinutes: number | null;
   /** Estimated walking time in minutes (null when unknown). */
   walkMinutes: number | null;
+  /**
+   * The temple's real postal/street address in the target language (best
+   * effort from the AI; may be empty when unavailable). Replaces the mock
+   * placeholder address shown on the 次の札所ナビ card.
+   */
+  address: string;
   /** 見どころ / highlights in the target language. */
   highlights: string[];
   /** Short access / advice note in the target language (may be empty). */

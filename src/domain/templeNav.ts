@@ -55,3 +55,17 @@ export function estimateLocalTempleNav(
     walkMinutes: Math.max(1, Math.round(roadMeters / WALK_METERS_PER_MIN)),
   };
 }
+
+/**
+ * Strips development-only markers (e.g. the "（モックデータ）" suffix on the mock
+ * temple dataset) from an address so a placeholder tag never surfaces in the
+ * UI. Returns a trimmed address, or an empty string when nothing usable remains.
+ * Pure and total.
+ */
+export function cleanTempleAddress(address: string | undefined): string {
+  if (!address) return "";
+  return address
+    // Full-width or half-width parenthesised "モックデータ" / "mock data" notes.
+    .replace(/[（(]\s*(?:モックデータ|mock\s*data)\s*[)）]/gi, "")
+    .trim();
+}
