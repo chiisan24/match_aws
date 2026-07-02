@@ -12,6 +12,7 @@
 
 import type { Temple } from "../../ports";
 import { TEMPLE_DETAILS } from "../../data/templeDetails";
+import { TEMPLE_GEO } from "../../data/templeGeo";
 
 /** Compact seed row; expanded into a full {@link Temple} below. */
 interface TempleSeed {
@@ -71,13 +72,18 @@ function toTemple(seed: TempleSeed): Temple {
   // temple without a curated entry still renders (Req: 説明・歴史・見どころ・
   // 写真スポットを実データへ差し替え).
   const detail = TEMPLE_DETAILS[number];
+  // Accurate coordinates + official address resolved from open geodata
+  // (OSM/GSI). Falls back to the approximate seed for any temple not yet
+  // covered, so pins are placed to match the real address (Req: 住所に合わせた
+  // 正確なピン).
+  const geo = TEMPLE_GEO[number];
   return {
     id: `ehime-${number}`,
     number,
     name,
     prefecture: "ehime",
-    location: { lat, lng },
-    address: `愛媛県${city}`,
+    location: geo ? { lat: geo.lat, lng: geo.lng } : { lat, lng },
+    address: geo?.address ?? `愛媛県${city}`,
     localizedDescriptions: {
       ja:
         detail?.descriptionJa ??
