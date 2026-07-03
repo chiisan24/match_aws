@@ -164,12 +164,24 @@ export interface ProgressState {
 
 /** Kind of information layer displayed on the map. */
 export type LayerKind =
+  // お遍路モードの重ねるマップ (Req 14)
   | "ohenro"
   | "cycling"
   | "gourmet"
   | "disaster"
   | "restroom"
-  | "rest_area";
+  | "rest_area"
+  // 通常観光モードの重ねるマップ — スポットのカテゴリ（Spot["category"] と一致）
+  | "sightseeing"
+  | "food"
+  | "souvenir"
+  | "onsen"
+  // 施設
+  | "parking"
+  // スワイプ連動のユーザーレイヤー（お気に入り / しおり / 後で見る）
+  | "favorite"
+  | "shiori"
+  | "later";
 
 /** A single feature placed on a map layer. */
 export interface MapFeature {

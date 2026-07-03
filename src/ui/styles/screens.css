@@ -2784,6 +2784,15 @@ textarea.nokyocho-field__control {
 .layered-map__pin--cycling { --layer-color: var(--color-teal-800); }
 .layered-map__pin--gourmet { --layer-color: var(--color-mikan-500); }
 .layered-map__pin--disaster { --layer-color: var(--color-danger); }
+/* 通常観光モードの重ねるマップ用レイヤー色 */
+.layered-map__pin--sightseeing { --layer-color: var(--color-teal-600); }
+.layered-map__pin--food { --layer-color: var(--color-mikan-500); }
+.layered-map__pin--onsen { --layer-color: var(--color-vermilion-500); }
+.layered-map__pin--souvenir { --layer-color: var(--color-moss-500); }
+.layered-map__pin--parking { --layer-color: var(--color-teal-800); }
+.layered-map__pin--favorite { --layer-color: #e4572e; border-radius: 999px 999px 4px 999px; }
+.layered-map__pin--shiori { --layer-color: var(--color-teal-500); }
+.layered-map__pin--later { --layer-color: #9b8ccb; }
 
 /* Hazard zone behind the disaster pins (Req 14.5). */
 .layered-map__zone {

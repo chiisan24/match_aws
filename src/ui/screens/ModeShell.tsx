@@ -56,8 +56,9 @@ const TAB_META: Record<AppMode, TabMeta[]> = {
   tourism: [
     { id: TOURISM_TABS[0], navKey: "nav.tourism.chat", panelKey: "panel.tourism.chat.title", icon: "💬", motif: "spot" },
     { id: TOURISM_TABS[1], navKey: "nav.tourism.swipe", panelKey: "panel.tourism.swipe.title", icon: "🃏", motif: "spot" },
-    { id: TOURISM_TABS[2], navKey: "nav.tourism.favorites", panelKey: "panel.tourism.favorites.title", icon: "♥", motif: "mikan" },
-    { id: TOURISM_TABS[3], navKey: "nav.tourism.shiori", panelKey: "panel.tourism.shiori.title", icon: "📖", motif: "spot" },
+    { id: TOURISM_TABS[2], navKey: "nav.tourism.map", panelKey: "panel.tourism.map.title", icon: "🗺️", motif: "spot" },
+    { id: TOURISM_TABS[3], navKey: "nav.tourism.favorites", panelKey: "panel.tourism.favorites.title", icon: "♥", motif: "mikan" },
+    { id: TOURISM_TABS[4], navKey: "nav.tourism.shiori", panelKey: "panel.tourism.shiori.title", icon: "📖", motif: "spot" },
   ],
   pilgrimage: [
     { id: PILGRIMAGE_TABS[0], navKey: "nav.pilgrimage.home", panelKey: "panel.pilgrimage.home.title", icon: "🏠", motif: "temple" },
@@ -110,7 +111,7 @@ export function ModeShell({ onOpenSettings, map, chat, storage }: ModeShellProps
 
       <div className="mode-shell__content" role="region" aria-label={t(active.navKey)}>
         {tourismRenderer ? (
-          tourismRenderer({ goToTab: (id) => setTab(id) })
+          tourismRenderer({ goToTab: (id) => setTab(id), map })
         ) : pilgrimageRenderer ? (
           pilgrimageRenderer({ goToTab: (id) => setTab(id), map, chat, storage })
         ) : (

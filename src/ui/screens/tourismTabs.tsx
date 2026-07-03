@@ -23,15 +23,19 @@
 import type { ReactNode } from "react";
 
 import type { TourismTab } from "../../app/modeManager";
+import type { MapLocationPort } from "../../ports";
 import { ChatAdvisor } from "./ChatAdvisor";
 import { SwipeDeck } from "./SwipeDeck";
 import { FavoritesView } from "./FavoritesView";
 import { ShioriEditor } from "./ShioriEditor";
+import { TourismLayeredMap } from "./TourismLayeredMap";
 
 /** Context handed to each tourism tab renderer. */
 export interface TourismTabContext {
   /** Switch the active tourism tab (e.g. hand off chat → swipe). */
   goToTab: (tab: TourismTab) => void;
+  /** Map/location backend for the 重ねるマップ tab (inject `gateway.map`). */
+  map: MapLocationPort;
 }
 
 /** A function that renders the content for a tourism tab. */
@@ -49,6 +53,7 @@ export const TOURISM_TAB_CONTENT: Partial<
   swipe: ({ goToTab }) => (
     <SwipeDeck onBackToChat={() => goToTab("chat")} />
   ),
+  map: ({ map }) => <TourismLayeredMap map={map} />,
   favorites: () => <FavoritesView />,
   shiori: () => <ShioriEditor />,
 };

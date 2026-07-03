@@ -2411,3 +2411,68 @@ UI_LABELS["image.generating"] = {
   ar: "جارٍ إنشاء الصورة…",
   iyo: "写真を作りよるけん…",
 };
+
+// ---- 通常観光モード 重ねるマップ / TourismLayeredMap -----------------------
+UI_LABELS["nav.tourism.map"] = {
+  ja: "マップ",
+  en: "Map",
+  "zh-Hans": "地图",
+  ko: "지도",
+  fr: "Carte",
+  ar: "خريطة",
+  iyo: "マップ",
+};
+UI_LABELS["panel.tourism.map.title"] = {
+  ja: "重ねるマップ",
+  en: "Layered map",
+  iyo: "重ねるマップ",
+};
+UI_LABELS["tlmap.title"] = {
+  ja: "重ねるマップ",
+  en: "Layered map",
+  iyo: "重ねるマップ",
+};
+UI_LABELS["tlmap.lead"] = {
+  ja: "観光・グルメ・トイレ・お気に入りなどを1枚の地図に重ねて表示。スワイプで登録した場所もそのままピンになります。",
+  en: "Overlay sightseeing, food, restrooms and your swiped favorites on one map.",
+  iyo: "観光もグルメもトイレもお気に入りも、1枚の地図に重ねられるけん。",
+};
+UI_LABELS["tlmap.group.spots"] = { ja: "スポット", en: "Spots", iyo: "スポット" };
+UI_LABELS["tlmap.group.facility"] = { ja: "施設", en: "Facilities", iyo: "施設" };
+UI_LABELS["tlmap.group.yours"] = { ja: "あなたのリスト", en: "Your lists", iyo: "あんたのリスト" };
+UI_LABELS["tlmap.group.yoursTag"] = { ja: "スワイプ連動", en: "from swipes", iyo: "スワイプ連動" };
+
+UI_LABELS["tlmap.layer.sightseeing"] = { ja: "観光スポット", en: "Sightseeing", iyo: "観光スポット" };
+UI_LABELS["tlmap.layer.food"] = { ja: "グルメ", en: "Food", iyo: "グルメ" };
+UI_LABELS["tlmap.layer.onsen"] = { ja: "温泉", en: "Onsen", iyo: "温泉" };
+UI_LABELS["tlmap.layer.souvenir"] = { ja: "おみやげ", en: "Souvenirs", iyo: "おみやげ" };
+UI_LABELS["tlmap.layer.restroom"] = { ja: "トイレ", en: "Restrooms", iyo: "トイレ" };
+UI_LABELS["tlmap.layer.parking"] = { ja: "駐車場", en: "Parking", iyo: "駐車場" };
+UI_LABELS["tlmap.layer.rest_area"] = { ja: "休憩所・道の駅", en: "Rest areas", iyo: "休憩所・道の駅" };
+UI_LABELS["tlmap.layer.favorite"] = { ja: "お気に入り", en: "Favorites", iyo: "お気に入り" };
+UI_LABELS["tlmap.layer.shiori"] = { ja: "しおり", en: "Itinerary", iyo: "しおり" };
+UI_LABELS["tlmap.layer.later"] = { ja: "後で見る", en: "Later", iyo: "後で見る" };
+
+UI_LABELS["tlmap.purpose.label"] = { ja: "目的から重ねる", en: "Overlay by purpose", iyo: "目的から重ねる" };
+UI_LABELS["tlmap.purpose.standard"] = { ja: "定番観光", en: "Classic tour", iyo: "定番観光" };
+UI_LABELS["tlmap.purpose.gourmet"] = { ja: "食べ歩き", en: "Food trip", iyo: "食べ歩き" };
+UI_LABELS["tlmap.purpose.mine"] = { ja: "お気に入りを巡る", en: "My picks", iyo: "お気に入りを巡る" };
+
+UI_LABELS["tlmap.loading"] = { ja: "地図を読み込んでいます…", en: "Loading map…", iyo: "地図を読み込みよるけん…" };
+UI_LABELS["tlmap.countShown"] = {
+  // {count} replaced at render time.
+  ja: "{count}件を重ねて表示中",
+  en: "Showing {count} places",
+  iyo: "{count}件を重ねて表示しよるよ",
+};
+UI_LABELS["tlmap.empty"] = {
+  ja: "表示するレイヤーを選んでください。",
+  en: "Turn on a layer to see places.",
+  iyo: "表示するレイヤーを選んでや。",
+};
+UI_LABELS["tlmap.candidates.title"] = { ja: "近い組み合わせ（周遊候補）", en: "Nearby combos", iyo: "近い組み合わせ" };
+UI_LABELS["tlmap.candidates.lead"] = {
+  ja: "有効なレイヤーから、近くにまとまっている場所を提案します。",
+  en: "Suggested clusters across your active layers.",
+  iyo: "有効なレイヤーから、近くにまとまっとる場所を出すけん。",
+};

@@ -26,6 +26,8 @@ export { MockImageAdapter } from "./image";
 export { EHIME_TEMPLES } from "./temples";
 export { EHIME_SPOTS } from "./spots";
 export { buildLayerFeatures } from "./layers";
+export { buildTourismLayerFeatures } from "./tourismLayers";
+export type { TourismCollections } from "./tourismLayers";
 
 /**
  * Builds the mock-backed gateway — the default backend when no AWS connection
