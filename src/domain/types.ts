@@ -69,6 +69,10 @@ export interface Spot {
   popularityRank?: number;
   reviews: Review[];
   imageUrls: string[]; // プレースホルダー
+  /** 営業時間 (OSM `opening_hours` 由来。無ければ undefined)。 */
+  openingHours?: string;
+  /** 公式サイト URL (OSM `website` 由来。無ければ undefined)。 */
+  website?: string;
 }
 
 /** A user review attached to a spot. */
@@ -164,12 +168,24 @@ export interface ProgressState {
 
 /** Kind of information layer displayed on the map. */
 export type LayerKind =
+  // お遍路モードの重ねるマップ (Req 14)
   | "ohenro"
   | "cycling"
   | "gourmet"
   | "disaster"
   | "restroom"
-  | "rest_area";
+  | "rest_area"
+  // 通常観光モードの重ねるマップ — スポットのカテゴリ（Spot["category"] と一致）
+  | "sightseeing"
+  | "food"
+  | "souvenir"
+  | "onsen"
+  // 施設
+  | "parking"
+  // スワイプ連動のユーザーレイヤー（お気に入り / しおり / 後で見る）
+  | "favorite"
+  | "shiori"
+  | "later";
 
 /** A single feature placed on a map layer. */
 export interface MapFeature {
@@ -177,6 +193,8 @@ export interface MapFeature {
   layer: LayerKind;
   location: GeoPoint;
   label: string;
+  /** Underlying spot id when this feature came from a {@link Spot} (for detail lookup). */
+  spotId?: string;
 }
 
 /** A geofence around a temple. Default radius 100m. */

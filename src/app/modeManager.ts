@@ -34,6 +34,7 @@ export interface ModeState {
 export const TOURISM_TABS = [
   "chat",
   "swipe",
+  "map",
   "favorites",
   "shiori",
 ] as const;
