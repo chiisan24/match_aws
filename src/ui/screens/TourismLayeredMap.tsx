@@ -22,7 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 import { EHIME_SPOTS, buildTourismLayerFeatures } from "../../adapters/mock";
 import { filterByLayers } from "../../domain/layers";
 import { haversineDistanceMeters } from "../../domain/geofence";
-import type { GeoPoint, LayerKind, MapFeature } from "../../domain/types";
+import type { GeoPoint, LayerKind, MapFeature, Spot } from "../../domain/types";
 import type { MapLocationPort } from "../../ports";
 import { useTourism } from "../../app/TourismContext";
 import { useI18n } from "../../i18n";
@@ -86,6 +86,16 @@ const DEFAULT_ACTIVE: LayerKind[] = ["sightseeing", "restroom", "favorite"];
 const CANDIDATE_RADIUS_METERS = 6_000;
 const MAX_CANDIDATES = 3;
 
+/** Rough travel-time estimates (metres per minute) for the access box. */
+const CAR_METERS_PER_MIN = 500; // ~30 km/h
+const WALK_METERS_PER_MIN = 80; // ~4.8 km/h
+
+/** Human-readable distance: metres under 1 km, otherwise one-decimal km. */
+function formatDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(1)} km`;
+}
+
 interface TouringCandidate {
   anchor: MapFeature;
   companions: MapFeature[];
@@ -144,6 +154,14 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
     () => new Set<LayerKind>(DEFAULT_ACTIVE),
   );
   const [activePurpose, setActivePurpose] = useState<string | null>(null);
+  // The feature whose detail panel is open (null = none).
+  const [selected, setSelected] = useState<MapFeature | null>(null);
+
+  // Spot lookup by id, for resolving a pin back to its full spot detail.
+  const spotById = useMemo<Map<string, Spot>>(
+    () => new Map(EHIME_SPOTS.map((s) => [s.id, s] as const)),
+    [],
+  );
 
   // Current location for bounds + "you are here" (mock by default — Req 8.5).
   useEffect(() => {
@@ -180,11 +198,15 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
     [allFeatures, activeLayers],
   );
 
+  // Fit the initial view to what's actually shown (not the whole prefecture),
+  // so the map doesn't zoom out to a near-empty overview. Falls back to all
+  // features when nothing is active yet.
   const boundsPoints = useMemo<GeoPoint[]>(() => {
-    const points: GeoPoint[] = allFeatures.map((f) => f.location);
+    const source = visibleFeatures.length > 0 ? visibleFeatures : allFeatures;
+    const points: GeoPoint[] = source.map((f) => f.location);
     if (current) points.push(current);
     return points;
-  }, [allFeatures, current]);
+  }, [visibleFeatures, allFeatures, current]);
 
   const candidates = useMemo<TouringCandidate[]>(
     () => buildTouringCandidates(visibleFeatures, activeLayers),
@@ -249,38 +271,57 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
             {t("tlmap.countShown").replace("{count}", String(visibleFeatures.length))}
           </p>
 
-          <MapCanvas
-            className="layered-map__surface"
-            testId="tourism-layered-map-surface"
-            ariaLabel={t("tlmap.title")}
-            items={visibleFeatures}
-            boundsPoints={boundsPoints}
-            current={current}
-            renderCurrent={(style) => (
-              <span
-                className="layered-map__here"
-                data-testid="current-location-marker"
-                style={style}
-                aria-label={t("map.youAreHere")}
-                title={t("map.currentLocation")}
+          <div className={"tlmap-mapwrap" + (selected ? " tlmap-mapwrap--split" : "")}>
+            <div className="tlmap-mapwrap__map">
+              <MapCanvas
+                className="layered-map__surface"
+                testId="tourism-layered-map-surface"
+                ariaLabel={t("tlmap.title")}
+                items={visibleFeatures}
+                boundsPoints={boundsPoints}
+                current={current}
+                renderCurrent={(style) => (
+                  <span
+                    className="layered-map__here"
+                    data-testid="current-location-marker"
+                    style={style}
+                    aria-label={t("map.youAreHere")}
+                    title={t("map.currentLocation")}
+                  />
+                )}
+                renderItem={(f, style) => (
+                  <button
+                    type="button"
+                    className={
+                      `layered-map__pin layered-map__pin--${f.layer}` +
+                      (selected?.id === f.id ? " layered-map__pin--selected" : "")
+                    }
+                    data-testid="layer-pin"
+                    data-layer={f.layer}
+                    style={style}
+                    title={f.label}
+                    aria-label={f.label}
+                    onClick={() => setSelected(f)}
+                  />
+                )}
+              >
+                {visibleFeatures.length === 0 && (
+                  <p className="layered-map__empty">{t("tlmap.empty")}</p>
+                )}
+              </MapCanvas>
+              <p className="layered-map__attribution">{t("tlmap.attribution")}</p>
+            </div>
+
+            {selected && (
+              <SpotDetailPanel
+                feature={selected}
+                spot={selected.spotId ? spotById.get(selected.spotId) : undefined}
+                current={current}
+                onClose={() => setSelected(null)}
+                t={t}
               />
             )}
-            renderItem={(f, style) => (
-              <span
-                className={`layered-map__pin layered-map__pin--${f.layer}`}
-                data-testid="layer-pin"
-                data-layer={f.layer}
-                style={style}
-                title={f.label}
-                aria-label={f.label}
-                role="img"
-              />
-            )}
-          >
-            {visibleFeatures.length === 0 && (
-              <p className="layered-map__empty">{t("tlmap.empty")}</p>
-            )}
-          </MapCanvas>
+          </div>
 
           <TouringCandidates candidates={candidates} t={t} />
         </>
@@ -339,6 +380,95 @@ function LayerGroup({ legend, layers, activeSet, countByLayer, onToggle, t, note
 // ---------------------------------------------------------------------------
 // Cross-attribute touring candidates
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Spot detail panel — 3 small info boxes (access / hours / website)
+// ---------------------------------------------------------------------------
+
+interface SpotDetailPanelProps {
+  feature: MapFeature;
+  spot?: Spot;
+  current: GeoPoint | null;
+  onClose: () => void;
+  t: (key: string) => string;
+}
+
+function SpotDetailPanel({ feature, spot, current, onClose, t }: SpotDetailPanelProps): JSX.Element {
+  const meters = current ? haversineDistanceMeters(current, feature.location) : null;
+  const distance = meters != null ? formatDistance(meters) : null;
+  const carMin = meters != null ? Math.max(1, Math.round(meters / CAR_METERS_PER_MIN)) : null;
+  const walkMin = meters != null ? Math.max(1, Math.round(meters / WALK_METERS_PER_MIN)) : null;
+
+  // 現在地から目的地への経路（地図アプリ）。現在地不明なら目的地表示のみ。
+  const routeUrl = current
+    ? `https://www.google.com/maps/dir/?api=1&origin=${current.lat},${current.lng}&destination=${feature.location.lat},${feature.location.lng}`
+    : `https://www.google.com/maps/search/?api=1&query=${feature.location.lat},${feature.location.lng}`;
+
+  return (
+    <Card className="tspot-detail" data-testid="tspot-detail" raised>
+      <div className="tspot-detail__head">
+        <div className="tspot-detail__title">
+          <p className="tspot-detail__name">{spot?.name ?? feature.label}</p>
+          <Tag tone="teal">{t(`tlmap.layer.${feature.layer}`)}</Tag>
+        </div>
+        <button
+          type="button"
+          className="tspot-detail__close"
+          aria-label={t("tlmap.detail.close")}
+          onClick={onClose}
+        >
+          ×
+        </button>
+      </div>
+
+      {spot?.localizedDescriptions.ja && (
+        <p className="tspot-detail__desc">{spot.localizedDescriptions.ja}</p>
+      )}
+
+      <div className="tspot-detail__boxes">
+        {/* 現在地からのアクセス */}
+        <div className="tspot-detail__box" data-testid="tspot-detail-access">
+          <span className="tspot-detail__box-label">🧭 {t("tlmap.detail.access")}</span>
+          {distance != null ? (
+            <>
+              <span className="tspot-detail__box-value">{distance}</span>
+              <span className="tspot-detail__box-sub">
+                {t("tlmap.detail.carWalk")
+                  .replace("{car}", String(carMin))
+                  .replace("{walk}", String(walkMin))}
+              </span>
+            </>
+          ) : (
+            <span className="tspot-detail__box-sub">{t("tlmap.detail.noLocation")}</span>
+          )}
+          <a className="tspot-detail__link" href={routeUrl} target="_blank" rel="noopener noreferrer">
+            {t("tlmap.detail.route")}
+          </a>
+        </div>
+
+        {/* 営業時間 */}
+        <div className="tspot-detail__box" data-testid="tspot-detail-hours">
+          <span className="tspot-detail__box-label">🕒 {t("tlmap.detail.hours")}</span>
+          <span className="tspot-detail__box-value tspot-detail__box-value--sm">
+            {spot?.openingHours ?? t("tlmap.detail.noInfo")}
+          </span>
+        </div>
+
+        {/* ホームページ */}
+        <div className="tspot-detail__box" data-testid="tspot-detail-website">
+          <span className="tspot-detail__box-label">🌐 {t("tlmap.detail.website")}</span>
+          {spot?.website ? (
+            <a className="tspot-detail__link" href={spot.website} target="_blank" rel="noopener noreferrer">
+              {t("tlmap.detail.openSite")}
+            </a>
+          ) : (
+            <span className="tspot-detail__box-sub">{t("tlmap.detail.noInfo")}</span>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 function TouringCandidates({ candidates, t }: { candidates: TouringCandidate[]; t: (k: string) => string }): JSX.Element | null {
   if (candidates.length === 0) return null;

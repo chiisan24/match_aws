@@ -21,8 +21,6 @@ import { writeFile } from "node:fs/promises";
 const here = dirname(fileURLToPath(import.meta.url));
 const outFile = join(here, "..", "src", "adapters", "mock", "ehime-spots.generated.ts");
 
-// Ehime bounding box (S, W, N, E) — approx.
-const BBOX = "32.90,132.00,34.35,133.70";
 const ENDPOINTS = [
   "https://overpass-api.de/api/interpreter",
   "https://overpass.private.coffee/api/interpreter",
@@ -30,22 +28,48 @@ const ENDPOINTS = [
   "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ];
 
+// Constrain strictly to the 愛媛県 administrative boundary (admin_level=4),
+// so neighbouring prefectures / islands across the sea are excluded.
 const query = `
-[out:json][timeout:90];
+[out:json][timeout:120];
+area["name"="愛媛県"]["boundary"="administrative"]["admin_level"="4"]->.ehime;
 (
-  nwr["amenity"~"^(restaurant|cafe|fast_food)$"]["name"](${BBOX});
-  nwr["tourism"~"^(attraction|museum|viewpoint|zoo|theme_park|gallery|aquarium|artwork)$"]["name"](${BBOX});
-  nwr["historic"~"^(castle|monument|ruins|memorial)$"]["name"](${BBOX});
-  nwr["natural"~"^(peak|beach)$"]["name"](${BBOX});
-  nwr["shop"~"^(gift|souvenir|confectionery)$"]["name"](${BBOX});
-  nwr["amenity"="public_bath"]["name"](${BBOX});
-  nwr["leisure"="spa"]["name"](${BBOX});
+  nwr["amenity"~"^(restaurant|cafe|fast_food)$"]["name"](area.ehime);
+  nwr["tourism"~"^(attraction|museum|viewpoint|zoo|theme_park|gallery|aquarium|artwork)$"]["name"](area.ehime);
+  nwr["historic"~"^(castle|monument|ruins|memorial)$"]["name"](area.ehime);
+  nwr["natural"~"^(peak|beach)$"]["name"](area.ehime);
+  nwr["shop"~"^(gift|souvenir|confectionery)$"]["name"](area.ehime);
+  nwr["amenity"="public_bath"]["name"](area.ehime);
+  nwr["leisure"="spa"]["name"](area.ehime);
 );
 out center tags;
 `;
 
-/** Per-category caps so the dataset stays reasonable but rich. */
-const CAPS = { food: 260, sightseeing: 180, onsen: 60, souvenir: 50 };
+/**
+ * Per-category caps. Tourism attractions (観光地) are the focus, so sightseeing
+ * dominates; ordinary restaurants are kept but secondary.
+ */
+const CAPS = { sightseeing: 300, onsen: 80, souvenir: 60, food: 120 };
+
+/**
+ * 愛媛の郷土料理・名物キーワード。food（飲食店）はこれに名前が一致する店だけを
+ * グルメレイヤーに載せる（普通の飲食店は除外）。
+ */
+const LOCAL_FOOD = /(鯛めし|鯛飯|たいめし|タイメシ|みかん|ミカン|蜜柑|柑橘|ポンジュース|三津浜焼|みつはま|三津浜|焼豚玉子飯|今治焼豚|じゃこ天|じゃこ|鍋焼きうどん|五色そうめん|そうめん|八幡浜ちゃんぽん|ちゃんぽん|さつま汁|削りかまぼこ|かまぼこ|蒲鉾|労研饅頭|労研|母恵夢|タルト|ぽん菓子|芋炊き|郷土料理)/i;
+
+/** Build a searchable haystack from the tags OSM most often carries. */
+function foodHaystack(tags) {
+  return [
+    tags.name,
+    tags["name:ja"],
+    tags.cuisine,
+    tags.description,
+    tags["description:ja"],
+    tags.brand,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
 
 /** Decide the app category from OSM tags (precedence matters). */
 function categorize(tags) {
@@ -100,7 +124,11 @@ async function overpass() {
 }
 
 function esc(s) {
-  return String(s).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return String(s)
+    .replace(/[\r\n]+/g, " ")
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .trim();
 }
 
 async function run() {
@@ -118,6 +146,8 @@ async function run() {
     if (!name) continue;
     const cat = categorize(tags);
     if (!cat) continue;
+    // グルメは愛媛の郷土料理・名物の店だけに絞る（普通の飲食店は除外）。
+    if (cat === "food" && !LOCAL_FOOD.test(foodHaystack(tags))) continue;
     const loc = coordsOf(el);
     if (!loc) continue;
 
@@ -129,13 +159,18 @@ async function run() {
     if (byCat[cat].length >= CAPS[cat]) continue;
 
     const nameEn = tags["name:en"];
+    const website = tags.website || tags["contact:website"] || tags.url || undefined;
+    // Prefer a real attraction description from OSM; fall back to name-based.
+    const desc = tags["description:ja"] || tags.description || undefined;
     byCat[cat].push({
       id: `osm-${el.type}-${el.id}`,
       name,
       category: cat,
       location: { lat: Number(loc.lat.toFixed(6)), lng: Number(loc.lng.toFixed(6)) },
-      ja: `${name}（${CATEGORY_JA[cat]}）`,
+      ja: desc ? desc : `${name}（${CATEGORY_JA[cat]}）`,
       en: nameEn ? `${nameEn} (${cat})` : undefined,
+      openingHours: tags.opening_hours || undefined,
+      website: website && /^https?:\/\//.test(website) ? website : undefined,
     });
   }
 
@@ -149,7 +184,7 @@ async function run() {
       const desc = s.en
         ? `    localizedDescriptions: { ja: "${esc(s.ja)}", en: "${esc(s.en)}" },`
         : `    localizedDescriptions: { ja: "${esc(s.ja)}" },`;
-      return [
+      const lines = [
         "  {",
         `    id: "${esc(s.id)}",`,
         `    name: "${esc(s.name)}",`,
@@ -158,8 +193,11 @@ async function run() {
         desc,
         "    reviews: [],",
         "    imageUrls: [],",
-        "  },",
-      ].join("\n");
+      ];
+      if (s.openingHours) lines.push(`    openingHours: "${esc(s.openingHours)}",`);
+      if (s.website) lines.push(`    website: "${esc(s.website)}",`);
+      lines.push("  },");
+      return lines.join("\n");
     })
     .join("\n");
 

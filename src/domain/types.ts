@@ -69,6 +69,10 @@ export interface Spot {
   popularityRank?: number;
   reviews: Review[];
   imageUrls: string[]; // プレースホルダー
+  /** 営業時間 (OSM `opening_hours` 由来。無ければ undefined)。 */
+  openingHours?: string;
+  /** 公式サイト URL (OSM `website` 由来。無ければ undefined)。 */
+  website?: string;
 }
 
 /** A user review attached to a spot. */
@@ -189,6 +193,8 @@ export interface MapFeature {
   layer: LayerKind;
   location: GeoPoint;
   label: string;
+  /** Underlying spot id when this feature came from a {@link Spot} (for detail lookup). */
+  spotId?: string;
 }
 
 /** A geofence around a temple. Default radius 100m. */

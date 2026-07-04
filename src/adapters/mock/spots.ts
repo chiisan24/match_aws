@@ -14,4 +14,13 @@
  * To refresh the data: `node scripts/fetch-spots.mjs`.
  */
 
-export { EHIME_SPOTS } from "./ehime-spots.generated";
+import type { Spot } from "../../ports";
+import { EHIME_SPOTS as GENERATED } from "./ehime-spots.generated";
+import { EHIME_FOOD_CURATED } from "./ehime-food.curated";
+
+/**
+ * The full spot catalogue: real OSM data (attractions, onsen, souvenirs, and a
+ * few local-food matches) plus a curated set of well-known Ehime 郷土料理 shops
+ * so the グルメ layer represents 鯛めし・三津浜焼き・焼豚玉子飯・みかん 等.
+ */
+export const EHIME_SPOTS: Spot[] = [...GENERATED, ...EHIME_FOOD_CURATED];

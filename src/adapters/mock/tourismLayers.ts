@@ -75,6 +75,7 @@ function collectionToFeatures(
     layer,
     location: { ...s.location },
     label: s.name,
+    spotId: s.id,
   }));
 }
 
@@ -100,6 +101,7 @@ export function buildTourismLayerFeatures(
       layer: spot.category,
       location: { ...spot.location },
       label: spot.name,
+      spotId: spot.id,
     });
   }
 

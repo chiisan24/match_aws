@@ -2476,3 +2476,25 @@ UI_LABELS["tlmap.candidates.lead"] = {
   en: "Suggested clusters across your active layers.",
   iyo: "有効なレイヤーから、近くにまとまっとる場所を出すけん。",
 };
+
+UI_LABELS["tlmap.attribution"] = {
+  ja: "地点データ © OpenStreetMap contributors（ODbL）",
+  en: "Place data © OpenStreetMap contributors (ODbL)",
+  iyo: "地点データ © OpenStreetMap contributors（ODbL）",
+};
+
+// ---- 観光スポット詳細パネル (TourismLayeredMap の選択時) ------------------
+UI_LABELS["tlmap.detail.access"] = { ja: "現在地からのアクセス", en: "Access from here", iyo: "現在地からのアクセス" };
+UI_LABELS["tlmap.detail.hours"] = { ja: "営業時間", en: "Opening hours", iyo: "営業時間" };
+UI_LABELS["tlmap.detail.website"] = { ja: "ホームページ", en: "Website", iyo: "ホームページ" };
+UI_LABELS["tlmap.detail.noInfo"] = { ja: "情報なし", en: "No info", iyo: "情報なし" };
+UI_LABELS["tlmap.detail.noLocation"] = { ja: "現在地が取得できません", en: "Location unavailable", iyo: "現在地が取れんかった" };
+UI_LABELS["tlmap.detail.route"] = { ja: "経路を見る", en: "See route", iyo: "経路を見る" };
+UI_LABELS["tlmap.detail.openSite"] = { ja: "サイトを開く", en: "Open site", iyo: "サイトを開く" };
+UI_LABELS["tlmap.detail.close"] = { ja: "閉じる", en: "Close", iyo: "閉じる" };
+UI_LABELS["tlmap.detail.carWalk"] = {
+  // {car} / {walk} replaced at render time.
+  ja: "車 約{car}分 / 徒歩 約{walk}分",
+  en: "Car ~{car} min / Walk ~{walk} min",
+  iyo: "車 約{car}分 / 歩き 約{walk}分",
+};
