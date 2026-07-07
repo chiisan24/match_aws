@@ -14,17 +14,19 @@
  * (Property 25). Purpose presets activate a sensible combination.
  *
  * The {@link MapLocationPort} is injected as a prop (for 現在地) so the screen
- * stays testable; spots come from the curated {@link EHIME_SPOTS} catalogue.
+ * stays testable; spots come from the {@link useSpots} store (seeded from the
+ * real EHIME_SPOTS catalogue, growable at runtime via the add-spot form).
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
-import { EHIME_SPOTS, buildTourismLayerFeatures } from "../../adapters/mock";
+import { buildTourismLayerFeatures } from "../../adapters/mock";
 import { filterByLayers } from "../../domain/layers";
 import { haversineDistanceMeters } from "../../domain/geofence";
 import type { GeoPoint, LayerKind, MapFeature, Spot } from "../../domain/types";
 import type { MapLocationPort } from "../../ports";
 import { useTourism } from "../../app/TourismContext";
+import { useSpots, type NewSpotInput } from "../../app/SpotContext";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -146,6 +148,7 @@ function buildTouringCandidates(
 export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element {
   const { t } = useI18n();
   const { favorites, shiori, later } = useTourism();
+  const { spots, addSpot } = useSpots();
 
   const [current, setCurrent] = useState<GeoPoint | null>(null);
   const [loading, setLoading] = useState(true);
@@ -156,11 +159,14 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
   const [activePurpose, setActivePurpose] = useState<string | null>(null);
   // The feature whose detail panel is open (null = none).
   const [selected, setSelected] = useState<MapFeature | null>(null);
+  // Add-spot form visibility + a transient "added" confirmation message.
+  const [addOpen, setAddOpen] = useState(false);
+  const [addedName, setAddedName] = useState<string | null>(null);
 
   // Spot lookup by id, for resolving a pin back to its full spot detail.
   const spotById = useMemo<Map<string, Spot>>(
-    () => new Map(EHIME_SPOTS.map((s) => [s.id, s] as const)),
-    [],
+    () => new Map(spots.map((s) => [s.id, s] as const)),
+    [spots],
   );
 
   // Current location for bounds + "you are here" (mock by default — Req 8.5).
@@ -184,8 +190,8 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
 
   // All features across every layer — spots + facilities + swipe-driven lists.
   const allFeatures = useMemo<MapFeature[]>(
-    () => buildTourismLayerFeatures(EHIME_SPOTS, { favorites, shiori, later }),
-    [favorites, shiori, later],
+    () => buildTourismLayerFeatures(spots, { favorites, shiori, later }),
+    [spots, favorites, shiori, later],
   );
 
   const activeLayers = useMemo<LayerKind[]>(
@@ -235,6 +241,17 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
     setActiveSet(turningOff ? new Set(DEFAULT_ACTIVE) : new Set(preset.layers));
   };
 
+  const handleAddSpot = (input: NewSpotInput): void => {
+    void (async () => {
+      const spot = await addSpot(input);
+      setAddedName(spot.name);
+      setAddOpen(false);
+      // Make sure the layer the new spot lives on is visible so the pin shows.
+      setActivePurpose(null);
+      setActiveSet((prev) => new Set(prev).add(spot.category));
+    })();
+  };
+
   return (
     <section className="layered-map" aria-labelledby="tourism-layered-map-heading">
       <SectionHeader
@@ -261,6 +278,28 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
             );
           })}
         </div>
+      </div>
+
+      <div className="layered-map__add" data-testid="tourism-add-spot">
+        <Button
+          variant={addOpen ? "primary" : "ghost"}
+          size="sm"
+          aria-expanded={addOpen}
+          onClick={() => {
+            setAddedName(null);
+            setAddOpen((v) => !v);
+          }}
+        >
+          {addOpen ? t("tlmap.add.cancel") : t("tlmap.add.toggle")}
+        </Button>
+        {addedName && !addOpen && (
+          <span className="layered-map__add-done" role="status">
+            {t("tlmap.add.done").replace("{name}", addedName)}
+          </span>
+        )}
+        {addOpen && (
+          <AddSpotForm current={current} onSubmit={handleAddSpot} t={t} />
+        )}
       </div>
 
       {loading ? (
@@ -466,6 +505,165 @@ function SpotDetailPanel({ feature, spot, current, onClose, t }: SpotDetailPanel
           )}
         </div>
       </div>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Add-spot form — runtime-add a spot (Step 0: in-memory via SpotContext)
+// ---------------------------------------------------------------------------
+
+const ADD_CATEGORIES: { value: Spot["category"]; labelKey: string }[] = [
+  { value: "sightseeing", labelKey: "tlmap.layer.sightseeing" },
+  { value: "food", labelKey: "tlmap.layer.food" },
+  { value: "onsen", labelKey: "tlmap.layer.onsen" },
+  { value: "souvenir", labelKey: "tlmap.layer.souvenir" },
+];
+
+interface AddSpotFormProps {
+  current: GeoPoint | null;
+  onSubmit: (input: NewSpotInput) => void;
+  t: (key: string) => string;
+}
+
+function AddSpotForm({ current, onSubmit, t }: AddSpotFormProps): JSX.Element {
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState<Spot["category"]>("sightseeing");
+  const [lat, setLat] = useState("");
+  const [lng, setLng] = useState("");
+  const [website, setWebsite] = useState("");
+  const [hours, setHours] = useState("");
+  const [desc, setDesc] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const useCurrent = (): void => {
+    if (!current) {
+      setError(t("tlmap.add.noCurrent"));
+      return;
+    }
+    setLat(current.lat.toFixed(6));
+    setLng(current.lng.toFixed(6));
+    setError(null);
+  };
+
+  const submit = (e: FormEvent): void => {
+    e.preventDefault();
+    if (!name.trim()) {
+      setError(t("tlmap.add.errorName"));
+      return;
+    }
+    const latN = Number(lat);
+    const lngN = Number(lng);
+    if (!lat.trim() || !lng.trim() || Number.isNaN(latN) || Number.isNaN(lngN)) {
+      setError(t("tlmap.add.errorLatLng"));
+      return;
+    }
+    setError(null);
+    onSubmit({
+      name,
+      category,
+      location: { lat: latN, lng: lngN },
+      website: website.trim() || undefined,
+      openingHours: hours.trim() || undefined,
+      descriptionJa: desc.trim() || undefined,
+    });
+  };
+
+  return (
+    <Card className="add-spot" raised>
+      <form className="add-spot__form" onSubmit={submit}>
+        <p className="add-spot__lead">{t("tlmap.add.lead")}</p>
+
+        <label className="add-spot__field">
+          <span className="add-spot__label">{t("tlmap.add.name")}</span>
+          <input
+            className="add-spot__input"
+            type="text"
+            value={name}
+            placeholder={t("tlmap.add.namePlaceholder")}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </label>
+
+        <label className="add-spot__field">
+          <span className="add-spot__label">{t("tlmap.add.category")}</span>
+          <select
+            className="add-spot__input"
+            value={category}
+            onChange={(e) => setCategory(e.target.value as Spot["category"])}
+          >
+            {ADD_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>{t(c.labelKey)}</option>
+            ))}
+          </select>
+        </label>
+
+        <div className="add-spot__row">
+          <label className="add-spot__field add-spot__field--half">
+            <span className="add-spot__label">{t("tlmap.add.lat")}</span>
+            <input
+              className="add-spot__input"
+              type="text"
+              inputMode="decimal"
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+            />
+          </label>
+          <label className="add-spot__field add-spot__field--half">
+            <span className="add-spot__label">{t("tlmap.add.lng")}</span>
+            <input
+              className="add-spot__input"
+              type="text"
+              inputMode="decimal"
+              value={lng}
+              onChange={(e) => setLng(e.target.value)}
+            />
+          </label>
+        </div>
+        <Button type="button" variant="ghost" size="sm" onClick={useCurrent}>
+          📍 {t("tlmap.add.useCurrent")}
+        </Button>
+
+        <label className="add-spot__field">
+          <span className="add-spot__label">{t("tlmap.add.hours")}</span>
+          <input
+            className="add-spot__input"
+            type="text"
+            value={hours}
+            onChange={(e) => setHours(e.target.value)}
+          />
+        </label>
+
+        <label className="add-spot__field">
+          <span className="add-spot__label">{t("tlmap.add.website")}</span>
+          <input
+            className="add-spot__input"
+            type="url"
+            inputMode="url"
+            placeholder="https://"
+            value={website}
+            onChange={(e) => setWebsite(e.target.value)}
+          />
+        </label>
+
+        <label className="add-spot__field">
+          <span className="add-spot__label">{t("tlmap.add.desc")}</span>
+          <textarea
+            className="add-spot__input add-spot__textarea"
+            rows={2}
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+          />
+        </label>
+
+        {error && (
+          <p className="add-spot__error" role="alert">{error}</p>
+        )}
+
+        <Button type="submit" variant="primary" size="sm">
+          {t("tlmap.add.submit")}
+        </Button>
+      </form>
     </Card>
   );
 }

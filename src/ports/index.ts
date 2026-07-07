@@ -12,11 +12,13 @@ import type {
   Geofence,
   ImagePrompt,
   LangCode,
+  NewSpotInput,
   OfflineEntry,
   PilgrimagePlan,
   PlanInput,
   Session,
   ShikokuPrefecture,
+  Spot,
   StorageKey,
   Temple,
   Unsubscribe,
@@ -69,6 +71,24 @@ export interface TranslatePort {
 }
 
 /**
+ * 観光スポットのカタログ（実行時に追加可能）。
+ *
+ * - mock アダプタ: 実データ {@link Spot} のシード + `StoragePort` に保存した
+ *   ユーザー追加分を返す（リロードしても残る）。
+ * - aws アダプタ: シード + サーバレス API (`/api/spots`, DynamoDB) の追加分を
+ *   返し、`addSpot` は API 経由で保存する（再デプロイ不要で全端末に反映）。
+ *
+ * 画面はこのポート越しにスポットを読むので、mock↔aws を差し替えても UI は
+ * 変更不要（Req 16.1）。
+ */
+export interface SpotPort {
+  /** カタログ全件（シード + 追加分）を取得。 */
+  listSpots(): Promise<Spot[]>;
+  /** スポットを1件追加し、作成された {@link Spot} を返す。 */
+  addSpot(input: NewSpotInput): Promise<Spot>;
+}
+
+/**
  * AI 画像自動生成 (著作権フリー画像)。スポット/札所に使える写真が無いとき、
  * 生成 AI で著作権フリーの画像を作って表示するためのポート。
  *
@@ -101,6 +121,7 @@ export interface AwsGateway {
   readonly auth: AuthPort;
   readonly translate: TranslatePort;
   readonly image: ImagePort;
+  readonly spots: SpotPort;
 }
 
 /** The set of port names that make up an {@link AwsGateway}. */
@@ -111,4 +132,5 @@ export const GATEWAY_PORT_NAMES = [
   "auth",
   "translate",
   "image",
+  "spots",
 ] as const satisfies ReadonlyArray<keyof AwsGateway>;

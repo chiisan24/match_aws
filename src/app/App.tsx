@@ -15,6 +15,7 @@ import { createGateway } from "./gateway";
 import { ImageProvider } from "./ImageContext";
 import { ModeProvider, useMode } from "./ModeContext";
 import { PilgrimageProvider } from "./PilgrimageContext";
+import { SpotProvider } from "./SpotContext";
 import { TourismProvider } from "./TourismContext";
 
 /**
@@ -45,6 +46,7 @@ export function App(): JSX.Element {
       <ModeProvider storage={gateway.storage}>
         <AuthProvider auth={gateway.auth}>
           <ImageProvider image={gateway.image}>
+            <SpotProvider spots={gateway.spots}>
             <TourismProvider chat={gateway.chat} storage={gateway.storage}>
               {/* Shared お遍路 state — the visited set read by the 札所マップ
                   filter plus the progress store (selected 対象県, 達成率) and the
@@ -57,6 +59,7 @@ export function App(): JSX.Element {
                 </main>
               </PilgrimageProvider>
             </TourismProvider>
+            </SpotProvider>
           </ImageProvider>
         </AuthProvider>
       </ModeProvider>
