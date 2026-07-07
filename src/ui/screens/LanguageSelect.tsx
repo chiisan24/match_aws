@@ -24,6 +24,7 @@ import {
 } from "../../i18n/languages";
 import { Button } from "../components/Button";
 import { PlaceholderImage } from "../components/PlaceholderImage";
+import { screenSrcSet, screenFallback } from "./screenImage";
 
 export interface LanguageSelectProps {
   /**
@@ -189,14 +190,31 @@ function WelcomeHero(): JSX.Element {
       />
     );
   }
+  const src = "/images/screens/welcome.jpg";
+  const widths = [400, 640, 900];
+  // Displayed at the app column width (≤ ~26rem); mobile takes most of the
+  // viewport. The browser picks the lightest variant that fits.
+  const sizes = "(max-width: 30rem) 92vw, 26rem";
   return (
-    <img
-      className="lang-select__hero-img"
-      src="/images/screens/welcome.jpg"
-      alt={alt}
-      style={{ aspectRatio: "3 / 4", width: "100%", objectFit: "cover" }}
-      loading="lazy"
-      onError={() => setErrored(true)}
-    />
+    <picture>
+      <source
+        type="image/webp"
+        srcSet={screenSrcSet(src, widths, "webp")}
+        sizes={sizes}
+      />
+      <img
+        className="lang-select__hero-img"
+        src={screenFallback(src, 640)}
+        srcSet={screenSrcSet(src, widths, "jpg")}
+        sizes={sizes}
+        alt={alt}
+        width={900}
+        height={1200}
+        style={{ aspectRatio: "3 / 4", width: "100%", objectFit: "cover" }}
+        loading="lazy"
+        decoding="async"
+        onError={() => setErrored(true)}
+      />
+    </picture>
   );
 }

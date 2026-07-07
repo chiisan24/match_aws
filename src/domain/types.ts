@@ -234,6 +234,12 @@ export interface PlanInput {
   desiredTemples: string[];
   fitnessLevel: "low" | "mid" | "high";
   includeSightseeing: boolean;
+  /**
+   * Display language for the generated plan's labels (Req 1.x / 19.x). When
+   * omitted the backend defaults to Japanese. The UI stamps the active i18n
+   * language here so temple/meal/spot labels come back in the chosen language.
+   */
+  lang?: LangCode;
 }
 
 /** A single stop on a generated plan timeline. */
@@ -246,6 +252,52 @@ export interface PlanStop {
 /** A generated same-day pilgrimage plan. */
 export interface PilgrimagePlan {
   stops: PlanStop[];
+}
+
+/** Inputs for an AI next-temple navigation estimate (目安/参考情報). */
+export interface NextTempleNavInput {
+  /** The traveler's start point (current location), or null if unknown. */
+  from: GeoPoint | null;
+  /** The target (next) temple to navigate to. */
+  temple: {
+    id: string;
+    name: string;
+    number: number;
+    location: GeoPoint;
+    address?: string;
+    highlights?: string[];
+  };
+  /** Target display language for the text fields (highlights / note). */
+  lang?: LangCode;
+}
+
+/**
+ * AI-estimated navigation info for the next temple (Req: AI 算出).
+ *
+ * Every figure here is a **rough estimate for reference only** — the UI must
+ * always present it with a disclaimer. `aiGenerated` distinguishes a real AI
+ * backend result from the local heuristic fallback (used when AI is not
+ * configured or fails), but both are estimates and both carry the disclaimer.
+ */
+export interface NextTempleNavEstimate {
+  /** Estimated road distance in kilometers (null when the start is unknown). */
+  distanceKm: number | null;
+  /** Estimated driving time in minutes (null when unknown). */
+  carMinutes: number | null;
+  /** Estimated walking time in minutes (null when unknown). */
+  walkMinutes: number | null;
+  /**
+   * The temple's real postal/street address in the target language (best
+   * effort from the AI; may be empty when unavailable). Replaces the mock
+   * placeholder address shown on the 次の札所ナビ card.
+   */
+  address: string;
+  /** 見どころ / highlights in the target language. */
+  highlights: string[];
+  /** Short access / advice note in the target language (may be empty). */
+  note: string;
+  /** True when a real AI backend produced this; false for the local fallback. */
+  aiGenerated: boolean;
 }
 
 // ---------------------------------------------------------------------------

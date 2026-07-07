@@ -103,7 +103,7 @@ export function PilgrimagePlanner({
   chat,
   map,
 }: PilgrimagePlannerProps): JSX.Element {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { area } = usePilgrimage();
 
   // -- Condition form state -------------------------------------------------
@@ -150,6 +150,7 @@ export function PilgrimagePlanner({
     desiredTemples,
     fitnessLevel: fitness,
     includeSightseeing,
+    lang,
   });
 
   // Runs a single generation request (Req 12.1). Shared by the form submit and

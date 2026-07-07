@@ -22,12 +22,15 @@ import type {
   ChatPort,
   ChatReply,
   ChatSession,
+  NextTempleNavEstimate,
+  NextTempleNavInput,
   PilgrimagePlan,
   PlanInput,
   PlanStop,
   Spot,
 } from "../../ports";
 import type { AwsEnv } from "../../config/env";
+import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
 import { EHIME_SPOTS } from "../mock/spots";
 import { EHIME_TEMPLES } from "../mock/temples";
 import { AWS_NOT_CONFIGURED } from "./not-configured";
@@ -40,6 +43,15 @@ interface ChatApiResponse {
 
 interface PlanApiResponse {
   stops?: PlanStop[];
+}
+
+interface NavApiResponse {
+  distanceKm?: number | null;
+  carMinutes?: number | null;
+  walkMinutes?: number | null;
+  address?: string;
+  highlights?: string[];
+  note?: string;
 }
 
 /**
@@ -121,7 +133,7 @@ export class AwsChatAdapter implements ChatPort {
     const res = await fetch(`${base}/plan`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ input, temples }),
+      body: JSON.stringify({ input, temples, lang: input.lang ?? "ja" }),
     });
     if (!res.ok) {
       throw new Error(`Plan backend failed (${res.status} ${res.statusText}).`);
@@ -132,5 +144,74 @@ export class AwsChatAdapter implements ChatPort {
     // Guarantee ascending time order regardless of model output (Property 22).
     const ordered = [...stops].sort((a, b) => a.time.localeCompare(b.time));
     return { stops: ordered };
+  }
+
+  async estimateNextTempleNav(
+    input: NextTempleNavInput,
+  ): Promise<NextTempleNavEstimate> {
+    // The great-circle distance grounds the model (and is the fallback figure).
+    const local = estimateLocalTempleNav(input.from, input.temple.location);
+    try {
+      const base = apiBase(this.env, "ChatPort.estimateNextTempleNav");
+      const res = await fetch(`${base}/temple-nav`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lang: input.lang ?? "ja",
+          from: input.from,
+          temple: {
+            id: input.temple.id,
+            name: input.temple.name,
+            number: input.temple.number,
+            location: input.temple.location,
+            address: input.temple.address ?? "",
+            highlights: input.temple.highlights ?? [],
+          },
+          // A straight-line hint (km) so the model returns a realistic road
+          // estimate rather than inventing coordinates-based figures.
+          straightLineKm: local.distanceKm,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error(
+          `Temple-nav backend failed (${res.status} ${res.statusText}).`,
+        );
+      }
+      const data = (await res.json()) as NavApiResponse;
+      const fallbackAddress = cleanTempleAddress(input.temple.address);
+      return {
+        distanceKm:
+          typeof data.distanceKm === "number"
+            ? data.distanceKm
+            : local.distanceKm,
+        carMinutes:
+          typeof data.carMinutes === "number"
+            ? data.carMinutes
+            : local.carMinutes,
+        walkMinutes:
+          typeof data.walkMinutes === "number"
+            ? data.walkMinutes
+            : local.walkMinutes,
+        address:
+          typeof data.address === "string" && data.address.trim() !== ""
+            ? data.address.trim()
+            : fallbackAddress,
+        highlights: Array.isArray(data.highlights)
+          ? data.highlights.filter((h) => typeof h === "string")
+          : input.temple.highlights ?? [],
+        note: typeof data.note === "string" ? data.note : "",
+        aiGenerated: true,
+      };
+    } catch {
+      // Backend unavailable/failed — never throw; return the local estimate so
+      // the 次の札所ナビ card always has figures (still shown as a 目安).
+      return {
+        ...local,
+        address: cleanTempleAddress(input.temple.address),
+        highlights: input.temple.highlights ?? [],
+        note: "",
+        aiGenerated: false,
+      };
+    }
   }
 }

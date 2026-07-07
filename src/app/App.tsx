@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import type { LangCode } from "../domain/types";
 import type { ChatPort, MapLocationPort, StoragePort } from "../ports";
-import { I18nProvider } from "../i18n";
+import { I18nProvider, useI18n } from "../i18n";
 import {
   LanguageSelect,
   Login,
@@ -47,7 +47,7 @@ export function App(): JSX.Element {
         <AuthProvider auth={gateway.auth}>
           <ImageProvider image={gateway.image}>
             <SpotProvider spots={gateway.spots}>
-            <TourismProvider chat={gateway.chat} storage={gateway.storage}>
+            <LocalizedTourismProvider chat={gateway.chat} storage={gateway.storage}>
               {/* Shared お遍路 state — the visited set read by the 札所マップ
                   filter plus the progress store (selected 対象県, 達成率) and the
                   visit-record seam the 巡礼進捗ダッシュボード (task 10.4) and
@@ -58,12 +58,36 @@ export function App(): JSX.Element {
                   <AppFlow map={gateway.map} chat={gateway.chat} storage={gateway.storage} />
                 </main>
               </PilgrimageProvider>
-            </TourismProvider>
+            </LocalizedTourismProvider>
             </SpotProvider>
           </ImageProvider>
         </AuthProvider>
       </ModeProvider>
     </I18nProvider>
+  );
+}
+
+/**
+ * Bridges the active i18n language into the {@link TourismProvider} so the AI
+ * chat session is stamped with the language the user selected on the first
+ * screen (Req 1.x / 19.x). Without this the chat session defaults to Japanese
+ * and the AI backend — which replies in `session.lang` — always answers in
+ * Japanese regardless of the chosen UI language.
+ */
+function LocalizedTourismProvider({
+  chat,
+  storage,
+  children,
+}: {
+  chat: ChatPort;
+  storage: StoragePort;
+  children: ReactNode;
+}): JSX.Element {
+  const { lang } = useI18n();
+  return (
+    <TourismProvider chat={chat} storage={storage} lang={lang}>
+      {children}
+    </TourismProvider>
   );
 }
 

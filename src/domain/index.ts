@@ -36,7 +36,11 @@ export {
   type TempleTravelTime,
 } from "./filter";
 export { isInsideGeofence, haversineDistanceMeters } from "./geofence";
-export { filterByLayers } from "./layers";
+export {
+  estimateLocalTempleNav,
+  cleanTempleAddress,
+} from "./templeNav";
+export type { LocalNavNumbers } from "./templeNav";export { filterByLayers } from "./layers";
 export { resolveLabel } from "./i18n";
 
 // Task 8.8 — plan-sharing encode/decode round-trip (Req 7.1–7.3, Property 13).
