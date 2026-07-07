@@ -82,6 +82,24 @@ export interface Review {
   text: string;
 }
 
+/**
+ * The fields a user supplies when adding a spot at runtime (SpotPort.addSpot).
+ * Everything else on {@link Spot} is derived (id / description default / empty
+ * reviews & images). Kept in the domain so ports, adapters and the serverless
+ * API all share one contract.
+ */
+export interface NewSpotInput {
+  name: string;
+  category: Spot["category"];
+  location: GeoPoint;
+  /** 任意の紹介文（未入力なら名称ベースで自動生成）。 */
+  descriptionJa?: string;
+  /** 任意の営業時間。 */
+  openingHours?: string;
+  /** 任意の公式サイト（http(s)のみ）。 */
+  website?: string;
+}
+
 // ---------------------------------------------------------------------------
 // AI 画像自動生成 (著作権フリー画像)
 // ---------------------------------------------------------------------------
@@ -349,7 +367,8 @@ export type StorageKey =
   | "language"
   | "mode"
   | "session"
-  | "offlineQueue";
+  | "offlineQueue"
+  | "userSpots";
 
 // ---------------------------------------------------------------------------
 // Misc

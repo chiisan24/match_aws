@@ -21,6 +21,7 @@ import { AwsStorageAdapter } from "./storage";
 import { AwsAuthAdapter } from "./auth";
 import { AwsTranslateAdapter } from "./translate";
 import { AwsImageAdapter } from "./image";
+import { AwsSpotAdapter } from "./spot";
 
 export { AwsChatAdapter } from "./chat";
 export { AwsMapLocationAdapter } from "./map";
@@ -28,6 +29,7 @@ export { AwsStorageAdapter } from "./storage";
 export { AwsAuthAdapter } from "./auth";
 export { AwsTranslateAdapter } from "./translate";
 export { AwsImageAdapter } from "./image";
+export { AwsSpotAdapter } from "./spot";
 
 /**
  * Builds the AWS-backed gateway. The return type is annotated as `AwsGateway`,
@@ -44,5 +46,6 @@ export function createAwsGateway(env: AwsEnv): AwsGateway {
     auth: new AwsAuthAdapter(),
     translate: new AwsTranslateAdapter(env),
     image: new AwsImageAdapter(env),
+    spots: new AwsSpotAdapter(env),
   };
 }

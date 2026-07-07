@@ -14,6 +14,7 @@ import { MockMapLocationAdapter } from "./map";
 import { MockAuthAdapter } from "./auth";
 import { MockTranslateAdapter } from "./translate";
 import { MockImageAdapter } from "./image";
+import { MockSpotAdapter } from "./spot";
 
 export { MockStorageAdapter } from "./storage";
 export { MockChatAdapter } from "./chat";
@@ -21,6 +22,7 @@ export { MockMapLocationAdapter } from "./map";
 export { MockAuthAdapter } from "./auth";
 export { MockTranslateAdapter } from "./translate";
 export { MockImageAdapter } from "./image";
+export { MockSpotAdapter } from "./spot";
 
 // Fixed mock datasets, exposed for reuse by UI/dev tooling and tests.
 export { EHIME_TEMPLES } from "./temples";
@@ -45,5 +47,6 @@ export function createMockGateway(): AwsGateway {
     auth: new MockAuthAdapter(storage),
     translate: new MockTranslateAdapter(),
     image: new MockImageAdapter(),
+    spots: new MockSpotAdapter(storage),
   };
 }

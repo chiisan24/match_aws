@@ -2859,3 +2859,35 @@ UI_LABELS["tlmap.detail.carWalk"] = {
   en: "Car ~{car} min / Walk ~{walk} min",
   iyo: "車 約{car}分 / 歩き 約{walk}分",
 };
+
+// ---- スポット追加フォーム (TourismLayeredMap) ---------------------------
+UI_LABELS["tlmap.add.toggle"] = { ja: "＋スポットを追加", en: "+ Add a spot", iyo: "＋スポットを追加" };
+UI_LABELS["tlmap.add.title"] = { ja: "スポットを追加", en: "Add a spot", iyo: "スポットを追加" };
+UI_LABELS["tlmap.add.lead"] = {
+  ja: "地図に載っていない場所をその場で追加できます（この端末のセッション内で反映）。",
+  en: "Add a place that isn't on the map yet (kept for this session on this device).",
+  iyo: "地図にない場所をその場で足せるよ（このセッション内で反映）。",
+};
+UI_LABELS["tlmap.add.name"] = { ja: "名称", en: "Name", iyo: "名称" };
+UI_LABELS["tlmap.add.namePlaceholder"] = { ja: "例）道後温泉本館", en: "e.g. Dogo Onsen Honkan", iyo: "例）道後温泉本館" };
+UI_LABELS["tlmap.add.category"] = { ja: "カテゴリ", en: "Category", iyo: "カテゴリ" };
+UI_LABELS["tlmap.add.lat"] = { ja: "緯度", en: "Latitude", iyo: "緯度" };
+UI_LABELS["tlmap.add.lng"] = { ja: "経度", en: "Longitude", iyo: "経度" };
+UI_LABELS["tlmap.add.useCurrent"] = { ja: "現在地を使う", en: "Use my location", iyo: "現在地を使う" };
+UI_LABELS["tlmap.add.website"] = { ja: "公式サイト（任意）", en: "Website (optional)", iyo: "公式サイト（任意）" };
+UI_LABELS["tlmap.add.hours"] = { ja: "営業時間（任意）", en: "Opening hours (optional)", iyo: "営業時間（任意）" };
+UI_LABELS["tlmap.add.desc"] = { ja: "紹介文（任意）", en: "Description (optional)", iyo: "紹介文（任意）" };
+UI_LABELS["tlmap.add.submit"] = { ja: "追加する", en: "Add", iyo: "追加する" };
+UI_LABELS["tlmap.add.cancel"] = { ja: "キャンセル", en: "Cancel", iyo: "キャンセル" };
+UI_LABELS["tlmap.add.errorName"] = { ja: "名称を入力してください。", en: "Please enter a name.", iyo: "名称を入れてや。" };
+UI_LABELS["tlmap.add.errorLatLng"] = {
+  ja: "緯度・経度を正しく入力してください（現在地を使うと自動入力）。",
+  en: "Enter a valid latitude/longitude (or use your location).",
+  iyo: "緯度・経度をちゃんと入れてや（現在地を使うと自動で入るよ）。",
+};
+UI_LABELS["tlmap.add.done"] = {
+  ja: "「{name}」を追加しました。",
+  en: "Added \"{name}\".",
+  iyo: "「{name}」を足したよ。",
+};
+UI_LABELS["tlmap.add.noCurrent"] = { ja: "現在地が取得できません。", en: "Location unavailable.", iyo: "現在地が取れんかった。" };

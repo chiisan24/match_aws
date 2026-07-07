@@ -28,6 +28,7 @@ import {
   AwsTranslateAdapter,
   AwsImageAdapter,
   AwsMapLocationAdapter,
+  AwsSpotAdapter,
 } from "../adapters/aws";
 
 /**
@@ -45,6 +46,9 @@ export function createGateway(env: AwsEnv = awsEnv): AwsGateway {
       chat: new AwsChatAdapter(env),
       translate: new AwsTranslateAdapter(env),
       image: new AwsImageAdapter(env),
+      // Real catalogue over the serverless API (DynamoDB); reads fall back to
+      // the bundled seed if the API is unreachable, so the map never breaks.
+      spots: new AwsSpotAdapter(env),
     };
     customized = true;
   }
@@ -99,13 +103,14 @@ export function verifyGatewayContract(gateway: AwsGateway): void {
     const expected = methodNamesOf(refPort as object);
     const actual = methodNamesOf(candidate);
 
+    // Only *missing* methods break the contract. Adapters may legitimately have
+    // extra methods (e.g. a TS `private base()` helper, which is runtime-visible
+    // on the prototype), so extra names must not be treated as a mismatch.
     const missing = expected.filter((m) => !actual.includes(m));
-    const extra = actual.filter((m) => !expected.includes(m));
 
-    if (missing.length > 0 || extra.length > 0) {
+    if (missing.length > 0) {
       throw new Error(
-        `Gateway contract mismatch on port "${port}": ` +
-          `missing [${missing.join(", ")}], unexpected [${extra.join(", ")}].`,
+        `Gateway contract mismatch on port "${port}": missing [${missing.join(", ")}].`,
       );
     }
   }

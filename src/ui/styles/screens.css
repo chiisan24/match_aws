@@ -4019,3 +4019,86 @@ textarea.nokyocho-field__control {
   font-size: var(--text-xs);
   color: var(--color-ink-faint);
 }
+
+/* ---- Add-spot form (TourismLayeredMap runtime add) ---- */
+.layered-map__add {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.layered-map__add-done {
+  color: var(--color-success);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.add-spot {
+  width: 100%;
+  padding: var(--space-3);
+}
+
+.add-spot__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.add-spot__lead {
+  margin: 0 0 var(--space-1);
+  color: var(--color-ink-soft);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+}
+
+.add-spot__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.add-spot__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-ink-soft);
+}
+
+.add-spot__input {
+  width: 100%;
+  padding: 0.6em 0.8em;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-line);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+}
+
+.add-spot__input:focus-visible {
+  outline: 2px solid var(--color-teal-300);
+  outline-offset: 1px;
+}
+
+.add-spot__textarea {
+  resize: vertical;
+  min-height: 3rem;
+}
+
+.add-spot__row {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.add-spot__field--half {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.add-spot__error {
+  margin: 0;
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}

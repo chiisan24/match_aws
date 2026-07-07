@@ -34,6 +34,12 @@ export interface AwsEnv {
    * style (e.g. a MapTiler/own style). Public URLs / public-scoped keys only.
    */
   readonly mapStyleUrl: string | undefined;
+  /**
+   * Optional admin token sent with POST /api/spots so only trusted clients can
+   * add spots. Matched against the serverless `SPOTS_ADMIN_TOKEN`. When unset,
+   * the add-spot API rejects writes (read-only), so the app still lists spots.
+   */
+  readonly spotAdminToken: string | undefined;
   /** When true, mock adapters are used even if AWS values are present. */
   readonly forceMock: boolean;
   /**
@@ -56,6 +62,7 @@ function readRaw(): Omit<AwsEnv, "hasAwsConfig"> {
     locationPlaceIndex: env.VITE_AWS_LOCATION_PLACE_INDEX || undefined,
     mapEnabled: env.VITE_MAP_ENABLED !== "false",
     mapStyleUrl: env.VITE_MAP_STYLE_URL || undefined,
+    spotAdminToken: env.VITE_SPOT_ADMIN_TOKEN || undefined,
     forceMock,
   };
 }
