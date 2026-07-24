@@ -41,6 +41,24 @@ interface ChatApiResponse {
   recommendedSpotIds?: string[];
 }
 
+interface ApiErrorResponse {
+  error?: string;
+  detail?: string;
+}
+
+function chatErrorMessage(status: number, detail = ""): string {
+  if (/AccessDenied|Unauthorized|UnrecognizedClient|InvalidSignature|credential/i.test(detail)) {
+    return "Bedrockの認証に失敗しました。APIキーと適用環境を確認してください。";
+  }
+  if (/ValidationException|ResourceNotFound|model|inference profile/i.test(detail)) {
+    return "Bedrockモデルを利用できません。モデルIDとリージョンを確認してください。";
+  }
+  if (/Throttl|TooManyRequests|ServiceUnavailable|timeout/i.test(detail)) {
+    return "Bedrockが混雑中です。少し待ってから再試行してください。";
+  }
+  return `AIバックエンドでエラーが発生しました（HTTP ${status}）。`;
+}
+
 interface PlanApiResponse {
   stops?: PlanStop[];
 }
@@ -99,7 +117,18 @@ export class AwsChatAdapter implements ChatPort {
       }),
     });
     if (!res.ok) {
-      throw new Error(`Chat backend failed (${res.status} ${res.statusText}).`);
+      let apiError: ApiErrorResponse = {};
+      try {
+        apiError = (await res.json()) as ApiErrorResponse;
+      } catch {
+        // Some platform-level failures return HTML rather than JSON.
+      }
+      console.error("Chat backend failed", {
+        status: res.status,
+        error: apiError.error,
+        detail: apiError.detail,
+      });
+      throw new Error(chatErrorMessage(res.status, apiError.detail));
     }
 
     const data = (await res.json()) as ChatApiResponse;

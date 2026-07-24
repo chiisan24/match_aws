@@ -39,14 +39,23 @@ let client: BedrockRuntimeClient | null = null;
 async function bedrock(): Promise<BedrockRuntimeClient> {
   const { BedrockRuntimeClient } = await loadSdk();
   if (!client) {
-    const useBearerToken = Boolean(process.env.AWS_BEARER_TOKEN_BEDROCK);
-    client = new BedrockRuntimeClient({
-      region: REGION,
-      credentials: awsCredentials(),
-      ...(useBearerToken
-        ? { authSchemePreference: ["httpBearerAuth"] }
-        : {}),
-    });
+    const bearerToken = process.env.AWS_BEARER_TOKEN_BEDROCK?.trim();
+    if (/^(?:Bearer\s+|AWS_BEARER_TOKEN_BEDROCK=)/i.test(bearerToken ?? "")) {
+      throw new Error(
+        "AWS_BEARER_TOKEN_BEDROCK must contain only the Bedrock API key value.",
+      );
+    }
+
+    client = bearerToken
+      ? new BedrockRuntimeClient({
+          region: REGION,
+          token: { token: bearerToken },
+          authSchemePreference: ["httpBearerAuth"],
+        })
+      : new BedrockRuntimeClient({
+          region: REGION,
+          credentials: awsCredentials(),
+        });
   }
   return client;
 }

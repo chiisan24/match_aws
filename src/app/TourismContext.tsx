@@ -136,6 +136,8 @@ export interface TourismContextValue {
   messages: ChatMessage[];
   /** Current chat request status (idle / sending / error). */
   chatStatus: ChatStatus;
+  /** Safe diagnostic message for the most recent chat failure. */
+  chatError: string | null;
   /** True while a request is in flight. */
   isSending: boolean;
   /** True when the last request failed and a retry is available (Req 3.4). */
@@ -193,6 +195,7 @@ const SHIORI_KEY: StorageKey = "shiori";
 interface TourismState {
   session: ChatSession;
   chatStatus: ChatStatus;
+  chatError: string | null;
   swipeCandidates: Spot[];
   swipeHistory: SwipeRecord[];
   /** お気に入り (右スワイプ, Req 4.2). */
@@ -238,6 +241,7 @@ function createInitialState(lang: LangCode): TourismState {
       preferences: { liked: [], disliked: [] },
     },
     chatStatus: "idle",
+    chatError: null,
     swipeCandidates: [],
     swipeHistory: [],
     favorites: [],
