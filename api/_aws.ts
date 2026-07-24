@@ -1,20 +1,22 @@
 /**
  * Shared AWS region/credential resolution for the serverless functions.
  *
- * This project's Vercel environment stores the AWS connection info under
- * `BEDROCK_*` names, while the standard AWS SDK default provider chain expects
- * `AWS_*` names. To avoid any Vercel dashboard changes, these helpers read the
- * `BEDROCK_*` names first and fall back to the `AWS_*` names (which also lets a
- * local `.env.local` using either convention work).
+ * Bedrock Runtime can authenticate with `AWS_BEARER_TOKEN_BEDROCK`. Other AWS
+ * services used by this project (Translate and DynamoDB) still require IAM
+ * credentials. Legacy `BEDROCK_*` IAM names remain supported for compatibility.
  *
- * If no explicit keys are present, `awsCredentials()` returns `undefined` so
- * the SDK's default provider chain still applies (e.g. an attached IAM role).
+ * If no explicit IAM keys are present, `awsCredentials()` returns `undefined`
+ * so each SDK client can use its default identity provider chain.
  * Files prefixed with `_` are not routable endpoints.
  */
 
-/** Region for AWS calls: BEDROCK_REGION → AWS_REGION → us-east-1. */
+/** Region for AWS calls: BEDROCK_REGION → AWS_REGION → ap-northeast-1. */
 export function awsRegion(): string {
-  return process.env.BEDROCK_REGION || process.env.AWS_REGION || "us-east-1";
+  return (
+    process.env.BEDROCK_REGION ||
+    process.env.AWS_REGION ||
+    "ap-northeast-1"
+  );
 }
 
 export interface AwsCredentials {

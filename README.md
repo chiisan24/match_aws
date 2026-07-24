@@ -55,15 +55,16 @@ public/
 AI機能を実際に動かすには、AWS 側の準備と Vercel の環境変数設定が必要です。
 
 1. **AWS 準備**
-   - 利用リージョン（例: `us-east-1`）で **Amazon Bedrock のモデルアクセス**を有効化します。
-     - チャット/プラン: 任意の Anthropic Claude モデル（既定 `anthropic.claude-3-5-haiku-20241022-v1:0`）
-     - 画像生成: `amazon.titan-image-generator-v1`
-   - Bedrock 呼び出し（`bedrock:InvokeModel`）と Amazon Translate（`translate:TranslateText`）の権限を持つ IAM ユーザーのアクセスキーを発行します。
+   - 東京リージョン（`ap-northeast-1`）で Amazon Bedrock を利用できるようにします。
+   - チャット/プランには Claude Sonnet 4.6 の推論プロファイル `jp.anthropic.claude-sonnet-4-6` を使用します。
+   - Bedrock API キーを発行します。本番用途では有効期限とローテーション方針も確認してください。
 2. **Vercel の Environment Variables に設定**（`.env.example` 参照）
    - クライアント: `VITE_AWS_API_ENDPOINT=/api`
-   - サーバ（VITE_ 接頭辞なし）: `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`
-   - 任意: `BEDROCK_CHAT_MODEL_ID` / `BEDROCK_IMAGE_MODEL_ID` / `BEDROCK_REGION`
-3. 再デプロイすると、チャット・プラン・翻訳・写真生成が実際の Bedrock / Translate を使って動作します。
+   - Bedrock: `AWS_BEARER_TOKEN_BEDROCK` / `AWS_REGION=ap-northeast-1` / `BEDROCK_MODEL_ID=jp.anthropic.claude-sonnet-4-6`
+   - 任意: `BEDROCK_IMAGE_MODEL_ID`
+   - Amazon Translate や DynamoDB も実接続する場合のみ、別途 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`（必要に応じて `AWS_SESSION_TOKEN`）を設定します。Bedrock API キーはこれらのサービスには使用できません。
+3. 再デプロイすると、チャット・プラン・写真生成が Bedrock Runtime を使って動作します。
+   - Translate は IAM 認証情報が設定されている場合に利用できます。
    - `VITE_AWS_API_ENDPOINT` を外す（または `VITE_FORCE_MOCK=true`）と、いつでもモックに戻せます。
 
 ### API エンドポイント（`api/`）
