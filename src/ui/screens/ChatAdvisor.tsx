@@ -35,6 +35,7 @@ export function ChatAdvisor({ onOpenSwipe }: ChatAdvisorProps): JSX.Element {
     messages,
     isSending,
     hasError,
+    chatError,
     hasCandidates,
     swipeCandidates,
     sendMessage,

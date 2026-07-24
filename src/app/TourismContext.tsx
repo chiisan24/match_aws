@@ -325,12 +325,8 @@ export function TourismProvider({
    */
   const runRequest = useCallback(
     async (baseSession: ChatSession, userMessage: ChatMessage): Promise<void> => {
-      const sessionForCall: ChatSession = {
-        ...baseSession,
-        messages: [...baseSession.messages, userMessage],
-      };
       try {
-        const reply = await chat.sendMessage(sessionForCall, userMessage.text);
+        const reply = await chat.sendMessage(baseSession, userMessage.text);
         setState((s) => ({
           ...s,
           session: {
@@ -343,10 +339,19 @@ export function TourismProvider({
           // Hand any discovery candidates to the swipe deck (Req 3.2).
           swipeCandidates: reply.spotCandidates ?? s.swipeCandidates,
           chatStatus: "idle",
+          chatError: null,
         }));
-      } catch {
-        // Surface the failure; keep the conversation so retry can re-run it.
-        setState((s) => ({ ...s, chatStatus: "error" }));
+      } catch (err) {
+        // Surface a safe diagnostic; keep the transcript for retry (Req 3.4).
+        const message =
+          err instanceof Error
+            ? err.message
+            : "AIバックエンドで不明なエラーが発生しました。";
+        setState((s) => ({
+          ...s,
+          chatStatus: "error",
+          chatError: message,
+        }));
       }
     },
     [chat],
@@ -371,6 +376,7 @@ export function TourismProvider({
             messages: [...s.session.messages, userMessage],
           },
           chatStatus: "sending",
+          chatError: null,
         };
       });
 
@@ -383,7 +389,11 @@ export function TourismProvider({
   const retry = useCallback(async (): Promise<void> => {
     const pending = lastRequest.current;
     if (!pending) return;
-    setState((s) => ({ ...s, chatStatus: "sending" }));
+    setState((s) => ({
+      ...s,
+      chatStatus: "sending",
+      chatError: null,
+    }));
     await runRequest(pending.baseSession, {
       role: "user",
       text: pending.text,
@@ -478,6 +488,7 @@ export function TourismProvider({
       session: state.session,
       messages: state.session.messages,
       chatStatus: state.chatStatus,
+      chatError: state.chatError,
       isSending: state.chatStatus === "sending",
       hasError: state.chatStatus === "error",
       swipeCandidates: state.swipeCandidates,
