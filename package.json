@@ -14,7 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@aws-sdk/client-bedrock-runtime": "^3.682.0",
+    "@aws-sdk/client-bedrock-runtime": "3.1094.0",
     "@aws-sdk/client-dynamodb": "^3.682.0",
     "@aws-sdk/client-translate": "^3.682.0",
     "@aws-sdk/lib-dynamodb": "^3.682.0",

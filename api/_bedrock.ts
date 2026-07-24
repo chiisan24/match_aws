@@ -1,23 +1,23 @@
 /**
  * Shared server-side AWS helpers for the Vercel Functions under `api/`.
  *
- * These run on the server only, so they use real AWS credentials from the
- * function environment (the AWS SDK default provider chain reads
- * `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION`). Nothing here is
- * bundled into the browser. Files prefixed with `_` are not routable endpoints.
+ * Bedrock Runtime uses `AWS_BEARER_TOKEN_BEDROCK` automatically through the
+ * AWS SDK. If the token is absent, IAM credentials are resolved instead.
+ * Nothing here is bundled into the browser. Files prefixed with `_` are not
+ * routable endpoints.
  */
 
 import type { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime";
 import { awsCredentials, awsRegion } from "./_aws.js";
 
-/** Region for Bedrock — BEDROCK_REGION → AWS_REGION → us-east-1. */
+/** Region for Bedrock — BEDROCK_REGION → AWS_REGION → ap-northeast-1. */
 const REGION = awsRegion();
 
 /** Default models (override via env in the Vercel dashboard). */
 export const CHAT_MODEL_ID =
-  process.env.BEDROCK_CHAT_MODEL_ID ||
   process.env.BEDROCK_MODEL_ID ||
-  "anthropic.claude-3-5-haiku-20241022-v1:0";
+  process.env.BEDROCK_CHAT_MODEL_ID ||
+  "jp.anthropic.claude-sonnet-4-6";
 export const IMAGE_MODEL_ID =
   process.env.BEDROCK_IMAGE_MODEL_ID || "amazon.titan-image-generator-v1";
 
@@ -38,11 +38,16 @@ function loadSdk() {
 let client: BedrockRuntimeClient | null = null;
 async function bedrock(): Promise<BedrockRuntimeClient> {
   const { BedrockRuntimeClient } = await loadSdk();
-  if (!client)
+  if (!client) {
+    const useBearerToken = Boolean(process.env.AWS_BEARER_TOKEN_BEDROCK);
     client = new BedrockRuntimeClient({
       region: REGION,
       credentials: awsCredentials(),
+      ...(useBearerToken
+        ? { authSchemePreference: ["httpBearerAuth"] }
+        : {}),
     });
+  }
   return client;
 }
 
