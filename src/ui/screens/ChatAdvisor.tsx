@@ -138,7 +138,7 @@ export function ChatAdvisor({ onOpenSwipe }: ChatAdvisorProps): JSX.Element {
       {/* Failure + retry (Req 3.4). */}
       {hasError && (
         <div className="chat__error" role="alert" data-testid="chat-error">
-          <p className="chat__error-text">{t("chat.error")}</p>
+          <p className="chat__error-text">{chatError ?? t("chat.error")}</p>
           <Button variant="soft" onClick={() => void retry()} disabled={isSending}>
             {t("chat.retry")}
           </Button>
