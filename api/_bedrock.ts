@@ -35,29 +35,72 @@ function loadSdk() {
   return sdkPromise;
 }
 
+function bedrockBearerToken(): string | undefined {
+  const token = process.env.AWS_BEARER_TOKEN_BEDROCK?.trim();
+  if (!token) return undefined;
+  if (/^(?:Bearer\s+|AWS_BEARER_TOKEN_BEDROCK=)/i.test(token)) {
+    throw new Error(
+      "AWS_BEARER_TOKEN_BEDROCK must contain only the Bedrock API key value.",
+    );
+  }
+  return token;
+}
+
 let client: BedrockRuntimeClient | null = null;
 async function bedrock(): Promise<BedrockRuntimeClient> {
   const { BedrockRuntimeClient } = await loadSdk();
   if (!client) {
-    const bearerToken = process.env.AWS_BEARER_TOKEN_BEDROCK?.trim();
-    if (/^(?:Bearer\s+|AWS_BEARER_TOKEN_BEDROCK=)/i.test(bearerToken ?? "")) {
+    client = new BedrockRuntimeClient({
+      region: REGION,
+      credentials: awsCredentials(),
+    });
+  }
+  return client;
+}
+
+async function invokeModel(modelId: string, body: string): Promise<Uint8Array> {
+  const bearerToken = bedrockBearerToken();
+  if (bearerToken) {
+    const response = await fetch(
+      `https://bedrock-runtime.${REGION}.amazonaws.com/model/${encodeURIComponent(modelId)}/invoke`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${bearerToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body,
+      },
+    );
+
+    if (!response.ok) {
+      const responseText = await response.text();
+      let detail = responseText.slice(0, 1000);
+      try {
+        const parsed = JSON.parse(responseText) as { message?: string };
+        detail = parsed.message || detail;
+      } catch {
+        // Keep the bounded plain-text response when AWS did not return JSON.
+      }
       throw new Error(
-        "AWS_BEARER_TOKEN_BEDROCK must contain only the Bedrock API key value.",
+        `Bedrock HTTP ${response.status}${detail ? `: ${detail}` : ""}`,
       );
     }
 
-    client = bearerToken
-      ? new BedrockRuntimeClient({
-          region: REGION,
-          token: { token: bearerToken },
-          authSchemePreference: ["httpBearerAuth"],
-        })
-      : new BedrockRuntimeClient({
-          region: REGION,
-          credentials: awsCredentials(),
-        });
+    return new Uint8Array(await response.arrayBuffer());
   }
-  return client;
+
+  const { InvokeModelCommand } = await loadSdk();
+  const out = await (await bedrock()).send(
+    new InvokeModelCommand({
+      modelId,
+      contentType: "application/json",
+      accept: "application/json",
+      body,
+    }),
+  );
+  return out.body;
 }
 
 export interface ClaudeMessage {
@@ -75,7 +118,6 @@ export async function invokeClaude(args: {
   messages: ClaudeMessage[];
   maxTokens?: number;
 }): Promise<string> {
-  const { InvokeModelCommand } = await loadSdk();
   const body = {
     anthropic_version: "bedrock-2023-05-31",
     max_tokens: args.maxTokens ?? 1024,
@@ -86,16 +128,9 @@ export async function invokeClaude(args: {
     })),
   };
 
-  const out = await (await bedrock()).send(
-    new InvokeModelCommand({
-      modelId: CHAT_MODEL_ID,
-      contentType: "application/json",
-      accept: "application/json",
-      body: JSON.stringify(body),
-    }),
-  );
+  const output = await invokeModel(CHAT_MODEL_ID, JSON.stringify(body));
 
-  const decoded = JSON.parse(new TextDecoder().decode(out.body)) as {
+  const decoded = JSON.parse(new TextDecoder().decode(output)) as {
     content?: Array<{ type: string; text?: string }>;
   };
   return (decoded.content ?? [])
@@ -113,7 +148,6 @@ export async function invokeTitanImage(args: {
   negativeText?: string;
   seed?: number;
 }): Promise<string | null> {
-  const { InvokeModelCommand } = await loadSdk();
   const body = {
     taskType: "TEXT_IMAGE",
     textToImageParams: {
@@ -130,16 +164,9 @@ export async function invokeTitanImage(args: {
     },
   };
 
-  const out = await (await bedrock()).send(
-    new InvokeModelCommand({
-      modelId: IMAGE_MODEL_ID,
-      contentType: "application/json",
-      accept: "application/json",
-      body: JSON.stringify(body),
-    }),
-  );
+  const output = await invokeModel(IMAGE_MODEL_ID, JSON.stringify(body));
 
-  const decoded = JSON.parse(new TextDecoder().decode(out.body)) as {
+  const decoded = JSON.parse(new TextDecoder().decode(output)) as {
     images?: string[];
   };
   return decoded.images?.[0] ?? null;
