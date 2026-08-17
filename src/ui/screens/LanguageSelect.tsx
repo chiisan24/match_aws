@@ -13,7 +13,7 @@
  * screen (mode selection; the real ModeManager arrives in task 6.4).
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { LangCode } from "../../domain/types";
 import { useI18n } from "../../i18n";
@@ -27,11 +27,7 @@ import { PlaceholderImage } from "../components/PlaceholderImage";
 import { screenSrcSet, screenFallback } from "./screenImage";
 
 export interface LanguageSelectProps {
-  /**
-   * Called after the chosen language has been committed and persisted. The next
-   * phase (mode selection) is wired up in task 6.4; a placeholder callback is
-   * sufficient here.
-   */
+  /** Called after the active language is persisted and the journey starts. */
   onComplete?: (lang: LangCode) => void;
 }
 
@@ -39,11 +35,13 @@ export function LanguageSelect({
   onComplete,
 }: LanguageSelectProps): JSX.Element {
   const { lang, t, setLanguage } = useI18n();
-
-  // Pre-select the active language so 次へ進む is always actionable.
   const [selected, setSelected] = useState<LangCode>(lang);
+  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showOtherNote, setShowOtherNote] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Rehydration may restore a saved language after the first render.
+  useEffect(() => setSelected(lang), [lang]);
 
   const handleContinue = async (): Promise<void> => {
     setSubmitting(true);
@@ -56,69 +54,91 @@ export function LanguageSelect({
   };
 
   return (
-    <section className="lang-select" aria-labelledby="lang-heading">
-      {/* ---- Welcome banner: ようこそ愛媛へ + Ehime image ---- */}
-      <div className="lang-select__welcome">
-        <div className="lang-select__hero">
-          <WelcomeHero />
+    <section className="lang-select" aria-labelledby="welcome-title">
+      <div className="lang-select__hero">
+        <WelcomeHero />
+        <div className="lang-select__scrim" aria-hidden="true" />
+        <div className="lang-select__welcome">
+          <div className="lang-select__brand" aria-label="Ehime Journey">
+            <span className="lang-select__brand-mark" aria-hidden="true">✦</span>
+            <span>Ehime<br />Journey</span>
+          </div>
+          <div className="lang-select__copy">
+            <p className="lang-select__kicker">{t("welcome.kicker")}</p>
+            <h1 id="welcome-title" className="lang-select__welcome-title">
+              {t("welcome.tagline")}
+            </h1>
+            <p className="lang-select__lead">{t("welcome.lead")}</p>
+          </div>
+          <div className="lang-select__actions">
+            <Button
+              variant="accent"
+              size="lg"
+              block
+              disabled={submitting}
+              onClick={() => void handleContinue()}
+            >
+              {t("welcome.start")}
+            </Button>
+            <Button
+              variant="ghost"
+              block
+              className="lang-select__language-button"
+              aria-expanded={showLanguagePicker}
+              aria-controls="language-picker"
+              onClick={() => setShowLanguagePicker((open) => !open)}
+            >
+              🌐 {t("welcome.changeLanguage")}
+            </Button>
+          </div>
         </div>
-        <p className="lang-select__kicker">{t("welcome.kicker")}</p>
-        <h1 className="lang-select__welcome-title">{t("welcome.place")}</h1>
-        <p className="lang-select__lead">{t("welcome.lead")}</p>
       </div>
 
-      {/* ---- Heading (bilingual, Req 1.1) ---- */}
-      <div className="lang-select__heading">
-        <h2 id="lang-heading" className="lang-select__heading-main">
-          {t("lang.heading")}
-        </h2>
-        <p className="lang-select__heading-sub">{t("lang.headingSub")}</p>
-      </div>
-
-      {/* ---- Language grid (Req 1.2) ---- */}
-      <ul className="lang-select__grid" role="list">
-        {LANGUAGE_OPTIONS.map((opt) => (
-          <li key={opt.code}>
-            <LanguageTile
-              option={opt}
-              selected={selected === opt.code}
-              recommendedLabel={t("lang.recommended")}
-              onSelect={() => setSelected(opt.code)}
-            />
-          </li>
-        ))}
-      </ul>
-
-      {/* ---- Other languages affordance (Req 1.2) ---- */}
-      <div className="lang-select__other">
-        <Button
-          variant="ghost"
-          block
-          aria-expanded={showOtherNote}
-          onClick={() => setShowOtherNote((v) => !v)}
-        >
-          {t("lang.other")}
-        </Button>
-        {showOtherNote && (
-          <p className="lang-select__other-note" role="status">
-            {t("lang.otherComingSoon")}
-          </p>
-        )}
-      </div>
-
-      {/* ---- Reassuring note (Req 1.4 hint) ---- */}
-      <p className="lang-select__note">{t("lang.note")}</p>
-
-      {/* ---- Continue (Req 1.3) ---- */}
-      <Button
-        variant="accent"
-        size="lg"
-        block
-        disabled={submitting}
-        onClick={() => void handleContinue()}
-      >
-        {t("lang.next")}
-      </Button>
+      {showLanguagePicker && (
+        <div id="language-picker" className="lang-select__picker">
+          <div className="lang-select__heading">
+            <h2 className="lang-select__heading-main">{t("lang.heading")}</h2>
+            <p className="lang-select__heading-sub">{t("lang.headingSub")}</p>
+          </div>
+          <ul className="lang-select__grid" role="list">
+            {LANGUAGE_OPTIONS.map((opt) => (
+              <li key={opt.code}>
+                <LanguageTile
+                  option={opt}
+                  selected={selected === opt.code}
+                  recommendedLabel={t("lang.recommended")}
+                  onSelect={() => setSelected(opt.code)}
+                />
+              </li>
+            ))}
+          </ul>
+          <div className="lang-select__other">
+            <Button
+              variant="ghost"
+              block
+              aria-expanded={showOtherNote}
+              onClick={() => setShowOtherNote((value) => !value)}
+            >
+              {t("lang.other")}
+            </Button>
+            {showOtherNote && (
+              <p className="lang-select__other-note" role="status">
+                {t("lang.otherComingSoon")}
+              </p>
+            )}
+          </div>
+          <p className="lang-select__note">{t("lang.note")}</p>
+          <Button
+            variant="accent"
+            size="lg"
+            block
+            disabled={submitting}
+            onClick={() => void handleContinue()}
+          >
+            {t("lang.next")}
+          </Button>
+        </div>
+      )}
     </section>
   );
 }

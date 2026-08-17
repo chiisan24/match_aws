@@ -4,9 +4,9 @@ import type { LangCode } from "../domain/types";
 import type { ChatPort, MapLocationPort, StoragePort } from "../ports";
 import { I18nProvider, useI18n } from "../i18n";
 import {
+  AIPlanFirst,
   LanguageSelect,
   Login,
-  ModeSelect,
   ModeShell,
   Settings,
 } from "../ui/screens";
@@ -24,12 +24,12 @@ import { TourismProvider } from "./TourismContext";
  * Wires the AWS_Gateway (mock by default on Vercel), the i18n provider and the
  * ModeManager, then drives the first-run flow:
  *
- *   language selection → mode selection → per-mode layout
+ *   language selection → five AI trip ideas → per-mode layout
  *
- * From the per-mode layout the header and settings toggles let the user switch
- * modes at any time (Q4 — both surfaces), and settings also re-opens the
- * language picker (Req 1.4). Per-mode state is held in the {@link ModeProvider}
- * store so switching modes never loses where the user was (Req 2.5).
+ * The first decision is a concrete trip rather than a feature mode. Choosing a
+ * plan implicitly selects the appropriate mode, while the header and settings
+ * still let the user switch modes later. Per-mode state is held in the
+ * {@link ModeProvider} store so switching modes never loses progress.
  *
  * Login is associated with お遍路モード (記録/進捗の継続保持, Req 15): entering
  * pilgrimage mode without a session shows the {@link Login} gate, while 通常
@@ -92,7 +92,7 @@ function LocalizedTourismProvider({
 }
 
 /** Top-level navigation phases of the shell. */
-type Phase = "language" | "mode-select" | "app";
+type Phase = "language" | "plan-select" | "app";
 
 interface AppFlowProps {
   /** Map/location backend handed to お遍路 screens (Req 8.5). */
@@ -114,16 +114,17 @@ function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
   if (phase === "language") {
     return (
       <LanguageSelect
-        onComplete={(_lang: LangCode) => setPhase("mode-select")}
+        onComplete={(_lang: LangCode) => setPhase("plan-select")}
       />
     );
   }
 
-  if (phase === "mode-select") {
+  if (phase === "plan-select") {
     return (
-      <ModeSelect
-        onChoose={(mode) => {
-          // Route into the chosen mode's layout, preserving per-mode state.
+      <AIPlanFirst
+        onStart={(mode) => {
+          // The chosen trip selects its backing mode without exposing that
+          // implementation detail as an up-front decision.
           switchMode(mode);
           setPhase("app");
         }}
