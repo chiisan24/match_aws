@@ -4536,15 +4536,6 @@ textarea.nokyocho-field__control {
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.32);
 }
 
-.lang-select__brand-mark {
-  display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
-  place-items: center;
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  border-radius: var(--radius-sm);
-  font-size: var(--text-xl);
-}
 
 .lang-select__copy {
   margin-top: auto;

@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 
 import type { LangCode } from "../domain/types";
-import type { ChatPort, MapLocationPort, SpotPort, StoragePort } from "../ports";
+import type { ChatPort, MapLocationPort, StoragePort } from "../ports";
 import { I18nProvider, useI18n } from "../i18n";
 import {
   AIPlanFirst,
@@ -9,6 +9,7 @@ import {
   Login,
   ModeShell,
   Settings,
+  WelcomeScreen,
 } from "../ui/screens";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { createGateway } from "./gateway";
@@ -59,7 +60,6 @@ export function App(): JSX.Element {
                     map={gateway.map}
                     chat={gateway.chat}
                     storage={gateway.storage}
-                    spots={gateway.spots}
                   />
                 </main>
               </PilgrimageProvider>
@@ -97,26 +97,33 @@ function LocalizedTourismProvider({
 }
 
 /** Top-level navigation phases of the shell. */
-type Phase = "language" | "plan-select" | "app";
+type Phase = "welcome" | "language" | "plan-select" | "app";
 
 interface AppFlowProps {
   /** Map/location backend handed to お遍路 screens (Req 8.5). */
   map: MapLocationPort;
   /** AI backend handed to the 今日のお遍路プラン screen (Req 12.5). */
   chat: ChatPort;
-  /** Spot catalogue used to build the Dogo-area recommendation deck. */
-  spots: SpotPort;
   /** Storage backend handed to the 札所到着 offline queue (Req 13.5/13.6). */
   storage: StoragePort;
 }
 
-function AppFlow({ map, chat, storage, spots }: AppFlowProps): JSX.Element {
-  const [phase, setPhase] = useState<Phase>("language");
+function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
+  const [phase, setPhase] = useState<Phase>("welcome");
   const { mode, switchMode, setTab } = useMode();
   const { isAuthenticated, initializing } = useAuth();
   // Settings overlays the current mode layout; track it independently so
   // returning lands back on the same mode/tab.
   const [showSettings, setShowSettings] = useState(false);
+
+  if (phase === "welcome") {
+    return (
+      <WelcomeScreen
+        onStart={(_lang: LangCode) => setPhase("plan-select")}
+        onChangeLanguage={() => setPhase("language")}
+      />
+    );
+  }
 
   if (phase === "language") {
     return (
@@ -129,8 +136,6 @@ function AppFlow({ map, chat, storage, spots }: AppFlowProps): JSX.Element {
   if (phase === "plan-select") {
     return (
       <AIPlanFirst
-        storage={storage}
-        spots={spots}
         onStart={(mode) => {
           // The selected recommendation starts immediately. Until the Google
           // companion is implemented, land on the existing map rather than an
