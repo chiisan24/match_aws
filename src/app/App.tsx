@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 
 import type { LangCode } from "../domain/types";
-import type { ChatPort, MapLocationPort, StoragePort } from "../ports";
+import type { ChatPort, MapLocationPort, SpotPort, StoragePort } from "../ports";
 import { I18nProvider, useI18n } from "../i18n";
 import {
   AIPlanFirst,
@@ -55,7 +55,12 @@ export function App(): JSX.Element {
                   port under "progress" / "visitRecords". */}
               <PilgrimageProvider storage={gateway.storage}>
                 <main className="app-shell">
-                  <AppFlow map={gateway.map} chat={gateway.chat} storage={gateway.storage} />
+                  <AppFlow
+                    map={gateway.map}
+                    chat={gateway.chat}
+                    storage={gateway.storage}
+                    spots={gateway.spots}
+                  />
                 </main>
               </PilgrimageProvider>
             </LocalizedTourismProvider>
@@ -99,13 +104,15 @@ interface AppFlowProps {
   map: MapLocationPort;
   /** AI backend handed to the 今日のお遍路プラン screen (Req 12.5). */
   chat: ChatPort;
+  /** Spot catalogue used to build the Dogo-area recommendation deck. */
+  spots: SpotPort;
   /** Storage backend handed to the 札所到着 offline queue (Req 13.5/13.6). */
   storage: StoragePort;
 }
 
-function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
+function AppFlow({ map, chat, storage, spots }: AppFlowProps): JSX.Element {
   const [phase, setPhase] = useState<Phase>("language");
-  const { mode, switchMode } = useMode();
+  const { mode, switchMode, setTab } = useMode();
   const { isAuthenticated, initializing } = useAuth();
   // Settings overlays the current mode layout; track it independently so
   // returning lands back on the same mode/tab.
@@ -122,10 +129,14 @@ function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
   if (phase === "plan-select") {
     return (
       <AIPlanFirst
+        storage={storage}
+        spots={spots}
         onStart={(mode) => {
-          // The chosen trip selects its backing mode without exposing that
-          // implementation detail as an up-front decision.
+          // The selected recommendation starts immediately. Until the Google
+          // companion is implemented, land on the existing map rather than an
+          // AI chat/planner screen; this is the future Routes API hand-off.
           switchMode(mode);
+          setTab("map", mode);
           setPhase("app");
         }}
       />
