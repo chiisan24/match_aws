@@ -16,7 +16,7 @@ import { ImageProvider } from "./ImageContext";
 import { ModeProvider, useMode } from "./ModeContext";
 import { PilgrimageProvider } from "./PilgrimageContext";
 import { SpotProvider } from "./SpotContext";
-import { TourismProvider } from "./TourismContext";
+import { TourismProvider, useTourism } from "./TourismContext";
 
 /**
  * App shell.
@@ -105,7 +105,8 @@ interface AppFlowProps {
 
 function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
   const [phase, setPhase] = useState<Phase>("language");
-  const { mode, switchMode } = useMode();
+  const { mode, switchMode, setTab } = useMode();
+  const { selectPlan } = useTourism();
   const { isAuthenticated, initializing } = useAuth();
   // Settings overlays the current mode layout; track it independently so
   // returning lands back on the same mode/tab.
@@ -122,10 +123,11 @@ function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
   if (phase === "plan-select") {
     return (
       <AIPlanFirst
-        onStart={(mode) => {
-          // The chosen trip selects its backing mode without exposing that
-          // implementation detail as an up-front decision.
-          switchMode(mode);
+        chat={chat}
+        onStart={(plan) => {
+          selectPlan(plan);
+          switchMode(plan.mode);
+          if (plan.mode === "tourism") setTab("map", "tourism");
           setPhase("app");
         }}
       />

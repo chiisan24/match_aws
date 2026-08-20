@@ -27,6 +27,8 @@ import type {
   PilgrimagePlan,
   PlanInput,
   PlanStop,
+  RecommendedPlan,
+  RecommendedPlansInput,
   Spot,
 } from "../../ports";
 import type { AwsEnv } from "../../config/env";
@@ -61,6 +63,10 @@ function chatErrorMessage(status: number, detail = ""): string {
 
 interface PlanApiResponse {
   stops?: PlanStop[];
+}
+
+interface RecommendationsApiResponse {
+  plans?: RecommendedPlan[];
 }
 
 interface NavApiResponse {
@@ -147,6 +153,32 @@ export class AwsChatAdapter implements ChatPort {
       if (candidates.length > 0) reply.spotCandidates = candidates;
     }
     return reply;
+  }
+
+  async generateRecommendedPlans(
+    input: RecommendedPlansInput,
+  ): Promise<RecommendedPlan[]> {
+    const base = apiBase(this.env, "ChatPort.generateRecommendedPlans");
+    const res = await fetch(`${base}/recommendations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lang: input.lang, count: input.count ?? 5 }),
+    });
+    if (!res.ok) {
+      let apiError: ApiErrorResponse = {};
+      try {
+        apiError = (await res.json()) as ApiErrorResponse;
+      } catch {
+        // Platform-level failures may return non-JSON bodies.
+      }
+      throw new Error(chatErrorMessage(res.status, apiError.detail));
+    }
+
+    const data = (await res.json()) as RecommendationsApiResponse;
+    if (!Array.isArray(data.plans) || data.plans.length !== 5) {
+      throw new Error("おすすめプランを5件取得できませんでした。");
+    }
+    return data.plans;
   }
 
   async generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan> {

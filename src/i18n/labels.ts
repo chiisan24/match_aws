@@ -2845,6 +2845,7 @@ UI_LABELS["tlmap.attribution"] = {
 };
 
 // ---- 観光スポット詳細パネル (TourismLayeredMap の選択時) ------------------
+UI_LABELS["tlmap.googleAttribution"] = { ja: "Google Maps / Google Places の情報を使用", en: "Using Google Maps / Google Places data", iyo: "Google Maps / Google Places の情報を使っとるよ" };
 UI_LABELS["tlmap.detail.access"] = { ja: "現在地からのアクセス", en: "Access from here", iyo: "現在地からのアクセス" };
 UI_LABELS["tlmap.detail.hours"] = { ja: "営業時間", en: "Opening hours", iyo: "営業時間" };
 UI_LABELS["tlmap.detail.website"] = { ja: "ホームページ", en: "Website", iyo: "ホームページ" };
@@ -3014,5 +3015,31 @@ Object.assign(UI_LABELS, {
     ja: "好みに合わせて調整",
     en: "Tailored for you",
     iyo: "好みに合わせたよ",
+  },
+  "planFirst.loading": {
+    ja: "Bedrock AIが今日のおすすめを考えています…",
+    en: "Bedrock AI is preparing today's recommendations…",
+    iyo: "Bedrock AIが今日のおすすめを考えよるけん…",
+  },
+  "planFirst.loadError": {
+    ja: "おすすめを生成できませんでした。設定を確認して再試行してください。",
+    en: "Recommendations could not be generated. Check the configuration and try again.",
+    iyo: "おすすめを作れんかったけん、設定を見てもう一回試してや。",
+  },
+  "planFirst.retry": { ja: "もう一度生成", en: "Generate again", iyo: "もう一回作る" },
+  "planFirst.googleVerified": {
+    ja: "Google Mapsの場所情報",
+    en: "Place information from Google Maps",
+    iyo: "Google Mapsの場所情報",
+  },
+  "planFirst.openGoogleMaps": {
+    ja: "Google Mapsで確認",
+    en: "View on Google Maps",
+    iyo: "Google Mapsで見る",
+  },
+  "planFirst.placeUnavailable": {
+    ja: "場所情報は現在取得できません。施設名を事前にご確認ください。",
+    en: "Place details are currently unavailable. Please verify the venue before visiting.",
+    iyo: "場所情報を取れんかったけん、行く前に施設名を確認してや。",
   },
 } satisfies LangDict);

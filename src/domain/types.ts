@@ -254,6 +254,62 @@ export interface PilgrimagePlan {
   stops: PlanStop[];
 }
 
+// ---------------------------------------------------------------------------
+// AI-first Ehime recommendations (Bedrock + Google Places)
+// ---------------------------------------------------------------------------
+
+/** Google Places attribution attached to a place photo. */
+export interface PlacePhotoAttribution {
+  displayName: string;
+  uri?: string;
+}
+
+/** Verified place details used by an AI-recommended itinerary stop. */
+export interface RecommendedPlace {
+  id: string;
+  name: string;
+  formattedAddress: string;
+  location?: GeoPoint;
+  googleMapsUri?: string;
+  websiteUri?: string;
+  nationalPhoneNumber?: string;
+  rating?: number;
+  userRatingCount?: number;
+  regularOpeningHours?: string[];
+  photoUrl?: string;
+  photoAttributions?: PlacePhotoAttribution[];
+}
+
+/** A stop proposed by Bedrock and optionally verified by Google Places. */
+export interface RecommendedPlanStop {
+  time: string;
+  title: string;
+  description: string;
+  searchQuery: string;
+  place?: RecommendedPlace;
+}
+
+/** One of the five AI-generated trip recommendations shown during onboarding. */
+export interface RecommendedPlan {
+  id: string;
+  mode: "tourism" | "pilgrimage";
+  icon: string;
+  title: string;
+  summary: string;
+  reason: string;
+  duration: string;
+  transport: string;
+  intensity: string;
+  imageUrl?: string;
+  imageAttributions?: PlacePhotoAttribution[];
+  stops: RecommendedPlanStop[];
+}
+
+export interface RecommendedPlansInput {
+  lang: LangCode;
+  count?: number;
+}
+
 /** Inputs for an AI next-temple navigation estimate (目安/参考情報). */
 export interface NextTempleNavInput {
   /** The traveler's start point (current location), or null if unknown. */

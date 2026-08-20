@@ -11,6 +11,10 @@
  */
 
 export interface AwsEnv {
+  /** Browser-restricted key used only by the Google Maps JavaScript API. */
+  readonly googleMapsBrowserApiKey: string | undefined;
+  /** Optional Google Cloud map ID; DEMO_MAP_ID is used locally when omitted. */
+  readonly googleMapsMapId: string | undefined;
   /** AWS region (e.g. "ap-northeast-1"). */
   readonly region: string | undefined;
   /** Cognito identity pool id (or equivalent) for authenticating to AWS. */
@@ -55,6 +59,9 @@ function readRaw(): Omit<AwsEnv, "hasAwsConfig"> {
   const env = (import.meta.env ?? {}) as Record<string, string | undefined>;
   const forceMock = env.VITE_FORCE_MOCK === "true";
   return {
+    googleMapsBrowserApiKey:
+      env.VITE_GOOGLE_MAPS_BROWSER_API_KEY || undefined,
+    googleMapsMapId: env.VITE_GOOGLE_MAPS_MAP_ID || undefined,
     region: env.VITE_AWS_REGION || undefined,
     identityPoolId: env.VITE_AWS_IDENTITY_POOL_ID || undefined,
     apiEndpoint: env.VITE_AWS_API_ENDPOINT || undefined,

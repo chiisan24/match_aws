@@ -61,9 +61,12 @@ AI機能を実際に動かすには、AWS 側の準備と Vercel の環境変数
 2. **Vercel の Environment Variables に設定**（`.env.example` 参照）
    - クライアント: `VITE_AWS_API_ENDPOINT=/api`
    - Bedrock: `AWS_BEARER_TOKEN_BEDROCK` / `AWS_REGION=ap-northeast-1` / `BEDROCK_MODEL_ID=jp.anthropic.claude-sonnet-4-6`
+   - Google Places: Google Cloudで **Places API (New)** を有効化し、サーバー専用の `GOOGLE_MAPS_API_KEY` を設定
    - 任意: `BEDROCK_IMAGE_MODEL_ID`
    - Amazon Translate や DynamoDB も実接続する場合のみ、別途 `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`（必要に応じて `AWS_SESSION_TOKEN`）を設定します。Bedrock API キーはこれらのサービスには使用できません。
-3. 再デプロイすると、チャット・プラン・写真生成が Bedrock Runtime を使って動作します。
+3. 再デプロイすると、最初のおすすめ5件をBedrockが生成し、各立寄先をGoogle Placesの場所情報・写真で補完します。チャット・お遍路プラン・写真生成もBedrock Runtimeを使用します。
+   - `GOOGLE_MAPS_API_KEY` はブラウザーへ返さず、Vercel Functionsからのみ使用します。Google Cloud側では利用APIをPlaces API (New)に制限し、クォータも設定してください。
+   - Places APIが未設定または一時失敗した場合も、Bedrockのプラン本文は表示し、場所情報のみ「取得できません」と表示します。
    - Translate は IAM 認証情報が設定されている場合に利用できます。
    - `VITE_AWS_API_ENDPOINT` を外す（または `VITE_FORCE_MOCK=true`）と、いつでもモックに戻せます。
 
@@ -72,6 +75,8 @@ AI機能を実際に動かすには、AWS 側の準備と Vercel の環境変数
 | エンドポイント | 用途 | 呼び出す AWS サービス |
 | --- | --- | --- |
 | `POST /api/chat` | AIチャット相談・スポット候補選定 | Bedrock (Claude) |
+| `POST /api/recommendations` | 愛媛のおすすめ5件生成・場所情報の照合 | Bedrock (Claude) + Google Places API (New) |
+| `GET /api/places/photo` | Places写真へのキー非公開プロキシ | Google Places API (New) |
 | `POST /api/plan` | 今日のお遍路プラン生成 | Bedrock (Claude) |
 | `POST /api/translate` | 多言語翻訳 | Amazon Translate |
 | `POST /api/images/generate` | 著作権フリー写真の自動生成 | Bedrock (Titan Image Generator) |

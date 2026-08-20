@@ -17,6 +17,8 @@ import type {
   PilgrimagePlan,
   PlanInput,
   PlanStop,
+  RecommendedPlan,
+  RecommendedPlansInput,
   Spot,
 } from "../../ports";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
@@ -120,6 +122,44 @@ function looksLikeDiscovery(message: string): boolean {
   return DISCOVERY_HINTS.some((hint) => lower.includes(hint.toLowerCase()));
 }
 
+function mockRecommendation(
+  id: string,
+  mode: RecommendedPlan["mode"],
+  icon: string,
+  title: string,
+  summary: string,
+  imageUrl: string,
+  stopTitles: string[],
+): RecommendedPlan {
+  const times = ["09:00", "11:30", "14:00"];
+  return {
+    id,
+    mode,
+    icon,
+    title,
+    summary,
+    reason: "愛媛らしい景色と文化を無理のない流れで楽しめる組み合わせです。",
+    duration: "約4時間",
+    transport: "車＋徒歩",
+    intensity: "ふつう",
+    imageUrl,
+    stops: stopTitles.map((stopTitle, index) => ({
+      time: times[index] ?? `${9 + index * 2}:00`,
+      title: stopTitle,
+      description: `${stopTitle}をゆっくり楽しみます。`,
+      searchQuery: `${stopTitle} 愛媛県`,
+    })),
+  };
+}
+
+const MOCK_RECOMMENDATIONS: RecommendedPlan[] = [
+  mockRecommendation("matsuyama", "tourism", "🏯", "松山の王道を楽しむ旅", "松山城と道後温泉を巡る定番コース。", "/images/ehime/matsuyama-castle.jpg", ["松山城", "道後温泉", "大街道"]),
+  mockRecommendation("dogo", "tourism", "♨️", "道後でほどける温泉旅", "温泉街とカフェをのんびり楽しみます。", "/images/ehime/onsen-bath.jpg", ["道後温泉本館", "道後商店街", "道後公園"]),
+  mockRecommendation("uchiko", "tourism", "🏘️", "内子の町並みと手仕事", "歴史ある町並みを歩く静かな旅。", "/images/ehime/uchiko-townscape.jpg", ["内子町並保存地区", "内子座", "道の駅 内子フレッシュパークからり"]),
+  mockRecommendation("ohenro", "pilgrimage", "⛩️", "はじめてのプチお遍路", "札所と地域の味を半日で体験します。", "/images/ehime/setouchi-shrine.jpg", ["石手寺", "浄土寺", "繁多寺"]),
+  mockRecommendation("shimanami", "tourism", "🚲", "しまなみ海道の絶景旅", "橋と海を眺めながら島時間を楽しみます。", "/images/ehime/kurushima-bridge.jpg", ["来島海峡展望館", "亀老山展望公園", "大山祇神社"]),
+];
+
 export class MockChatAdapter implements ChatPort {
   async sendMessage(
     session: ChatSession,
@@ -145,6 +185,15 @@ export class MockChatAdapter implements ChatPort {
     return {
       message: `${opener}${forLang(FOLLOWUP_REPLY, lang)(topic)}`,
     };
+  }
+
+  async generateRecommendedPlans(
+    _input: RecommendedPlansInput,
+  ): Promise<RecommendedPlan[]> {
+    return MOCK_RECOMMENDATIONS.map((plan) => ({
+      ...plan,
+      stops: plan.stops.map((stop) => ({ ...stop })),
+    }));
   }
 
   async generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan> {
