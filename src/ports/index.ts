@@ -18,6 +18,10 @@ import type {
   OfflineEntry,
   PilgrimagePlan,
   PlanInput,
+  RecommendedPlan,
+  RecommendedPlansInput,
+  RouteCandidate,
+  RouteCandidatesInput,
   Session,
   ShikokuPrefecture,
   Spot,
@@ -33,6 +37,14 @@ export type * from "../domain/types";
 /** AI チャット相談・プラン生成 (Req 3, 12). */
 export interface ChatPort {
   sendMessage(session: ChatSession, message: string): Promise<ChatReply>;
+  /** Generate five current Ehime trip ideas and enrich them with place data. */
+  generateRecommendedPlans(
+    input: RecommendedPlansInput,
+  ): Promise<RecommendedPlan[]>;
+  /** Generate Google-verified candidates for one route-building stage. */
+  generateRouteCandidates(
+    input: RouteCandidatesInput,
+  ): Promise<RouteCandidate[]>;
   generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan>;
   /**
    * Estimate the "next temple" navigation figures (distance / travel times /

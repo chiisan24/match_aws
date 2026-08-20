@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 
-import type { LangCode } from "../domain/types";
+import type { LangCode, RecommendedPlan } from "../domain/types";
 import type { ChatPort, MapLocationPort, StoragePort } from "../ports";
 import { I18nProvider, useI18n } from "../i18n";
 import {
@@ -9,6 +9,7 @@ import {
   Login,
   ModeShell,
   Settings,
+  TourismRouteBuilder,
   WelcomeScreen,
 } from "../ui/screens";
 import { AuthProvider, useAuth } from "./AuthContext";
@@ -17,7 +18,7 @@ import { ImageProvider } from "./ImageContext";
 import { ModeProvider, useMode } from "./ModeContext";
 import { PilgrimageProvider } from "./PilgrimageContext";
 import { SpotProvider } from "./SpotContext";
-import { TourismProvider } from "./TourismContext";
+import { TourismProvider, useTourism } from "./TourismContext";
 
 /**
  * App shell.
@@ -97,7 +98,7 @@ function LocalizedTourismProvider({
 }
 
 /** Top-level navigation phases of the shell. */
-type Phase = "welcome" | "language" | "plan-select" | "app";
+type Phase = "welcome" | "language" | "plan-select" | "route-builder" | "app";
 
 interface AppFlowProps {
   /** Map/location backend handed to お遍路 screens (Req 8.5). */
@@ -110,7 +111,9 @@ interface AppFlowProps {
 
 function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
   const [phase, setPhase] = useState<Phase>("welcome");
+  const [routeTheme, setRouteTheme] = useState<RecommendedPlan | null>(null);
   const { mode, switchMode, setTab } = useMode();
+  const { selectPlan } = useTourism();
   const { isAuthenticated, initializing } = useAuth();
   // Settings overlays the current mode layout; track it independently so
   // returning lands back on the same mode/tab.
@@ -136,12 +139,32 @@ function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
   if (phase === "plan-select") {
     return (
       <AIPlanFirst
-        onStart={(mode) => {
-          // The selected recommendation starts immediately. Until the Google
-          // companion is implemented, land on the existing map rather than an
-          // AI chat/planner screen; this is the future Routes API hand-off.
-          switchMode(mode);
-          setTab("map", mode);
+        chat={chat}
+        onStart={(plan) => {
+          if (plan.mode === "tourism") {
+            setRouteTheme(plan);
+            switchMode("tourism");
+            setPhase("route-builder");
+            return;
+          }
+          selectPlan(plan);
+          switchMode(plan.mode);
+          setPhase("app");
+        }}
+      />
+    );
+  }
+
+  if (phase === "route-builder" && routeTheme) {
+    return (
+      <TourismRouteBuilder
+        chat={chat}
+        theme={routeTheme}
+        onBack={() => setPhase("plan-select")}
+        onComplete={(plan) => {
+          selectPlan(plan);
+          switchMode("tourism");
+          setTab("map", "tourism");
           setPhase("app");
         }}
       />

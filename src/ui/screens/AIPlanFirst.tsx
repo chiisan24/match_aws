@@ -1,150 +1,176 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import type { AppMode } from "../../app/modeManager";
+import type {
+  ChatPort,
+  LangCode,
+  PlacePhotoAttribution,
+  RecommendedPlan,
+} from "../../ports";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { Tag, type TagTone } from "../components/Tag";
 
 export interface AIPlanFirstProps {
-  onStart: (mode: AppMode) => void;
+  chat: ChatPort;
+  onStart: (plan: RecommendedPlan) => void;
 }
 
-interface RecommendedPlan {
-  id: string;
-  mode: AppMode;
-  image: string;
-  icon: string;
-  tone: TagTone;
-  titleKey: string;
-  summaryKey: string;
-  reasonKey: string;
-  durationKey: string;
-  transportKey: string;
-  intensityKey: string;
-  stopKeys: readonly string[];
-}
-
-const PLANS: readonly RecommendedPlan[] = [
-  {
-    id: "matsuyama-classic",
-    mode: "tourism",
-    image: "/images/ehime/matsuyama-castle.jpg",
-    icon: "🏯",
-    tone: "accent",
-    titleKey: "planFirst.plan.classic.title",
-    summaryKey: "planFirst.plan.classic.summary",
-    reasonKey: "planFirst.plan.classic.reason",
-    durationKey: "planFirst.meta.fourHours",
-    transportKey: "planFirst.meta.tramWalk",
-    intensityKey: "planFirst.meta.easy",
-    stopKeys: [
-      "planFirst.stop.matsuyamaCastle",
-      "planFirst.stop.dogoOnsen",
-      "planFirst.stop.localDinner",
-    ],
-  },
-  {
-    id: "dogo-slow",
-    mode: "tourism",
-    image: "/images/ehime/onsen-bath.jpg",
-    icon: "♨️",
-    tone: "teal",
-    titleKey: "planFirst.plan.slow.title",
-    summaryKey: "planFirst.plan.slow.summary",
-    reasonKey: "planFirst.plan.slow.reason",
-    durationKey: "planFirst.meta.threeHours",
-    transportKey: "planFirst.meta.walk",
-    intensityKey: "planFirst.meta.veryEasy",
-    stopKeys: [
-      "planFirst.stop.dogoTown",
-      "planFirst.stop.onsen",
-      "planFirst.stop.cafe",
-    ],
-  },
-  {
-    id: "uchiko-hidden",
-    mode: "tourism",
-    image: "/images/ehime/uchiko-townscape.jpg",
-    icon: "🏘️",
-    tone: "moss",
-    titleKey: "planFirst.plan.hidden.title",
-    summaryKey: "planFirst.plan.hidden.summary",
-    reasonKey: "planFirst.plan.hidden.reason",
-    durationKey: "planFirst.meta.fiveHours",
-    transportKey: "planFirst.meta.trainWalk",
-    intensityKey: "planFirst.meta.moderate",
-    stopKeys: [
-      "planFirst.stop.uchiko",
-      "planFirst.stop.washi",
-      "planFirst.stop.localCafe",
-    ],
-  },
-  {
-    id: "ohenro-first",
-    mode: "pilgrimage",
-    image: "/images/ehime/setouchi-shrine.jpg",
-    icon: "⛩️",
-    tone: "outline",
-    titleKey: "planFirst.plan.ohenro.title",
-    summaryKey: "planFirst.plan.ohenro.summary",
-    reasonKey: "planFirst.plan.ohenro.reason",
-    durationKey: "planFirst.meta.halfDay",
-    transportKey: "planFirst.meta.carWalk",
-    intensityKey: "planFirst.meta.moderate",
-    stopKeys: [
-      "planFirst.stop.ishiteji",
-      "planFirst.stop.jodoji",
-      "planFirst.stop.localLunch",
-    ],
-  },
-  {
-    id: "shimanami-surprise",
-    mode: "tourism",
-    image: "/images/ehime/kurushima-bridge.jpg",
-    icon: "✨",
-    tone: "accent",
-    titleKey: "planFirst.plan.surprise.title",
-    summaryKey: "planFirst.plan.surprise.summary",
-    reasonKey: "planFirst.plan.surprise.reason",
-    durationKey: "planFirst.meta.halfDay",
-    transportKey: "planFirst.meta.carBike",
-    intensityKey: "planFirst.meta.active",
-    stopKeys: [
-      "planFirst.stop.kurushima",
-      "planFirst.stop.seaside",
-      "planFirst.stop.sunset",
-    ],
-  },
-];
-
-const ADJUSTMENT_KEYS = [
-  "planFirst.adjust.shorter",
-  "planFirst.adjust.lessWalking",
-  "planFirst.adjust.moreFood",
-  "planFirst.adjust.moreHidden",
+const FALLBACK_IMAGES = [
+  "/images/ehime/matsuyama-castle.jpg",
+  "/images/ehime/onsen-bath.jpg",
+  "/images/ehime/uchiko-townscape.jpg",
+  "/images/ehime/setouchi-shrine.jpg",
+  "/images/ehime/kurushima-bridge.jpg",
 ] as const;
+const TONES: TagTone[] = ["accent", "teal", "moss", "outline", "accent"];
 
-export function AIPlanFirst({ onStart }: AIPlanFirstProps): JSX.Element {
-  const { t } = useI18n();
+const requestCache = new WeakMap<
+  ChatPort,
+  Map<LangCode, Promise<RecommendedPlan[]>>
+>();
+const RECOMMENDATIONS_CACHE_VERSION = "v2";
+
+function recommendationDate(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function storageKey(lang: LangCode): string {
+  return `ehime-recommendations:${RECOMMENDATIONS_CACHE_VERSION}:${recommendationDate()}:${lang}`;
+}
+
+function readStoredRecommendations(lang: LangCode): RecommendedPlan[] | null {
+  try {
+    const raw = window.sessionStorage.getItem(storageKey(lang));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) && parsed.length === 5
+      ? parsed as RecommendedPlan[]
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredRecommendations(
+  lang: LangCode,
+  plans: RecommendedPlan[],
+): void {
+  try {
+    window.sessionStorage.setItem(storageKey(lang), JSON.stringify(plans));
+  } catch {
+    // Storage may be unavailable in private browsing or constrained webviews.
+  }
+}
+
+function clearStoredRecommendations(lang: LangCode): void {
+  try {
+    window.sessionStorage.removeItem(storageKey(lang));
+  } catch {
+    // A failed removal is harmless because force refresh still bypasses the API caches.
+  }
+}
+
+function recommendations(
+  chat: ChatPort,
+  lang: LangCode,
+  force = false,
+): Promise<RecommendedPlan[]> {
+  let byLanguage = requestCache.get(chat);
+  if (!byLanguage) {
+    byLanguage = new Map();
+    requestCache.set(chat, byLanguage);
+  }
+  if (force) {
+    byLanguage.delete(lang);
+    clearStoredRecommendations(lang);
+  } else {
+    const stored = readStoredRecommendations(lang);
+    if (stored) {
+      if (!byLanguage.has(lang)) {
+        const refresh = chat.generateRecommendedPlans({ lang, count: 5 });
+        byLanguage.set(lang, refresh);
+        void refresh.then(
+          (plans) => writeStoredRecommendations(lang, plans),
+          () => {
+            if (byLanguage?.get(lang) === refresh) byLanguage.delete(lang);
+          },
+        );
+      }
+      return Promise.resolve(stored);
+    }
+  }
+
+  const cached = byLanguage.get(lang);
+  if (cached) return cached;
+
+  const request = chat
+    .generateRecommendedPlans({ lang, count: 5, refresh: force })
+    .then((plans) => {
+      writeStoredRecommendations(lang, plans);
+      return plans;
+    });
+  byLanguage.set(lang, request);
+  void request.catch(() => {
+    if (byLanguage?.get(lang) === request) byLanguage.delete(lang);
+  });
+  return request;
+}
+
+function PhotoAttribution({
+  items,
+}: {
+  items?: PlacePhotoAttribution[];
+}): JSX.Element | null {
+  if (!items?.length) return null;
+  return (
+    <small className="plan-first-photo-credit">
+      Photo: {items.map((item, index) => (
+        <span key={`${item.displayName}-${index}`}>
+          {index > 0 ? ", " : ""}
+          {item.uri ? (
+            <a href={item.uri} target="_blank" rel="noreferrer">
+              {item.displayName}
+            </a>
+          ) : item.displayName}
+        </span>
+      ))}
+    </small>
+  );
+}
+
+export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
+  const { t, lang } = useI18n();
+  const [plans, setPlans] = useState<RecommendedPlan[]>([]);
   const [selected, setSelected] = useState<RecommendedPlan | null>(null);
-  const [adjustments, setAdjustments] = useState<string[]>([]);
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const load = useCallback(async (force = false): Promise<void> => {
+    setStatus("loading");
+    setErrorMessage("");
+    try {
+      const next = await recommendations(chat, lang, force);
+      setPlans(next);
+      setSelected(null);
+      setStatus("ready");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : t("planFirst.loadError"));
+      setStatus("error");
+    }
+  }, [chat, lang, t]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const openPlan = (plan: RecommendedPlan): void => {
     setSelected(plan);
-    setAdjustments([]);
-  };
-
-  const toggleAdjustment = (key: string): void => {
-    setAdjustments((current) =>
-      current.includes(key)
-        ? current.filter((item) => item !== key)
-        : [...current, key],
-    );
   };
 
   if (selected) {
-    const stopTimes = ["09:00", "11:30", "14:00"];
+    const planIndex = Math.max(0, plans.findIndex((plan) => plan.id === selected.id));
+    const fallbackImage = FALLBACK_IMAGES[planIndex % FALLBACK_IMAGES.length];
     return (
       <section className="plan-first plan-first--detail" aria-labelledby="plan-first-detail-title">
         <Button variant="ghost" size="sm" leading="←" onClick={() => setSelected(null)}>
@@ -160,65 +186,46 @@ export function AIPlanFirst({ onStart }: AIPlanFirstProps): JSX.Element {
         </div>
 
         <Card className="plan-first-detail" raised padded={false}>
-          <img className="plan-first-detail__image" src={selected.image} alt="" />
+          <img
+            className="plan-first-detail__image"
+            src={selected.imageUrl ?? fallbackImage}
+            alt={selected.title}
+            onError={(event) => { event.currentTarget.src = fallbackImage; }}
+          />
+          <PhotoAttribution items={selected.imageAttributions} />
           <div className="plan-first-detail__body">
             <div className="plan-first-card__tags">
-              <Tag tone={selected.tone} leading={selected.icon}>
+              <Tag tone={TONES[planIndex % TONES.length]} leading={selected.icon}>
                 {t(selected.mode === "pilgrimage" ? "mode.tag.pilgrimage" : "mode.tag.tourism")}
               </Tag>
               <Tag tone="outline">{t("planFirst.customized")}</Tag>
             </div>
-            <h2 className="plan-first-detail__title">{t(selected.titleKey)}</h2>
-            <p className="plan-first-detail__summary">{t(selected.summaryKey)}</p>
+            <h2 className="plan-first-detail__title">{selected.title}</h2>
+            <p className="plan-first-detail__summary">{selected.summary}</p>
 
             <dl className="plan-first-meta plan-first-meta--detail">
-              <div><dt>⏱</dt><dd>{t(selected.durationKey)}</dd></div>
-              <div><dt>🧭</dt><dd>{t(selected.transportKey)}</dd></div>
-              <div><dt>👟</dt><dd>{t(selected.intensityKey)}</dd></div>
+              <div><dt>⏱</dt><dd>{selected.duration}</dd></div>
+              <div><dt>🧭</dt><dd>{selected.transport}</dd></div>
+              <div><dt>👟</dt><dd>{selected.intensity}</dd></div>
             </dl>
 
-            <section aria-labelledby="plan-first-route-title">
-              <h3 id="plan-first-route-title" className="plan-first-detail__section-title">
-                {t("planFirst.routeTitle")}
-              </h3>
-              <ol className="plan-first-route">
-                {selected.stopKeys.map((key, index) => (
-                  <li key={key}>
-                    <time className="plan-first-route__time">{stopTimes[index]}</time>
-                    <span className="plan-first-route__number">{index + 1}</span>
-                    <span>{t(key)}</span>
-                  </li>
-                ))}
-              </ol>
-            </section>
-
-            <fieldset className="plan-first-adjust">
-              <legend>{t("planFirst.adjustTitle")}</legend>
-              <p>{t("planFirst.adjustLead")}</p>
-              <div className="plan-first-adjust__options">
-                {ADJUSTMENT_KEYS.map((key) => {
-                  const active = adjustments.includes(key);
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      className={`plan-first-adjust__chip${active ? " plan-first-adjust__chip--active" : ""}`}
-                      aria-pressed={active}
-                      onClick={() => toggleAdjustment(key)}
-                    >
-                      {active ? "✓ " : "+ "}{t(key)}
-                    </button>
-                  );
-                })}
+            <aside className="plan-first-reason">
+              <span className="plan-first-reason__icon" aria-hidden="true">✨</span>
+              <div>
+                <h2>{t("planFirst.reasonTitle")}</h2>
+                <p>{selected.reason}</p>
               </div>
-              {adjustments.length > 0 && (
-                <p className="plan-first-adjust__status" role="status">
-                  {t("planFirst.adjustStatus").replace("{count}", String(adjustments.length))}
-                </p>
-              )}
-            </fieldset>
+            </aside>
 
-            <Button variant="accent" size="lg" block leading="▶" onClick={() => onStart(selected.mode)}>
+            <aside className="plan-first-reason plan-first-theme-next">
+              <span className="plan-first-reason__icon" aria-hidden="true">🃏</span>
+              <div>
+                <h2>{t("planFirst.themeNextTitle")}</h2>
+                <p>{t("planFirst.themeNextLead")}</p>
+              </div>
+            </aside>
+
+            <Button variant="accent" size="lg" block leading="▶" onClick={() => onStart(selected)}>
               {t("planFirst.start")}
             </Button>
             <p className="plan-first-detail__note">{t("planFirst.startNote")}</p>
@@ -242,47 +249,78 @@ export function AIPlanFirst({ onStart }: AIPlanFirstProps): JSX.Element {
         </div>
       </header>
 
-      <div className="plan-first__count">
-        <span>{t("planFirst.today")}</span>
-        <span>{t("planFirst.count").replace("{count}", String(PLANS.length))}</span>
-      </div>
+      {status === "loading" && (
+        <Card className="plan-first-status" raised>
+          <span className="plan-first-status__spinner" aria-hidden="true" />
+          <p role="status">{t("planFirst.loading")}</p>
+        </Card>
+      )}
 
-      <ul className="plan-first__list" role="list">
-        {PLANS.map((plan) => (
-          <li key={plan.id}>
-            <Card className="plan-first-card-wrap" interactive raised padded={false}>
-              <button
-                type="button"
-                className="plan-first-card"
-                onClick={() => openPlan(plan)}
-                aria-label={`${t("planFirst.open")}: ${t(plan.titleKey)}`}
-              >
-                <img className="plan-first-card__image" src={plan.image} alt="" />
-                <span className="plan-first-card__body">
-                  <span className="plan-first-card__tags">
-                    <Tag tone={plan.tone} leading={plan.icon}>
-                      {t(plan.mode === "pilgrimage" ? "mode.tag.pilgrimage" : "mode.tag.tourism")}
-                    </Tag>
-                    <Tag tone="outline">{t("planFirst.aiPick")}</Tag>
-                  </span>
-                  <span className="plan-first-card__title">{t(plan.titleKey)}</span>
-                  <span className="plan-first-card__summary">{t(plan.summaryKey)}</span>
-                  <span className="plan-first-meta" aria-label={t("planFirst.metaLabel")}>
-                    <span>⏱ {t(plan.durationKey)}</span>
-                    <span>🧭 {t(plan.transportKey)}</span>
-                    <span>👟 {t(plan.intensityKey)}</span>
-                  </span>
-                  <span className="plan-first-card__open">
-                    {t("planFirst.viewDetail")} <span aria-hidden="true">→</span>
-                  </span>
-                </span>
-              </button>
-            </Card>
-          </li>
-        ))}
-      </ul>
+      {status === "error" && (
+        <Card className="plan-first-status plan-first-status--error" raised>
+          <p role="alert">{errorMessage || t("planFirst.loadError")}</p>
+          <Button variant="soft" onClick={() => void load(true)}>
+            {t("planFirst.retry")}
+          </Button>
+        </Card>
+      )}
 
-      <p className="plan-first__footer">{t("planFirst.footer")}</p>
+      {status === "ready" && (
+        <>
+          <div className="plan-first__count">
+            <span>{t("planFirst.today")}</span>
+            <span>{t("planFirst.count").replace("{count}", String(plans.length))}</span>
+          </div>
+
+          <ul className="plan-first__list" role="list">
+            {plans.map((plan, index) => {
+              const fallbackImage = FALLBACK_IMAGES[index % FALLBACK_IMAGES.length];
+              return (
+                <li key={plan.id}>
+                  <Card className="plan-first-card-wrap" interactive raised padded={false}>
+                    <button
+                      type="button"
+                      className="plan-first-card"
+                      onClick={() => openPlan(plan)}
+                      aria-label={`${t("planFirst.open")}: ${plan.title}`}
+                    >
+                      <span className="plan-first-card__media">
+                        <img
+                          className="plan-first-card__image"
+                          src={plan.imageUrl ?? fallbackImage}
+                          alt=""
+                          onError={(event) => { event.currentTarget.src = fallbackImage; }}
+                        />
+                        <PhotoAttribution items={plan.imageAttributions} />
+                      </span>
+                      <span className="plan-first-card__body">
+                        <span className="plan-first-card__tags">
+                          <Tag tone={TONES[index % TONES.length]} leading={plan.icon}>
+                            {t(plan.mode === "pilgrimage" ? "mode.tag.pilgrimage" : "mode.tag.tourism")}
+                          </Tag>
+                          <Tag tone="outline">{t("planFirst.aiPick")}</Tag>
+                        </span>
+                        <span className="plan-first-card__title">{plan.title}</span>
+                        <span className="plan-first-card__summary">{plan.summary}</span>
+                        <span className="plan-first-meta" aria-label={t("planFirst.metaLabel")}>
+                          <span>⏱ {plan.duration}</span>
+                          <span>🧭 {plan.transport}</span>
+                          <span>👟 {plan.intensity}</span>
+                        </span>
+                        <span className="plan-first-card__open">
+                          {t("planFirst.viewDetail")} <span aria-hidden="true">→</span>
+                        </span>
+                      </span>
+                    </button>
+                  </Card>
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className="plan-first__footer">{t("planFirst.footer")}</p>
+        </>
+      )}
     </section>
   );
 }

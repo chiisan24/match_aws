@@ -118,6 +118,29 @@ export async function invokeClaude(args: {
   messages: ClaudeMessage[];
   maxTokens?: number;
 }): Promise<string> {
+  if (CHAT_MODEL_ID.startsWith("amazon.nova-")) {
+    const body = {
+      schemaVersion: "messages-v1",
+      system: [{ text: args.system }],
+      messages: args.messages.map((message) => ({
+        role: message.role,
+        content: [{ text: message.text }],
+      })),
+      inferenceConfig: {
+        maxTokens: args.maxTokens ?? 1024,
+        temperature: 0.2,
+      },
+    };
+    const output = await invokeModel(CHAT_MODEL_ID, JSON.stringify(body));
+    const decoded = JSON.parse(new TextDecoder().decode(output)) as {
+      output?: { message?: { content?: Array<{ text?: string }> } };
+    };
+    return (decoded.output?.message?.content ?? [])
+      .map((part) => part.text ?? "")
+      .join("")
+      .trim();
+  }
+
   const body = {
     anthropic_version: "bedrock-2023-05-31",
     max_tokens: args.maxTokens ?? 1024,
@@ -129,7 +152,6 @@ export async function invokeClaude(args: {
   };
 
   const output = await invokeModel(CHAT_MODEL_ID, JSON.stringify(body));
-
   const decoded = JSON.parse(new TextDecoder().decode(output)) as {
     content?: Array<{ type: string; text?: string }>;
   };

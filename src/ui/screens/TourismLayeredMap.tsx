@@ -20,16 +20,24 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
+import { awsEnv } from "../../config/env";
 import { buildTourismLayerFeatures } from "../../adapters/mock";
 import { filterByLayers } from "../../domain/layers";
 import { haversineDistanceMeters } from "../../domain/geofence";
-import type { GeoPoint, LayerKind, MapFeature, Spot } from "../../domain/types";
+import type {
+  GeoPoint,
+  LayerKind,
+  MapFeature,
+  RecommendedPlace,
+  Spot,
+} from "../../domain/types";
 import type { MapLocationPort } from "../../ports";
 import { useTourism } from "../../app/TourismContext";
 import { useSpots, type NewSpotInput } from "../../app/SpotContext";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
+import { GoogleTourismMap } from "../components/GoogleTourismMap";
 import { MapCanvas } from "../components/MapCanvas";
 import { SectionHeader } from "../components/SectionHeader";
 import { Tag } from "../components/Tag";
@@ -38,6 +46,12 @@ export interface TourismLayeredMapProps {
   /** Map/location backend; inject `gateway.map` in the app, a fake in tests. */
   map: MapLocationPort;
 }
+
+type TourismMapFeature = MapFeature & {
+  place?: RecommendedPlace;
+  description?: string;
+  order?: number;
+};
 
 interface LayerMeta {
   key: LayerKind;
@@ -146,8 +160,8 @@ function buildTouringCandidates(
 }
 
 export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element {
-  const { t } = useI18n();
-  const { favorites, shiori, later } = useTourism();
+  const { t, lang } = useI18n();
+  const { activePlan, favorites, shiori, later } = useTourism();
   const { spots, addSpot } = useSpots();
 
   const [current, setCurrent] = useState<GeoPoint | null>(null);
@@ -158,7 +172,8 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
   );
   const [activePurpose, setActivePurpose] = useState<string | null>(null);
   // The feature whose detail panel is open (null = none).
-  const [selected, setSelected] = useState<MapFeature | null>(null);
+  const [selected, setSelected] = useState<TourismMapFeature | null>(null);
+  const [lookedUpPlace, setLookedUpPlace] = useState<RecommendedPlace | null>(null);
   // Add-spot form visibility + a transient "added" confirmation message.
   const [addOpen, setAddOpen] = useState(false);
   const [addedName, setAddedName] = useState<string | null>(null);
@@ -188,10 +203,53 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
     };
   }, [map]);
 
+  // Resolve catalogue-only spots lazily through the server-side Places API.
+  useEffect(() => {
+    setLookedUpPlace(selected?.place ?? null);
+    if (!selected || selected.place || !awsEnv.apiEndpoint) return;
+    let cancelled = false;
+    const base = awsEnv.apiEndpoint.replace(/\/+$/, "");
+    void fetch(`${base}/places/lookup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: selected.label, lang }),
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const data = (await response.json()) as { place?: RecommendedPlace };
+        return data.place ?? null;
+      })
+      .then((place) => {
+        if (!cancelled) setLookedUpPlace(place);
+      })
+      .catch(() => {
+        if (!cancelled) setLookedUpPlace(null);
+      });
+    return () => { cancelled = true; };
+  }, [selected, lang]);
+
   // All features across every layer — spots + facilities + swipe-driven lists.
-  const allFeatures = useMemo<MapFeature[]>(
+  const allFeatures = useMemo<TourismMapFeature[]>(
     () => buildTourismLayerFeatures(spots, { favorites, shiori, later }),
     [spots, favorites, shiori, later],
+  );
+
+  const planFeatures = useMemo<TourismMapFeature[]>(
+    () =>
+      (activePlan?.stops ?? []).flatMap((stop, index) => {
+        const place = stop.place;
+        if (!place?.location) return [];
+        return [{
+          id: `plan:${activePlan?.id}:${index}`,
+          layer: "sightseeing" as const,
+          location: place.location,
+          label: place.name || stop.title,
+          place,
+          description: stop.description,
+          order: index + 1,
+        }];
+      }),
+    [activePlan],
   );
 
   const activeLayers = useMemo<LayerKind[]>(
@@ -199,20 +257,24 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
     [activeSet],
   );
 
-  const visibleFeatures = useMemo<MapFeature[]>(
+  const visibleFeatures = useMemo<TourismMapFeature[]>(
     () => filterByLayers(allFeatures, activeLayers),
     [allFeatures, activeLayers],
   );
+
+  // The selected AI itinerary is the primary map experience. Without one,
+  // preserve the existing layered catalogue.
+  const mapFeatures = planFeatures.length > 0 ? planFeatures : visibleFeatures;
 
   // Fit the initial view to what's actually shown (not the whole prefecture),
   // so the map doesn't zoom out to a near-empty overview. Falls back to all
   // features when nothing is active yet.
   const boundsPoints = useMemo<GeoPoint[]>(() => {
-    const source = visibleFeatures.length > 0 ? visibleFeatures : allFeatures;
+    const source = mapFeatures.length > 0 ? mapFeatures : allFeatures;
     const points: GeoPoint[] = source.map((f) => f.location);
     if (current) points.push(current);
     return points;
-  }, [visibleFeatures, allFeatures, current]);
+  }, [mapFeatures, allFeatures, current]);
 
   const candidates = useMemo<TouringCandidate[]>(
     () => buildTouringCandidates(visibleFeatures, activeLayers),
@@ -307,54 +369,52 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
       ) : (
         <>
           <p className="layered-map__count" role="status">
-            {t("tlmap.countShown").replace("{count}", String(visibleFeatures.length))}
+            {activePlan && planFeatures.length > 0
+              ? `${activePlan.title} — ${mapFeatures.length}スポット`
+              : t("tlmap.countShown").replace("{count}", String(mapFeatures.length))}
           </p>
 
           <div className={"tlmap-mapwrap" + (selected ? " tlmap-mapwrap--split" : "")}>
             <div className="tlmap-mapwrap__map">
-              <MapCanvas
+              <GoogleTourismMap
                 className="layered-map__surface"
-                testId="tourism-layered-map-surface"
                 ariaLabel={t("tlmap.title")}
-                items={visibleFeatures}
-                boundsPoints={boundsPoints}
+                items={mapFeatures}
                 current={current}
-                renderCurrent={(style) => (
-                  <span
-                    className="layered-map__here"
-                    data-testid="current-location-marker"
-                    style={style}
-                    aria-label={t("map.youAreHere")}
-                    title={t("map.currentLocation")}
+                selectedId={selected?.id}
+                onSelect={setSelected}
+                showDirections={planFeatures.length > 1}
+                fallback={(
+                  <MapCanvas
+                    className="layered-map__surface"
+                    testId="tourism-layered-map-surface"
+                    ariaLabel={t("tlmap.title")}
+                    items={mapFeatures}
+                    boundsPoints={boundsPoints}
+                    current={current}
+                    renderCurrent={(style) => (
+                      <span className="layered-map__here" style={style} aria-label={t("map.youAreHere")} />
+                    )}
+                    renderItem={(feature, style) => (
+                      <button
+                        type="button"
+                        className={`layered-map__pin layered-map__pin--${feature.layer}`}
+                        style={style}
+                        aria-label={feature.label}
+                        onClick={() => setSelected(feature)}
+                      />
+                    )}
                   />
                 )}
-                renderItem={(f, style) => (
-                  <button
-                    type="button"
-                    className={
-                      `layered-map__pin layered-map__pin--${f.layer}` +
-                      (selected?.id === f.id ? " layered-map__pin--selected" : "")
-                    }
-                    data-testid="layer-pin"
-                    data-layer={f.layer}
-                    style={style}
-                    title={f.label}
-                    aria-label={f.label}
-                    onClick={() => setSelected(f)}
-                  />
-                )}
-              >
-                {visibleFeatures.length === 0 && (
-                  <p className="layered-map__empty">{t("tlmap.empty")}</p>
-                )}
-              </MapCanvas>
-              <p className="layered-map__attribution">{t("tlmap.attribution")}</p>
+              />
+              <p className="layered-map__attribution">{t("tlmap.googleAttribution")}</p>
             </div>
 
             {selected && (
               <SpotDetailPanel
                 feature={selected}
                 spot={selected.spotId ? spotById.get(selected.spotId) : undefined}
+                place={lookedUpPlace}
                 current={current}
                 onClose={() => setSelected(null)}
                 t={t}
@@ -425,14 +485,16 @@ function LayerGroup({ legend, layers, activeSet, countByLayer, onToggle, t, note
 // ---------------------------------------------------------------------------
 
 interface SpotDetailPanelProps {
-  feature: MapFeature;
+  feature: TourismMapFeature;
   spot?: Spot;
+  place?: RecommendedPlace | null;
   current: GeoPoint | null;
   onClose: () => void;
   t: (key: string) => string;
 }
 
-function SpotDetailPanel({ feature, spot, current, onClose, t }: SpotDetailPanelProps): JSX.Element {
+function SpotDetailPanel({ feature, spot, place, current, onClose, t }: SpotDetailPanelProps): JSX.Element {
+  const googlePlace = feature.place ?? place;
   const meters = current ? haversineDistanceMeters(current, feature.location) : null;
   const distance = meters != null ? formatDistance(meters) : null;
   const carMin = meters != null ? Math.max(1, Math.round(meters / CAR_METERS_PER_MIN)) : null;
@@ -460,8 +522,36 @@ function SpotDetailPanel({ feature, spot, current, onClose, t }: SpotDetailPanel
         </button>
       </div>
 
-      {spot?.localizedDescriptions.ja && (
-        <p className="tspot-detail__desc">{spot.localizedDescriptions.ja}</p>
+      {googlePlace?.photoUrl && (
+        <figure className="tspot-detail__google-photo">
+          <img src={googlePlace.photoUrl} alt={googlePlace.name} />
+          {googlePlace.photoAttributions?.length && (
+            <figcaption>
+              Photo: {googlePlace.photoAttributions.map((credit) => credit.displayName).join(", ")}
+            </figcaption>
+          )}
+        </figure>
+      )}
+
+      {(feature.description || spot?.localizedDescriptions.ja) && (
+        <p className="tspot-detail__desc">
+          {feature.description ?? spot?.localizedDescriptions.ja}
+        </p>
+      )}
+
+      {feature.place && (
+        <div className="tspot-detail__place-meta">
+          <address>{feature.place.formattedAddress}</address>
+          {typeof feature.place.rating === "number" && (
+            <span>★ {feature.place.rating.toFixed(1)} ({feature.place.userRatingCount ?? 0})</span>
+          )}
+          {feature.place.nationalPhoneNumber && <span>☎ {feature.place.nationalPhoneNumber}</span>}
+          {feature.place.googleMapsUri && (
+            <a href={feature.place.googleMapsUri} target="_blank" rel="noopener noreferrer">
+              {t("planFirst.openGoogleMaps")} ↗
+            </a>
+          )}
+        </div>
       )}
 
       <div className="tspot-detail__boxes">
@@ -489,15 +579,15 @@ function SpotDetailPanel({ feature, spot, current, onClose, t }: SpotDetailPanel
         <div className="tspot-detail__box" data-testid="tspot-detail-hours">
           <span className="tspot-detail__box-label">🕒 {t("tlmap.detail.hours")}</span>
           <span className="tspot-detail__box-value tspot-detail__box-value--sm">
-            {spot?.openingHours ?? t("tlmap.detail.noInfo")}
+            {feature.place?.regularOpeningHours?.join(" / ") ?? spot?.openingHours ?? t("tlmap.detail.noInfo")}
           </span>
         </div>
 
         {/* ホームページ */}
         <div className="tspot-detail__box" data-testid="tspot-detail-website">
           <span className="tspot-detail__box-label">🌐 {t("tlmap.detail.website")}</span>
-          {spot?.website ? (
-            <a className="tspot-detail__link" href={spot.website} target="_blank" rel="noopener noreferrer">
+          {feature.place?.websiteUri ?? spot?.website ? (
+            <a className="tspot-detail__link" href={feature.place?.websiteUri ?? spot?.website} target="_blank" rel="noopener noreferrer">
               {t("tlmap.detail.openSite")}
             </a>
           ) : (

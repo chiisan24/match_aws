@@ -14,6 +14,8 @@ export type {
 export { AIPlanFirst } from "./AIPlanFirst";
 export type { AIPlanFirstProps } from "./AIPlanFirst";
 
+export { TourismRouteBuilder } from "./TourismRouteBuilder";
+
 export { ChatAdvisor } from "./ChatAdvisor";
 export type { ChatAdvisorProps } from "./ChatAdvisor";
 

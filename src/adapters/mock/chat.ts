@@ -17,6 +17,10 @@ import type {
   PilgrimagePlan,
   PlanInput,
   PlanStop,
+  RecommendedPlan,
+  RecommendedPlansInput,
+  RouteCandidate,
+  RouteCandidatesInput,
   Spot,
 } from "../../ports";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
@@ -120,6 +124,77 @@ function looksLikeDiscovery(message: string): boolean {
   return DISCOVERY_HINTS.some((hint) => lower.includes(hint.toLowerCase()));
 }
 
+function mockRecommendation(
+  id: string,
+  mode: RecommendedPlan["mode"],
+  icon: string,
+  title: string,
+  summary: string,
+  imageUrl: string,
+  stopTitles: string[],
+): RecommendedPlan {
+  const times = ["09:00", "11:30", "14:00"];
+  return {
+    id,
+    mode,
+    icon,
+    title,
+    summary,
+    reason: "愛媛らしい景色と文化を無理のない流れで楽しめる組み合わせです。",
+    duration: "約4時間",
+    transport: "車＋徒歩",
+    intensity: "ふつう",
+    imageUrl,
+    stops: stopTitles.map((stopTitle, index) => ({
+      time: times[index] ?? `${9 + index * 2}:00`,
+      title: stopTitle,
+      description: `${stopTitle}をゆっくり楽しみます。`,
+      searchQuery: `${stopTitle} 愛媛県`,
+    })),
+  };
+}
+
+const MOCK_RECOMMENDATIONS: RecommendedPlan[] = [
+  mockRecommendation("matsuyama", "tourism", "🏯", "松山の王道を楽しむ旅", "松山城と道後温泉を巡る定番コース。", "/images/ehime/matsuyama-castle.jpg", ["松山城", "道後温泉", "大街道"]),
+  mockRecommendation("dogo", "tourism", "♨️", "道後でほどける温泉旅", "温泉街とカフェをのんびり楽しみます。", "/images/ehime/onsen-bath.jpg", ["道後温泉本館", "道後商店街", "道後公園"]),
+  mockRecommendation("uchiko", "tourism", "🏘️", "内子の町並みと手仕事", "歴史ある町並みを歩く静かな旅。", "/images/ehime/uchiko-townscape.jpg", ["内子町並保存地区", "内子座", "道の駅 内子フレッシュパークからり"]),
+  mockRecommendation("nanyo", "tourism", "🌿", "南予の城下町と里山", "宇和島の歴史と穏やかな風景に触れる旅。", "/images/ehime/uwajima-castle.jpg", ["宇和島城"]),
+  mockRecommendation("shimanami", "tourism", "🚲", "しまなみ海道の絶景旅", "橋と海を眺めながら島時間を楽しみます。", "/images/ehime/kurushima-bridge.jpg", ["来島海峡展望館", "亀老山展望公園", "大山祇神社"]),
+];
+
+function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidate[] {
+  const used = new Set(input.route.map((stop) => stop.placeId));
+  let pool = EHIME_SPOTS.filter((spot) => !used.has(spot.id));
+  if (input.kind === "food" || input.kind === "cafe") {
+    pool = pool.filter((spot) => spot.category === "food");
+    if (input.kind === "cafe") {
+      const cafes = pool.filter((spot) => /カフェ|珈琲|コーヒー|茶|菓子|スイーツ/i.test(spot.name));
+      if (cafes.length >= 3) pool = cafes;
+    }
+  } else if (input.kind === "sightseeing") {
+    pool = pool.filter((spot) => spot.category !== "food");
+  }
+
+  return pool.slice(0, input.count ?? 6).map((spot) => ({
+    id: `${input.kind}:${spot.id}`,
+    kind: input.kind,
+    title: spot.name,
+    description:
+      spot.localizedDescriptions[input.lang] ??
+      spot.localizedDescriptions.ja ??
+      `${spot.name}を楽しめるスポットです。`,
+    searchQuery: spot.name,
+    place: {
+      id: spot.id,
+      name: spot.name,
+      formattedAddress: "愛媛県",
+      location: spot.location,
+      ...(spot.website ? { websiteUri: spot.website } : {}),
+      ...(spot.imageUrls[0] ? { photoUrl: spot.imageUrls[0] } : {}),
+    },
+  }));
+}
+
 export class MockChatAdapter implements ChatPort {
   async sendMessage(
     session: ChatSession,
@@ -145,6 +220,21 @@ export class MockChatAdapter implements ChatPort {
     return {
       message: `${opener}${forLang(FOLLOWUP_REPLY, lang)(topic)}`,
     };
+  }
+
+  async generateRecommendedPlans(
+    _input: RecommendedPlansInput,
+  ): Promise<RecommendedPlan[]> {
+    return MOCK_RECOMMENDATIONS.map((plan) => ({
+      ...plan,
+      stops: plan.stops.map((stop) => ({ ...stop })),
+    }));
+  }
+
+  async generateRouteCandidates(
+    input: RouteCandidatesInput,
+  ): Promise<RouteCandidate[]> {
+    return mockRouteCandidates(input);
   }
 
   async generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan> {

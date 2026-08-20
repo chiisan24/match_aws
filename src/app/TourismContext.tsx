@@ -40,6 +40,7 @@ import type {
   ChatMessage,
   ChatSession,
   LangCode,
+  RecommendedPlan,
   Spot,
   StorageKey,
 } from "../domain/types";
@@ -130,6 +131,10 @@ export function classifyFavoriteTabs(
 }
 
 export interface TourismContextValue {
+  /** Bedrock recommendation selected during onboarding, used by the map. */
+  activePlan: RecommendedPlan | null;
+  /** Select the itinerary that the tourism map should guide. */
+  selectPlan: (plan: RecommendedPlan) => void;
   /** The running chat session (messages + accumulated preferences). */
   session: ChatSession;
   /** Convenience accessor for the conversation turns. */
@@ -193,6 +198,7 @@ const SHIORI_KEY: StorageKey = "shiori";
 
 /** Internal store shape held in a single state object. */
 interface TourismState {
+  activePlan: RecommendedPlan | null;
   session: ChatSession;
   chatStatus: ChatStatus;
   chatError: string | null;
@@ -234,6 +240,7 @@ function newSessionId(): string {
 
 function createInitialState(lang: LangCode): TourismState {
   return {
+    activePlan: null,
     session: {
       id: newSessionId(),
       lang,
@@ -483,8 +490,14 @@ export function TourismProvider({
     [addToCollection],
   );
 
+  const selectPlan = useCallback((plan: RecommendedPlan): void => {
+    setState((s) => ({ ...s, activePlan: plan }));
+  }, []);
+
   const value = useMemo<TourismContextValue>(
     () => ({
+      activePlan: state.activePlan,
+      selectPlan,
       session: state.session,
       messages: state.session.messages,
       chatStatus: state.chatStatus,
@@ -510,6 +523,7 @@ export function TourismProvider({
     }),
     [
       state,
+      selectPlan,
       sendMessage,
       retry,
       recordSwipe,
