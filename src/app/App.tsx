@@ -9,6 +9,7 @@ import {
   Login,
   ModeShell,
   Settings,
+  WelcomeScreen,
 } from "../ui/screens";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { createGateway } from "./gateway";
@@ -55,7 +56,11 @@ export function App(): JSX.Element {
                   port under "progress" / "visitRecords". */}
               <PilgrimageProvider storage={gateway.storage}>
                 <main className="app-shell">
-                  <AppFlow map={gateway.map} chat={gateway.chat} storage={gateway.storage} />
+                  <AppFlow
+                    map={gateway.map}
+                    chat={gateway.chat}
+                    storage={gateway.storage}
+                  />
                 </main>
               </PilgrimageProvider>
             </LocalizedTourismProvider>
@@ -92,7 +97,7 @@ function LocalizedTourismProvider({
 }
 
 /** Top-level navigation phases of the shell. */
-type Phase = "language" | "plan-select" | "app";
+type Phase = "welcome" | "language" | "plan-select" | "app";
 
 interface AppFlowProps {
   /** Map/location backend handed to お遍路 screens (Req 8.5). */
@@ -104,12 +109,21 @@ interface AppFlowProps {
 }
 
 function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
-  const [phase, setPhase] = useState<Phase>("language");
-  const { mode, switchMode } = useMode();
+  const [phase, setPhase] = useState<Phase>("welcome");
+  const { mode, switchMode, setTab } = useMode();
   const { isAuthenticated, initializing } = useAuth();
   // Settings overlays the current mode layout; track it independently so
   // returning lands back on the same mode/tab.
   const [showSettings, setShowSettings] = useState(false);
+
+  if (phase === "welcome") {
+    return (
+      <WelcomeScreen
+        onStart={(_lang: LangCode) => setPhase("plan-select")}
+        onChangeLanguage={() => setPhase("language")}
+      />
+    );
+  }
 
   if (phase === "language") {
     return (
@@ -123,9 +137,11 @@ function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
     return (
       <AIPlanFirst
         onStart={(mode) => {
-          // The chosen trip selects its backing mode without exposing that
-          // implementation detail as an up-front decision.
+          // The selected recommendation starts immediately. Until the Google
+          // companion is implemented, land on the existing map rather than an
+          // AI chat/planner screen; this is the future Routes API hand-off.
           switchMode(mode);
+          setTab("map", mode);
           setPhase("app");
         }}
       />

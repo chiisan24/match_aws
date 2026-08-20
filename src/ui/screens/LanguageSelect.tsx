@@ -26,6 +26,71 @@ import { Button } from "../components/Button";
 import { PlaceholderImage } from "../components/PlaceholderImage";
 import { screenSrcSet, screenFallback } from "./screenImage";
 
+export interface WelcomeScreenProps {
+  /** Starts the journey with the currently active language. */
+  onStart?: (lang: LangCode) => void;
+  /** Opens the dedicated language selection screen. */
+  onChangeLanguage?: () => void;
+}
+
+export function WelcomeScreen({
+  onStart,
+  onChangeLanguage,
+}: WelcomeScreenProps): JSX.Element {
+  const { lang, t, setLanguage } = useI18n();
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleStart = async (): Promise<void> => {
+    setSubmitting(true);
+    try {
+      await setLanguage(lang);
+      onStart?.(lang);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="lang-select" aria-labelledby="welcome-title">
+      <div className="lang-select__hero">
+        <WelcomeHero />
+        <div className="lang-select__scrim" aria-hidden="true" />
+        <div className="lang-select__welcome">
+          <div className="lang-select__brand" aria-label="Ehime Journey">
+            <span>Ehime<br />Journey</span>
+          </div>
+          <div className="lang-select__copy">
+            <p className="lang-select__kicker">{t("welcome.kicker")}</p>
+            <h1 id="welcome-title" className="lang-select__welcome-title">
+              {t("welcome.tagline")}
+            </h1>
+            <p className="lang-select__lead">{t("welcome.lead")}</p>
+          </div>
+          <div className="lang-select__actions">
+            <Button
+              variant="accent"
+              size="lg"
+              block
+              disabled={submitting}
+              onClick={() => void handleStart()}
+            >
+              {t("welcome.start")}
+            </Button>
+            <Button
+              variant="ghost"
+              block
+              className="lang-select__language-button"
+              onClick={onChangeLanguage}
+            >
+              🌐 {t("welcome.changeLanguage")}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export interface LanguageSelectProps {
   /** Called after the active language is persisted and the journey starts. */
   onComplete?: (lang: LangCode) => void;
@@ -36,7 +101,6 @@ export function LanguageSelect({
 }: LanguageSelectProps): JSX.Element {
   const { lang, t, setLanguage } = useI18n();
   const [selected, setSelected] = useState<LangCode>(lang);
-  const [showLanguagePicker, setShowLanguagePicker] = useState(false);
   const [showOtherNote, setShowOtherNote] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -54,91 +118,52 @@ export function LanguageSelect({
   };
 
   return (
-    <section className="lang-select" aria-labelledby="welcome-title">
-      <div className="lang-select__hero">
-        <WelcomeHero />
-        <div className="lang-select__scrim" aria-hidden="true" />
-        <div className="lang-select__welcome">
-          <div className="lang-select__brand" aria-label="Ehime Journey">
-            <span className="lang-select__brand-mark" aria-hidden="true">✦</span>
-            <span>Ehime<br />Journey</span>
-          </div>
-          <div className="lang-select__copy">
-            <p className="lang-select__kicker">{t("welcome.kicker")}</p>
-            <h1 id="welcome-title" className="lang-select__welcome-title">
-              {t("welcome.tagline")}
-            </h1>
-            <p className="lang-select__lead">{t("welcome.lead")}</p>
-          </div>
-          <div className="lang-select__actions">
-            <Button
-              variant="accent"
-              size="lg"
-              block
-              disabled={submitting}
-              onClick={() => void handleContinue()}
-            >
-              {t("welcome.start")}
-            </Button>
-            <Button
-              variant="ghost"
-              block
-              className="lang-select__language-button"
-              aria-expanded={showLanguagePicker}
-              aria-controls="language-picker"
-              onClick={() => setShowLanguagePicker((open) => !open)}
-            >
-              🌐 {t("welcome.changeLanguage")}
-            </Button>
-          </div>
+    <section className="lang-select" aria-labelledby="language-select-title">
+      <div id="language-picker" className="lang-select__picker">
+        <div className="lang-select__heading">
+          <h1 id="language-select-title" className="lang-select__heading-main">
+            {t("lang.heading")}
+          </h1>
+          <p className="lang-select__heading-sub">{t("lang.headingSub")}</p>
         </div>
-      </div>
-
-      {showLanguagePicker && (
-        <div id="language-picker" className="lang-select__picker">
-          <div className="lang-select__heading">
-            <h2 className="lang-select__heading-main">{t("lang.heading")}</h2>
-            <p className="lang-select__heading-sub">{t("lang.headingSub")}</p>
-          </div>
-          <ul className="lang-select__grid" role="list">
-            {LANGUAGE_OPTIONS.map((opt) => (
-              <li key={opt.code}>
-                <LanguageTile
-                  option={opt}
-                  selected={selected === opt.code}
-                  recommendedLabel={t("lang.recommended")}
-                  onSelect={() => setSelected(opt.code)}
-                />
-              </li>
-            ))}
-          </ul>
-          <div className="lang-select__other">
-            <Button
-              variant="ghost"
-              block
-              aria-expanded={showOtherNote}
-              onClick={() => setShowOtherNote((value) => !value)}
-            >
-              {t("lang.other")}
-            </Button>
-            {showOtherNote && (
-              <p className="lang-select__other-note" role="status">
-                {t("lang.otherComingSoon")}
-              </p>
-            )}
-          </div>
-          <p className="lang-select__note">{t("lang.note")}</p>
+        <ul className="lang-select__grid" role="list">
+          {LANGUAGE_OPTIONS.map((opt) => (
+            <li key={opt.code}>
+              <LanguageTile
+                option={opt}
+                selected={selected === opt.code}
+                recommendedLabel={t("lang.recommended")}
+                onSelect={() => setSelected(opt.code)}
+              />
+            </li>
+          ))}
+        </ul>
+        <div className="lang-select__other">
           <Button
-            variant="accent"
-            size="lg"
+            variant="ghost"
             block
-            disabled={submitting}
-            onClick={() => void handleContinue()}
+            aria-expanded={showOtherNote}
+            onClick={() => setShowOtherNote((value) => !value)}
           >
-            {t("lang.next")}
+            {t("lang.other")}
           </Button>
+          {showOtherNote && (
+            <p className="lang-select__other-note" role="status">
+              {t("lang.otherComingSoon")}
+            </p>
+          )}
         </div>
-      )}
+        <p className="lang-select__note">{t("lang.note")}</p>
+        <Button
+          variant="accent"
+          size="lg"
+          block
+          disabled={submitting}
+          onClick={() => void handleContinue()}
+        >
+          {t("lang.next")}
+        </Button>
+      </div>
     </section>
   );
 }
