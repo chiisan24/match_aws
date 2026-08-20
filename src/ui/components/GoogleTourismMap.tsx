@@ -18,6 +18,8 @@ interface GoogleTourismMapProps<T extends GoogleTourismMapItem> {
   ariaLabel: string;
   className: string;
   fallback: ReactNode;
+  /** Draw a driving route through ordered items; falls back to a polyline. */
+  showDirections?: boolean;
 }
 
 declare global {
@@ -53,6 +55,7 @@ export function GoogleTourismMap<T extends GoogleTourismMapItem>({
   ariaLabel,
   className,
   fallback,
+  showDirections = false,
 }: GoogleTourismMapProps<T>): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
@@ -63,6 +66,7 @@ export function GoogleTourismMap<T extends GoogleTourismMapItem>({
     let cancelled = false;
     const markers: any[] = [];
     let line: any = null;
+    let directionsRenderer: any = null;
 
     void loadGoogleMaps(key).then((google) => {
       if (cancelled || !hostRef.current) return;
@@ -93,7 +97,42 @@ export function GoogleTourismMap<T extends GoogleTourismMapItem>({
       if (items.length > 0 || current) map.fitBounds(bounds, 56);
 
       const route = items.filter((item) => item.order).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-      if (route.length > 1) {
+      if (route.length > 1 && showDirections) {
+        directionsRenderer = new google.maps.DirectionsRenderer({
+          map,
+          suppressMarkers: true,
+          preserveViewport: true,
+          polylineOptions: {
+            strokeColor: "#e87524",
+            strokeOpacity: 0.9,
+            strokeWeight: 5,
+          },
+        });
+        const service = new google.maps.DirectionsService();
+        service.route({
+          origin: route[0].location,
+          destination: route[route.length - 1].location,
+          waypoints: route.slice(1, -1).map((item) => ({ location: item.location, stopover: true })),
+          optimizeWaypoints: false,
+          travelMode: google.maps.TravelMode.DRIVING,
+        }, (result: any, status: any) => {
+          if (cancelled) return;
+          if (status === google.maps.DirectionsStatus.OK && result) {
+            directionsRenderer?.setDirections(result);
+          } else {
+            directionsRenderer?.setMap(null);
+            directionsRenderer = null;
+            line = new google.maps.Polyline({
+              map,
+              path: route.map((item) => item.location),
+              strokeColor: "#e87524",
+              strokeOpacity: 0.9,
+              strokeWeight: 5,
+              geodesic: true,
+            });
+          }
+        });
+      } else if (route.length > 1) {
         line = new google.maps.Polyline({
           map,
           path: route.map((item) => item.location),
@@ -111,9 +150,10 @@ export function GoogleTourismMap<T extends GoogleTourismMapItem>({
     return () => {
       cancelled = true;
       markers.forEach((marker) => { marker.map = null; });
+      directionsRenderer?.setMap(null);
       line?.setMap(null);
     };
-  }, [key, items, current, selectedId, onSelect]);
+  }, [key, items, current, selectedId, onSelect, showDirections]);
 
   if (!key || failed) return <>{fallback}</>;
   return <div ref={hostRef} className={`${className} google-tourism-map`} role="group" aria-label={ariaLabel} />;

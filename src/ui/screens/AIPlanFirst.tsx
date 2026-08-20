@@ -16,13 +16,6 @@ export interface AIPlanFirstProps {
   onStart: (plan: RecommendedPlan) => void;
 }
 
-const ADJUSTMENT_KEYS = [
-  "planFirst.adjust.shorter",
-  "planFirst.adjust.lessWalking",
-  "planFirst.adjust.moreFood",
-  "planFirst.adjust.moreHidden",
-] as const;
-
 const FALLBACK_IMAGES = [
   "/images/ehime/matsuyama-castle.jpg",
   "/images/ehime/onsen-bath.jpg",
@@ -36,7 +29,7 @@ const requestCache = new WeakMap<
   ChatPort,
   Map<LangCode, Promise<RecommendedPlan[]>>
 >();
-const RECOMMENDATIONS_CACHE_VERSION = "v1";
+const RECOMMENDATIONS_CACHE_VERSION = "v2";
 
 function recommendationDate(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -150,7 +143,6 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
   const { t, lang } = useI18n();
   const [plans, setPlans] = useState<RecommendedPlan[]>([]);
   const [selected, setSelected] = useState<RecommendedPlan | null>(null);
-  const [adjustments, setAdjustments] = useState<string[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -174,15 +166,6 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
 
   const openPlan = (plan: RecommendedPlan): void => {
     setSelected(plan);
-    setAdjustments([]);
-  };
-
-  const toggleAdjustment = (key: string): void => {
-    setAdjustments((current) =>
-      current.includes(key)
-        ? current.filter((item) => item !== key)
-        : [...current, key],
-    );
   };
 
   if (selected) {
@@ -234,82 +217,13 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
               </div>
             </aside>
 
-            <section aria-labelledby="plan-first-route-title">
-              <h3 id="plan-first-route-title" className="plan-first-detail__section-title">
-                {t("planFirst.routeTitle")}
-              </h3>
-              <ol className="plan-first-route plan-first-route--places">
-                {selected.stops.map((stop, index) => (
-                  <li key={`${stop.time}-${stop.title}`}>
-                    <time className="plan-first-route__time">{stop.time}</time>
-                    <span className="plan-first-route__number">{index + 1}</span>
-                    <div className="plan-first-place">
-                      {stop.place?.photoUrl && (
-                        <div className="plan-first-place__photo-wrap">
-                          <img
-                            className="plan-first-place__photo"
-                            src={stop.place.photoUrl}
-                            alt={stop.place.name}
-                            loading="lazy"
-                          />
-                          <PhotoAttribution items={stop.place.photoAttributions} />
-                        </div>
-                      )}
-                      <div className="plan-first-place__body">
-                        <strong>{stop.title}</strong>
-                        <p>{stop.description}</p>
-                        {stop.place ? (
-                          <div className="plan-first-place__google">
-                            <span className="plan-first-place__verified">
-                              {t("planFirst.googleVerified")}
-                            </span>
-                            <span>{stop.place.name}</span>
-                            {stop.place.formattedAddress && (
-                              <address>{stop.place.formattedAddress}</address>
-                            )}
-                            {stop.place.googleMapsUri && (
-                              <a href={stop.place.googleMapsUri} target="_blank" rel="noreferrer">
-                                {t("planFirst.openGoogleMaps")} ↗
-                              </a>
-                            )}
-                          </div>
-                        ) : (
-                          <small className="plan-first-place__unavailable">
-                            {t("planFirst.placeUnavailable")}
-                          </small>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </section>
-
-            <fieldset className="plan-first-adjust">
-              <legend>{t("planFirst.adjustTitle")}</legend>
-              <p>{t("planFirst.adjustLead")}</p>
-              <div className="plan-first-adjust__options">
-                {ADJUSTMENT_KEYS.map((key) => {
-                  const active = adjustments.includes(key);
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      className={`plan-first-adjust__chip${active ? " plan-first-adjust__chip--active" : ""}`}
-                      aria-pressed={active}
-                      onClick={() => toggleAdjustment(key)}
-                    >
-                      {active ? "✓ " : "+ "}{t(key)}
-                    </button>
-                  );
-                })}
+            <aside className="plan-first-reason plan-first-theme-next">
+              <span className="plan-first-reason__icon" aria-hidden="true">🃏</span>
+              <div>
+                <h2>{t("planFirst.themeNextTitle")}</h2>
+                <p>{t("planFirst.themeNextLead")}</p>
               </div>
-              {adjustments.length > 0 && (
-                <p className="plan-first-adjust__status" role="status">
-                  {t("planFirst.adjustStatus").replace("{count}", String(adjustments.length))}
-                </p>
-              )}
-            </fieldset>
+            </aside>
 
             <Button variant="accent" size="lg" block leading="▶" onClick={() => onStart(selected)}>
               {t("planFirst.start")}

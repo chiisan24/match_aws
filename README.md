@@ -75,7 +75,8 @@ AI機能を実際に動かすには、AWS 側の準備と Vercel の環境変数
 | エンドポイント | 用途 | 呼び出す AWS サービス |
 | --- | --- | --- |
 | `POST /api/chat` | AIチャット相談・スポット候補選定 | Bedrock (Claude) |
-| `GET /api/recommendations`（再生成は`POST`） | 愛媛のおすすめ5件生成・場所情報の照合（15分キャッシュ） | Bedrock (Claude) + Google Places API (New) |
+| `GET /api/recommendations`（再生成は`POST`） | 愛媛の旅行テーマ5件生成・代表写真照合（15分キャッシュ） | Bedrock (Claude) + Google Places API (New) |
+| `POST /api/route-candidates` | テーマ・現在ルートに沿った観光/食事/カフェ候補生成 | Bedrock (Claude) + Google Places API (New) |
 | `GET /api/places/photo` | Places写真へのキー非公開プロキシ | Google Places API (New) |
 | `POST /api/plan` | 今日のお遍路プラン生成 | Bedrock (Claude) |
 | `POST /api/translate` | 多言語翻訳 | Amazon Translate |

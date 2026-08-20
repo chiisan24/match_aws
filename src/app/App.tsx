@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 
-import type { LangCode } from "../domain/types";
+import type { LangCode, RecommendedPlan } from "../domain/types";
 import type { ChatPort, MapLocationPort, StoragePort } from "../ports";
 import { I18nProvider, useI18n } from "../i18n";
 import {
@@ -9,6 +9,7 @@ import {
   Login,
   ModeShell,
   Settings,
+  TourismRouteBuilder,
 } from "../ui/screens";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { createGateway } from "./gateway";
@@ -92,7 +93,7 @@ function LocalizedTourismProvider({
 }
 
 /** Top-level navigation phases of the shell. */
-type Phase = "language" | "plan-select" | "app";
+type Phase = "language" | "plan-select" | "route-builder" | "app";
 
 interface AppFlowProps {
   /** Map/location backend handed to お遍路 screens (Req 8.5). */
@@ -105,6 +106,7 @@ interface AppFlowProps {
 
 function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
   const [phase, setPhase] = useState<Phase>("language");
+  const [routeTheme, setRouteTheme] = useState<RecommendedPlan | null>(null);
   const { mode, switchMode, setTab } = useMode();
   const { selectPlan } = useTourism();
   const { isAuthenticated, initializing } = useAuth();
@@ -125,9 +127,30 @@ function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
       <AIPlanFirst
         chat={chat}
         onStart={(plan) => {
+          if (plan.mode === "tourism") {
+            setRouteTheme(plan);
+            switchMode("tourism");
+            setPhase("route-builder");
+            return;
+          }
           selectPlan(plan);
           switchMode(plan.mode);
-          if (plan.mode === "tourism") setTab("map", "tourism");
+          setPhase("app");
+        }}
+      />
+    );
+  }
+
+  if (phase === "route-builder" && routeTheme) {
+    return (
+      <TourismRouteBuilder
+        chat={chat}
+        theme={routeTheme}
+        onBack={() => setPhase("plan-select")}
+        onComplete={(plan) => {
+          selectPlan(plan);
+          switchMode("tourism");
+          setTab("map", "tourism");
           setPhase("app");
         }}
       />

@@ -383,6 +383,7 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
                 current={current}
                 selectedId={selected?.id}
                 onSelect={setSelected}
+                showDirections={planFeatures.length > 1}
                 fallback={(
                   <MapCanvas
                     className="layered-map__surface"
