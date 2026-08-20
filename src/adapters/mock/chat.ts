@@ -19,6 +19,8 @@ import type {
   PlanStop,
   RecommendedPlan,
   RecommendedPlansInput,
+  RouteCandidate,
+  RouteCandidatesInput,
   Spot,
 } from "../../ports";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
@@ -156,9 +158,42 @@ const MOCK_RECOMMENDATIONS: RecommendedPlan[] = [
   mockRecommendation("matsuyama", "tourism", "🏯", "松山の王道を楽しむ旅", "松山城と道後温泉を巡る定番コース。", "/images/ehime/matsuyama-castle.jpg", ["松山城", "道後温泉", "大街道"]),
   mockRecommendation("dogo", "tourism", "♨️", "道後でほどける温泉旅", "温泉街とカフェをのんびり楽しみます。", "/images/ehime/onsen-bath.jpg", ["道後温泉本館", "道後商店街", "道後公園"]),
   mockRecommendation("uchiko", "tourism", "🏘️", "内子の町並みと手仕事", "歴史ある町並みを歩く静かな旅。", "/images/ehime/uchiko-townscape.jpg", ["内子町並保存地区", "内子座", "道の駅 内子フレッシュパークからり"]),
-  mockRecommendation("ohenro", "pilgrimage", "⛩️", "はじめてのプチお遍路", "札所と地域の味を半日で体験します。", "/images/ehime/setouchi-shrine.jpg", ["石手寺", "浄土寺", "繁多寺"]),
+  mockRecommendation("nanyo", "tourism", "🌿", "南予の城下町と里山", "宇和島の歴史と穏やかな風景に触れる旅。", "/images/ehime/uwajima-castle.jpg", ["宇和島城"]),
   mockRecommendation("shimanami", "tourism", "🚲", "しまなみ海道の絶景旅", "橋と海を眺めながら島時間を楽しみます。", "/images/ehime/kurushima-bridge.jpg", ["来島海峡展望館", "亀老山展望公園", "大山祇神社"]),
 ];
+
+function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidate[] {
+  const used = new Set(input.route.map((stop) => stop.placeId));
+  let pool = EHIME_SPOTS.filter((spot) => !used.has(spot.id));
+  if (input.kind === "food" || input.kind === "cafe") {
+    pool = pool.filter((spot) => spot.category === "food");
+    if (input.kind === "cafe") {
+      const cafes = pool.filter((spot) => /カフェ|珈琲|コーヒー|茶|菓子|スイーツ/i.test(spot.name));
+      if (cafes.length >= 3) pool = cafes;
+    }
+  } else if (input.kind === "sightseeing") {
+    pool = pool.filter((spot) => spot.category !== "food");
+  }
+
+  return pool.slice(0, input.count ?? 6).map((spot) => ({
+    id: `${input.kind}:${spot.id}`,
+    kind: input.kind,
+    title: spot.name,
+    description:
+      spot.localizedDescriptions[input.lang] ??
+      spot.localizedDescriptions.ja ??
+      `${spot.name}を楽しめるスポットです。`,
+    searchQuery: spot.name,
+    place: {
+      id: spot.id,
+      name: spot.name,
+      formattedAddress: "愛媛県",
+      location: spot.location,
+      ...(spot.website ? { websiteUri: spot.website } : {}),
+      ...(spot.imageUrls[0] ? { photoUrl: spot.imageUrls[0] } : {}),
+    },
+  }));
+}
 
 export class MockChatAdapter implements ChatPort {
   async sendMessage(
@@ -194,6 +229,12 @@ export class MockChatAdapter implements ChatPort {
       ...plan,
       stops: plan.stops.map((stop) => ({ ...stop })),
     }));
+  }
+
+  async generateRouteCandidates(
+    input: RouteCandidatesInput,
+  ): Promise<RouteCandidate[]> {
+    return mockRouteCandidates(input);
   }
 
   async generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan> {

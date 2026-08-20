@@ -20,6 +20,8 @@ import type {
   PlanInput,
   RecommendedPlan,
   RecommendedPlansInput,
+  RouteCandidate,
+  RouteCandidatesInput,
   Session,
   ShikokuPrefecture,
   Spot,
@@ -39,6 +41,10 @@ export interface ChatPort {
   generateRecommendedPlans(
     input: RecommendedPlansInput,
   ): Promise<RecommendedPlan[]>;
+  /** Generate Google-verified candidates for one route-building stage. */
+  generateRouteCandidates(
+    input: RouteCandidatesInput,
+  ): Promise<RouteCandidate[]>;
   generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan>;
   /**
    * Estimate the "next temple" navigation figures (distance / travel times /

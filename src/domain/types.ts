@@ -312,6 +312,33 @@ export interface RecommendedPlansInput {
   refresh?: boolean;
 }
 
+export type RouteCandidateKind = "sightseeing" | "food" | "cafe" | "custom";
+
+/** A Google-verified candidate presented by the interactive route builder. */
+export interface RouteCandidate {
+  id: string;
+  kind: RouteCandidateKind;
+  title: string;
+  description: string;
+  searchQuery: string;
+  place: RecommendedPlace & { location: GeoPoint };
+}
+
+export interface RouteCandidateContextStop {
+  title: string;
+  placeId: string;
+  location: GeoPoint;
+}
+
+export interface RouteCandidatesInput {
+  lang: LangCode;
+  kind: RouteCandidateKind;
+  theme: Pick<RecommendedPlan, "id" | "title" | "summary" | "reason">;
+  route: RouteCandidateContextStop[];
+  customRequest?: string;
+  count?: number;
+}
+
 /** Inputs for an AI next-temple navigation estimate (目安/参考情報). */
 export interface NextTempleNavInput {
   /** The traveler's start point (current location), or null if unknown. */

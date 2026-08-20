@@ -82,12 +82,12 @@ function normalizePlan(value: unknown, index: number): RecommendationPlan {
   }
   const plan = value as RawPlan;
   const rawStops = Array.isArray(plan.stops) ? plan.stops : [];
-  if (rawStops.length < 2 || rawStops.length > 4) {
-    throw new Error("Each recommendation must contain two to four stops.");
+  if (rawStops.length !== 1) {
+    throw new Error("Each theme must contain exactly one representative place.");
   }
   return {
     id: slug(plan.id, index),
-    mode: plan.mode === "pilgrimage" ? "pilgrimage" : "tourism",
+    mode: "tourism",
     icon: text(plan.icon, "icon", 8),
     title: text(plan.title, "title", 120),
     summary: text(plan.summary, "summary", 240),
@@ -157,9 +157,9 @@ function recommendationPrompt(lang: string): string {
     "あなたは愛媛県専門の旅行プランナーです。",
     `基準日は ${japanDate()}。季節を意識した多様な日帰り旅行を提案してください。`,
     `表示文言は言語コード ${lang} で簡潔に書いてください。不明な場合は日本語にしてください。`,
-    "愛媛県内に実在する場所だけを使い、松山周辺に偏らせず地域とテーマを分散してください。",
-    "5件のうち1件は初心者向けお遍路にし、modeをpilgrimageにしてください。残りはtourismです。",
-    "各プランの立寄先は必ず3件にしてください。飲食も検索可能な実在店・施設名にしてください。",
+    "愛媛県内に実在する場所を題材に、松山周辺に偏らない5つの大まかな旅行テーマを作ってください。",
+    "5件すべてmodeをtourismにし、地域・景色・文化・体験などテーマを重複させないでください。",
+    "各テーマのstopsは、テーマを象徴する代表的な実在スポットを必ず1件だけ含めてください。飲食店やカフェは含めないでください。",
     "summary・reason・各descriptionは要点だけを短く書いてください。",
     "searchQueryはGoogle Mapsで一意に検索できる正式な場所名にしてください。住所やURLは作らないでください。",
     "営業時間・料金・イベント開催を断定しないでください。",
@@ -172,8 +172,8 @@ function recommendationPrompt(lang: string): string {
 async function generateRecommendations(lang: string): Promise<RecommendationResult> {
   const output = await invokeClaude({
     system: recommendationPrompt(lang),
-    messages: [{ role: "user", text: "今日の愛媛旅行おすすめを5件生成してください。" }],
-    maxTokens: 2400,
+    messages: [{ role: "user", text: "今日の愛媛旅行テーマを5件生成してください。" }],
+    maxTokens: 1800,
   });
   const parsed = extractJson<{ plans?: unknown }>(output);
   if (!Array.isArray(parsed?.plans) || parsed.plans.length !== 5) {

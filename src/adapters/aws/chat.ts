@@ -29,6 +29,8 @@ import type {
   PlanStop,
   RecommendedPlan,
   RecommendedPlansInput,
+  RouteCandidate,
+  RouteCandidatesInput,
   Spot,
 } from "../../ports";
 import type { AwsEnv } from "../../config/env";
@@ -184,6 +186,32 @@ export class AwsChatAdapter implements ChatPort {
       throw new Error("おすすめプランを5件取得できませんでした。");
     }
     return data.plans;
+  }
+
+  async generateRouteCandidates(
+    input: RouteCandidatesInput,
+  ): Promise<RouteCandidate[]> {
+    const base = apiBase(this.env, "ChatPort.generateRouteCandidates");
+    const res = await fetch(`${base}/route-candidates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+      let apiError: ApiErrorResponse = {};
+      try {
+        apiError = (await res.json()) as ApiErrorResponse;
+      } catch {
+        // Platform-level failures may return non-JSON bodies.
+      }
+      throw new Error(chatErrorMessage(res.status, apiError.detail));
+    }
+
+    const data = (await res.json()) as { candidates?: RouteCandidate[] };
+    if (!Array.isArray(data.candidates) || data.candidates.length === 0) {
+      throw new Error("ルート候補を取得できませんでした。");
+    }
+    return data.candidates;
   }
 
   async generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan> {
