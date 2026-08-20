@@ -308,6 +308,8 @@ export interface RecommendedPlan {
 export interface RecommendedPlansInput {
   lang: LangCode;
   count?: number;
+  /** Bypass browser/CDN/server caches and ask Bedrock for a new set. */
+  refresh?: boolean;
 }
 
 /** Inputs for an AI next-temple navigation estimate (目安/参考情報). */

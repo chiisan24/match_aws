@@ -159,11 +159,16 @@ export class AwsChatAdapter implements ChatPort {
     input: RecommendedPlansInput,
   ): Promise<RecommendedPlan[]> {
     const base = apiBase(this.env, "ChatPort.generateRecommendedPlans");
-    const res = await fetch(`${base}/recommendations`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lang: input.lang, count: input.count ?? 5 }),
-    });
+    const count = input.count ?? 5;
+    const query = new URLSearchParams({ lang: input.lang, count: String(count) });
+    const res = await fetch(`${base}/recommendations?${query.toString()}`, input.refresh
+      ? {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lang: input.lang, count }),
+          cache: "no-store",
+        }
+      : { method: "GET" });
     if (!res.ok) {
       let apiError: ApiErrorResponse = {};
       try {

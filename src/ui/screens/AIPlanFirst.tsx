@@ -36,6 +36,47 @@ const requestCache = new WeakMap<
   ChatPort,
   Map<LangCode, Promise<RecommendedPlan[]>>
 >();
+const RECOMMENDATIONS_CACHE_VERSION = "v1";
+
+function recommendationDate(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
+function storageKey(lang: LangCode): string {
+  return `ehime-recommendations:${RECOMMENDATIONS_CACHE_VERSION}:${recommendationDate()}:${lang}`;
+}
+
+function readStoredRecommendations(lang: LangCode): RecommendedPlan[] | null {
+  try {
+    const raw = window.sessionStorage.getItem(storageKey(lang));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) && parsed.length === 5
+      ? parsed as RecommendedPlan[]
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredRecommendations(
+  lang: LangCode,
+  plans: RecommendedPlan[],
+): void {
+  try {
+    window.sessionStorage.setItem(storageKey(lang), JSON.stringify(plans));
+  } catch {
+    // Storage may be unavailable in private browsing or constrained webviews.
+  }
+}
+
+function clearStoredRecommendations(lang: LangCode): void {
+  try {
+    window.sessionStorage.removeItem(storageKey(lang));
+  } catch {
+    // A failed removal is harmless because force refresh still bypasses the API caches.
+  }
+}
 
 function recommendations(
   chat: ChatPort,
@@ -47,11 +88,35 @@ function recommendations(
     byLanguage = new Map();
     requestCache.set(chat, byLanguage);
   }
-  if (force) byLanguage.delete(lang);
+  if (force) {
+    byLanguage.delete(lang);
+    clearStoredRecommendations(lang);
+  } else {
+    const stored = readStoredRecommendations(lang);
+    if (stored) {
+      if (!byLanguage.has(lang)) {
+        const refresh = chat.generateRecommendedPlans({ lang, count: 5 });
+        byLanguage.set(lang, refresh);
+        void refresh.then(
+          (plans) => writeStoredRecommendations(lang, plans),
+          () => {
+            if (byLanguage?.get(lang) === refresh) byLanguage.delete(lang);
+          },
+        );
+      }
+      return Promise.resolve(stored);
+    }
+  }
+
   const cached = byLanguage.get(lang);
   if (cached) return cached;
 
-  const request = chat.generateRecommendedPlans({ lang, count: 5 });
+  const request = chat
+    .generateRecommendedPlans({ lang, count: 5, refresh: force })
+    .then((plans) => {
+      writeStoredRecommendations(lang, plans);
+      return plans;
+    });
   byLanguage.set(lang, request);
   void request.catch(() => {
     if (byLanguage?.get(lang) === request) byLanguage.delete(lang);

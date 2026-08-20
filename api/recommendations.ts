@@ -137,15 +137,30 @@ async function enrichPlans(
   );
 }
 
+interface RecommendationResult {
+  plans: RecommendationPlan[];
+}
+
+const CACHE_TTL_MS = 15 * 60 * 1000;
+const recommendationCache = new Map<
+  string,
+  { expiresAt: number; result: RecommendationResult }
+>();
+const recommendationRequests = new Map<string, Promise<RecommendationResult>>();
+
+function japanDate(): string {
+  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+}
+
 function recommendationPrompt(lang: string): string {
-  const today = new Date().toISOString().slice(0, 10);
   return [
     "あなたは愛媛県専門の旅行プランナーです。",
-    `基準日は ${today}。季節を意識した多様な日帰り旅行を提案してください。`,
-    `表示文言は言語コード ${lang} で書いてください。不明な場合は日本語にしてください。`,
+    `基準日は ${japanDate()}。季節を意識した多様な日帰り旅行を提案してください。`,
+    `表示文言は言語コード ${lang} で簡潔に書いてください。不明な場合は日本語にしてください。`,
     "愛媛県内に実在する場所だけを使い、松山周辺に偏らせず地域とテーマを分散してください。",
     "5件のうち1件は初心者向けお遍路にし、modeをpilgrimageにしてください。残りはtourismです。",
-    "各プランは2〜4件の具体的な立寄先を含めます。飲食も検索可能な実在店・施設名にしてください。",
+    "各プランの立寄先は必ず3件にしてください。飲食も検索可能な実在店・施設名にしてください。",
+    "summary・reason・各descriptionは要点だけを短く書いてください。",
     "searchQueryはGoogle Mapsで一意に検索できる正式な場所名にしてください。住所やURLは作らないでください。",
     "営業時間・料金・イベント開催を断定しないでください。",
     "出力は次のJSONだけにしてください。説明やコードフェンスは禁止です。",
@@ -154,42 +169,95 @@ function recommendationPrompt(lang: string): string {
   ].join("\n");
 }
 
+async function generateRecommendations(lang: string): Promise<RecommendationResult> {
+  const output = await invokeClaude({
+    system: recommendationPrompt(lang),
+    messages: [{ role: "user", text: "今日の愛媛旅行おすすめを5件生成してください。" }],
+    maxTokens: 2400,
+  });
+  const parsed = extractJson<{ plans?: unknown }>(output);
+  if (!Array.isArray(parsed?.plans) || parsed.plans.length !== 5) {
+    throw new Error("Bedrock did not return exactly five recommendations.");
+  }
+
+  const plans = parsed.plans.map(normalizePlan);
+  if (new Set(plans.map((plan) => plan.id)).size !== plans.length) {
+    plans.forEach((plan, index) => {
+      plan.id = `${plan.id}-${index + 1}`;
+    });
+  }
+  return { plans: await enrichPlans(plans, lang) };
+}
+
+function recommendationsFor(
+  lang: string,
+  bypassCache: boolean,
+): Promise<RecommendationResult> {
+  const now = Date.now();
+  const key = `${japanDate()}:${lang}`;
+
+  for (const [cachedKey, entry] of recommendationCache) {
+    if (entry.expiresAt <= now) recommendationCache.delete(cachedKey);
+  }
+
+  if (!bypassCache) {
+    const cached = recommendationCache.get(key);
+    if (cached) return Promise.resolve(cached.result);
+  }
+
+  const pending = recommendationRequests.get(key);
+  if (pending) return pending;
+
+  const request = (async () => {
+    try {
+      const result = await generateRecommendations(lang);
+      recommendationCache.set(key, {
+        expiresAt: Date.now() + CACHE_TTL_MS,
+        result,
+      });
+      return result;
+    } finally {
+      recommendationRequests.delete(key);
+    }
+  })();
+  recommendationRequests.set(key, request);
+  return request;
+}
+
+function firstQueryValue(value: unknown): unknown {
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+  if (req.method !== "GET" && req.method !== "POST") {
+    res.setHeader("Allow", "GET, POST");
     res.status(405).json({ error: "Method not allowed" });
     return;
   }
 
   try {
     const body = (req.body ?? {}) as { lang?: unknown; count?: unknown };
-    const lang = typeof body.lang === "string" ? body.lang.slice(0, 16) : "ja";
-    if (body.count != null && body.count !== 5) {
+    const source = req.method === "GET" ? req.query : body;
+    const rawLang = firstQueryValue(source.lang);
+    const rawCount = firstQueryValue(source.count);
+    const lang = typeof rawLang === "string" ? rawLang.slice(0, 16) : "ja";
+    if (rawCount != null && Number(rawCount) !== 5) {
       res.status(400).json({ error: "Exactly five recommendations are required" });
       return;
     }
 
-    const output = await invokeClaude({
-      system: recommendationPrompt(lang),
-      messages: [{ role: "user", text: "今日の愛媛旅行おすすめを5件生成してください。" }],
-      maxTokens: 3500,
-    });
-    const parsed = extractJson<{ plans?: unknown }>(output);
-    if (!Array.isArray(parsed?.plans) || parsed.plans.length !== 5) {
-      throw new Error("Bedrock did not return exactly five recommendations.");
-    }
-
-    const plans = parsed.plans.map(normalizePlan);
-    if (new Set(plans.map((plan) => plan.id)).size !== plans.length) {
-      plans.forEach((plan, index) => {
-        plan.id = `${plan.id}-${index + 1}`;
-      });
-    }
-
-    res.status(200).json({ plans: await enrichPlans(plans, lang) });
+    const refresh = firstQueryValue(req.query.refresh) === "1";
+    const bypassCache = req.method === "POST" || refresh;
+    res.setHeader(
+      "Cache-Control",
+      bypassCache
+        ? "private, no-store"
+        : "public, s-maxage=900, stale-while-revalidate=86400",
+    );
+    res.status(200).json(await recommendationsFor(lang, bypassCache));
   } catch (error) {
     console.error("recommendations error", error);
     res.status(502).json({
