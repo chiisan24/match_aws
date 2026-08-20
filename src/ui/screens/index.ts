@@ -5,8 +5,11 @@
  * selection, the per-mode layout shell and the settings screen. Subsequent
  * tasks fill in the per-feature screens behind the placeholder panels.
  */
-export { LanguageSelect } from "./LanguageSelect";
-export type { LanguageSelectProps } from "./LanguageSelect";
+export { LanguageSelect, WelcomeScreen } from "./LanguageSelect";
+export type {
+  LanguageSelectProps,
+  WelcomeScreenProps,
+} from "./LanguageSelect";
 
 export { AIPlanFirst } from "./AIPlanFirst";
 export type { AIPlanFirstProps } from "./AIPlanFirst";

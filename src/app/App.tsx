@@ -10,6 +10,7 @@ import {
   ModeShell,
   Settings,
   TourismRouteBuilder,
+  WelcomeScreen,
 } from "../ui/screens";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { createGateway } from "./gateway";
@@ -56,7 +57,11 @@ export function App(): JSX.Element {
                   port under "progress" / "visitRecords". */}
               <PilgrimageProvider storage={gateway.storage}>
                 <main className="app-shell">
-                  <AppFlow map={gateway.map} chat={gateway.chat} storage={gateway.storage} />
+                  <AppFlow
+                    map={gateway.map}
+                    chat={gateway.chat}
+                    storage={gateway.storage}
+                  />
                 </main>
               </PilgrimageProvider>
             </LocalizedTourismProvider>
@@ -93,7 +98,7 @@ function LocalizedTourismProvider({
 }
 
 /** Top-level navigation phases of the shell. */
-type Phase = "language" | "plan-select" | "route-builder" | "app";
+type Phase = "welcome" | "language" | "plan-select" | "route-builder" | "app";
 
 interface AppFlowProps {
   /** Map/location backend handed to お遍路 screens (Req 8.5). */
@@ -105,7 +110,7 @@ interface AppFlowProps {
 }
 
 function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
-  const [phase, setPhase] = useState<Phase>("language");
+  const [phase, setPhase] = useState<Phase>("welcome");
   const [routeTheme, setRouteTheme] = useState<RecommendedPlan | null>(null);
   const { mode, switchMode, setTab } = useMode();
   const { selectPlan } = useTourism();
@@ -113,6 +118,15 @@ function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
   // Settings overlays the current mode layout; track it independently so
   // returning lands back on the same mode/tab.
   const [showSettings, setShowSettings] = useState(false);
+
+  if (phase === "welcome") {
+    return (
+      <WelcomeScreen
+        onStart={(_lang: LangCode) => setPhase("plan-select")}
+        onChangeLanguage={() => setPhase("language")}
+      />
+    );
+  }
 
   if (phase === "language") {
     return (
