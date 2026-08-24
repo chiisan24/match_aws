@@ -148,7 +148,7 @@ export const UI_LABELS: LangDict = {
     iyo: "ほかの言葉もぼちぼち増やしていくけんね。",
   },
   "lang.note": {
-    ja: "あとから設定画面でいつでも言語を変更できます",
+    ja: "言語は設定からいつでも変更できます",
     en: "You can change the language anytime from settings later.",
     "zh-Hans": "之后可随时在设置中更改语言。",
     "zh-Hant": "之後可隨時在設定中更改語言。",
