@@ -3053,7 +3053,7 @@ Object.assign(UI_LABELS, {
   "routeBuilder.progress": { ja: "{current} / {total}件", en: "{current} of {total}", iyo: "{current} / {total}件" },
   "routeBuilder.interested": { ja: "興味あり", en: "Interested", iyo: "行ってみたい" },
   "routeBuilder.notInterested": { ja: "興味なし", en: "Not interested", iyo: "今回はええかな" },
-  "routeBuilder.swipeHint": { ja: "右へスワイプで興味あり、左で興味なし。ボタンや矢印キーでも選べます。", en: "Swipe right if interested, left if not. Buttons and arrow keys also work.", iyo: "右なら行きたい、左なら今回はなし。ボタンでも選べるけん。" },
+  "routeBuilder.swipeHint": { ja: "右へスワイプ（♥）でルートに追加、左（✕）で見送り。矢印キーでも選べます。", en: "Swipe right (♥) to add to your route, left (✕) to skip. Arrow keys also work.", iyo: "右（♥）でルートに追加、左（✕）で見送り。矢印キーでもいけるけん。" },
   "routeBuilder.kind.sightseeing": { ja: "観光", en: "Sightseeing", iyo: "観光" },
   "routeBuilder.kind.food": { ja: "食事", en: "Food", iyo: "ごはん" },
   "routeBuilder.kind.cafe": { ja: "カフェ", en: "Café", iyo: "カフェ" },
