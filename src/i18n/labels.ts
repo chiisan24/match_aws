@@ -2482,6 +2482,16 @@ UI_LABELS["swipe.recommend.empty"] = {
   en: "You've seen them all for now. New spots will appear soon.",
   iyo: "ひととおり見終わったね。新しいスポットが届くまで待っとってな。",
 };
+UI_LABELS["swipe.recommend.view"] = {
+  ja: "{name}をカードで見る",
+  en: "View {name} as a card",
+  "zh-Hans": "以卡片查看{name}",
+  "zh-Hant": "以卡片查看{name}",
+  ko: "{name} 카드로 보기",
+  fr: "Voir {name} en carte",
+  ar: "عرض {name} كبطاقة",
+  iyo: "{name}をカードで見るけん",
+};
 
 // 完了 / リスタート
 UI_LABELS["swipe.done.title"] = {

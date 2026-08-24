@@ -13,7 +13,8 @@
  * No I/O, no mutation of inputs — every function returns fresh values.
  */
 
-import type { SwipePreferences } from "./types";
+import { haversineDistanceMeters } from "./geofence";
+import type { GeoPoint, SwipePreferences } from "./types";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -90,6 +91,92 @@ export function generateRecommendations<T extends Identifiable>(
 ): T[] {
   const evaluated = evaluatedIds(history);
   return candidates.filter((candidate) => !evaluated.has(candidate.id));
+}
+
+/** A candidate rich enough to rank by genre + geographic similarity. */
+export interface RankableSpot extends Identifiable {
+  /** Genre bucket used as an "atmosphere" proxy (観光/食事/…). */
+  category: string;
+  /** Coordinates used for proximity scoring. */
+  location: GeoPoint;
+}
+
+/** Distance scale (km) at which the proximity score halves. */
+const PROXIMITY_SCALE_KM = 5;
+/** Proximity dominates the score (distance-first ranking). */
+const PROXIMITY_WEIGHT = 2;
+/** Genre match is a lighter refinement on top of proximity. */
+const GENRE_WEIGHT = 0.75;
+/** Default number of recommendations surfaced (a short, focused list). */
+const DEFAULT_RECOMMENDATION_LIMIT = 6;
+
+/**
+ * "あなたへのおすすめ" with content-based ranking (Req 4.6, extended).
+ *
+ * Keeps the same exclusion guarantee as {@link generateRecommendations} — the
+ * result never contains an already-evaluated item (so 興味なし stays out,
+ * Property 6) — but orders the remaining spots by how similar they are to what
+ * the user liked (right/up swipes):
+ *
+ *  - genre affinity: candidates whose category matches the user's liked
+ *    categories score higher (weighted by how many liked spots share it);
+ *  - proximity: candidates physically near a liked spot score higher.
+ *
+ * Genre is weighted above proximity so a same-genre spot generally outranks a
+ * merely-nearby one. With no positive signal yet the original order is kept, so
+ * behaviour matches the plain recommendation list until the user likes
+ * something. Pure and total: inputs are never mutated and it never throws.
+ *
+ * Ranking is distance-first: a nearby spot generally outranks a same-genre but
+ * far one, with genre acting as a tiebreaker. The result is capped to a short
+ * list (`limit`) so it stays focused rather than a long roll of every spot.
+ *
+ * @param allSpots the full spot pool (must include the liked spots so their
+ *                 attributes can be read; evaluated ones are filtered out here)
+ * @param history  the accumulated swipe history
+ * @param limit    max number of recommendations to return (default 6)
+ */
+export function recommendSimilarSpots<T extends RankableSpot>(
+  allSpots: readonly T[],
+  history: readonly SwipeRecord[],
+  limit: number = DEFAULT_RECOMMENDATION_LIMIT,
+): T[] {
+  const cap = Math.max(0, Math.floor(limit));
+  const evaluated = evaluatedIds(history);
+  const candidates = allSpots.filter((spot) => !evaluated.has(spot.id));
+
+  const likedIds = new Set(buildSuggestionPayload(history).liked);
+  const likedSpots = allSpots.filter((spot) => likedIds.has(spot.id));
+
+  // No positive signal yet → preserve the plain unevaluated order (Req 4.6).
+  if (likedSpots.length === 0) return candidates.slice(0, cap);
+
+  // How strongly the user liked each genre (count of liked spots per category).
+  const genreCount = new Map<string, number>();
+  for (const spot of likedSpots) {
+    genreCount.set(spot.category, (genreCount.get(spot.category) ?? 0) + 1);
+  }
+
+  const scoreOf = (spot: T): number => {
+    const genre = (genreCount.get(spot.category) ?? 0) / likedSpots.length; // 0..1
+    let nearestKm = Number.POSITIVE_INFINITY;
+    for (const liked of likedSpots) {
+      const km = haversineDistanceMeters(spot.location, liked.location) / 1000;
+      if (km < nearestKm) nearestKm = km;
+    }
+    const proximity = Number.isFinite(nearestKm)
+      ? 1 / (1 + nearestKm / PROXIMITY_SCALE_KM) // 0..1, closer ⇒ higher
+      : 0;
+    // Distance-first: proximity dominates, genre is a lighter refinement.
+    return proximity * PROXIMITY_WEIGHT + genre * GENRE_WEIGHT;
+  };
+
+  // Descending score; ties keep the original order (stable). Capped to `limit`.
+  return candidates
+    .map((spot, order) => ({ spot, order, score: scoreOf(spot) }))
+    .sort((a, b) => b.score - a.score || a.order - b.order)
+    .slice(0, cap)
+    .map((entry) => entry.spot);
 }
 
 // ---------------------------------------------------------------------------

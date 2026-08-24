@@ -44,7 +44,7 @@ import { useTourism } from "../../app/TourismContext";
 import { useGeneratedImage } from "../../app/ImageContext";
 import {
   classifySwipe,
-  generateRecommendations,
+  recommendSimilarSpots,
   type SwipeDir,
 } from "../../domain/swipe";
 import type { ImagePrompt, LangCode, Spot } from "../../domain/types";
@@ -120,10 +120,11 @@ export function SwipeDeck({ onBackToChat }: SwipeDeckProps): JSX.Element {
   const current = deck[index];
   const exhausted = current == null;
 
-  // 「あなたへのおすすめ」 — derived from the full spot catalogue minus every
-  // evaluated spot (Req 4.6). The pool unions the catalogue with the current
-  // deck so chat-handed candidates can be recommended too; evaluated ones are
-  // filtered out by generateRecommendations regardless.
+  // 「あなたへのおすすめ」 — the full spot catalogue minus every evaluated spot
+  // (Req 4.6), then ranked by similarity (genre + proximity) to what the user
+  // liked. The pool unions the catalogue with the current deck so chat-handed
+  // candidates can be recommended too; recommendSimilarSpots filters evaluated
+  // spots and orders the rest by affinity.
   const recommendations = useMemo<Spot[]>(() => {
     const pool: Spot[] = [...EHIME_SPOTS];
     const seen = new Set(pool.map((s) => s.id));
@@ -133,7 +134,7 @@ export function SwipeDeck({ onBackToChat }: SwipeDeckProps): JSX.Element {
         pool.push(spot);
       }
     }
-    return generateRecommendations(pool, swipeHistory);
+    return recommendSimilarSpots(pool, swipeHistory);
   }, [deck, swipeHistory]);
 
   const commitSwipe = useCallback(
@@ -155,6 +156,27 @@ export function SwipeDeck({ onBackToChat }: SwipeDeckProps): JSX.Element {
       setIndex((i) => i + 1);
     },
     [deck, index, recordSwipe, addFavorite, addToShiori, addToLater],
+  );
+
+  // Tapping an "あなたへのおすすめ" brings that spot to the front of the remaining
+  // deck so its full card (photo, description, reviews) is shown for swiping.
+  const viewSpot = useCallback(
+    (spot: Spot): void => {
+      setOffset(null);
+      dragStart.current = null;
+      setDeck((currentDeck) => {
+        const before = currentDeck.slice(0, index);
+        const rest = currentDeck
+          .slice(index)
+          .filter((item) => item.id !== spot.id);
+        return [...before, spot, ...rest];
+      });
+      // Scroll the card into view after it re-renders with the chosen spot.
+      requestAnimationFrame(() => {
+        cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+    },
+    [index],
   );
 
   // ---- Pointer drag ------------------------------------------------------
@@ -380,16 +402,29 @@ export function SwipeDeck({ onBackToChat }: SwipeDeckProps): JSX.Element {
           ) : (
             <ul className="swipe__recommend-list">
               {recommendations.map((spot) => (
-                <li key={spot.id} className="swipe__recommend-item">
-                  <span className="swipe__recommend-thumb">
-                    <SpotPhoto spot={spot} />
-                  </span>
-                  <span className="swipe__recommend-meta">
-                    <span className="swipe__recommend-name">{spot.name}</span>
-                    <span className="swipe__recommend-cat">
-                      {t(`swipe.category.${spot.category}`)}
+                <li key={spot.id}>
+                  <button
+                    type="button"
+                    className="swipe__recommend-item"
+                    onClick={() => viewSpot(spot)}
+                    aria-label={t("swipe.recommend.view").replace(
+                      "{name}",
+                      spot.name,
+                    )}
+                  >
+                    <span className="swipe__recommend-thumb">
+                      <SpotPhoto spot={spot} />
                     </span>
-                  </span>
+                    <span className="swipe__recommend-meta">
+                      <span className="swipe__recommend-name">{spot.name}</span>
+                      <span className="swipe__recommend-cat">
+                        {t(`swipe.category.${spot.category}`)}
+                      </span>
+                    </span>
+                    <span className="swipe__recommend-chevron" aria-hidden="true">
+                      ›
+                    </span>
+                  </button>
                 </li>
               ))}
             </ul>

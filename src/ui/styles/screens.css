@@ -3369,6 +3369,36 @@ textarea.nokyocho-field__control {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* Clickable row: tapping opens the spot as a card in the deck. */
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background var(--dur-base) var(--ease-soft),
+    border-color var(--dur-base) var(--ease-soft),
+    transform var(--dur-fast) var(--ease-soft);
+}
+.swipe__recommend-item:hover {
+  background: var(--color-teal-50);
+  border-color: var(--color-teal-300);
+}
+.swipe__recommend-item:active {
+  transform: scale(0.99);
+}
+.swipe__recommend-item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.swipe__recommend-chevron {
+  margin-inline-start: auto;
+  color: var(--color-teal-500);
+  font-size: var(--text-lg);
+  line-height: 1;
 }
 
 .swipe__recommend-thumb {
