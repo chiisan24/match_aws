@@ -32,6 +32,8 @@ import type {
   RouteCandidate,
   RouteCandidatesInput,
   Spot,
+  TourismRoutePlan,
+  TourismRoutePlanInput,
 } from "../../ports";
 import type { AwsEnv } from "../../config/env";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
@@ -78,6 +80,38 @@ interface NavApiResponse {
   address?: string;
   highlights?: string[];
   note?: string;
+}
+
+function validateTourismRoutePlan(
+  input: TourismRoutePlanInput,
+  value: unknown,
+): TourismRoutePlan {
+  const rawStops = (value as { stops?: unknown } | null)?.stops;
+  if (!Array.isArray(rawStops) || rawStops.length !== input.selectedStops.length) {
+    throw new Error("AIルートの立寄先数が一致しません。");
+  }
+  const expectedIds = new Set(input.selectedStops.map((stop) => stop.candidateId));
+  const seen = new Set<string>();
+  let previousTime = "";
+  const stops = rawStops.map((value) => {
+    if (!value || typeof value !== "object") throw new Error("AIルートの形式が不正です。");
+    const raw = value as { candidateId?: unknown; time?: unknown };
+    if (
+      typeof raw.candidateId !== "string"
+      || !expectedIds.has(raw.candidateId)
+      || seen.has(raw.candidateId)
+      || typeof raw.time !== "string"
+      || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(raw.time)
+      || (previousTime && raw.time <= previousTime)
+    ) {
+      throw new Error("AIルートに未知の立寄先、重複、または不正な時刻があります。");
+    }
+    seen.add(raw.candidateId);
+    previousTime = raw.time;
+    return { candidateId: raw.candidateId, time: raw.time };
+  });
+  if (seen.size !== expectedIds.size) throw new Error("AIルートに未配置の立寄先があります。");
+  return { stops };
 }
 
 /**
@@ -212,6 +246,27 @@ export class AwsChatAdapter implements ChatPort {
       throw new Error("ルート候補を取得できませんでした。");
     }
     return data.candidates;
+  }
+
+  async generateTourismRoutePlan(
+    input: TourismRoutePlanInput,
+  ): Promise<TourismRoutePlan> {
+    const base = apiBase(this.env, "ChatPort.generateTourismRoutePlan");
+    const res = await fetch(`${base}/tourism-route-plan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+      let apiError: ApiErrorResponse = {};
+      try {
+        apiError = (await res.json()) as ApiErrorResponse;
+      } catch {
+        // Platform-level failures may return non-JSON bodies.
+      }
+      throw new Error(chatErrorMessage(res.status, apiError.detail));
+    }
+    return validateTourismRoutePlan(input, await res.json());
   }
 
   async generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan> {

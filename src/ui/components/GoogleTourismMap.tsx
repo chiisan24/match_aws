@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { awsEnv } from "../../config/env";
-import type { GeoPoint } from "../../domain/types";
+import type { GeoArea, GeoPoint } from "../../domain/types";
 
 export interface GoogleTourismMapItem {
   id: string;
@@ -12,6 +12,8 @@ export interface GoogleTourismMapItem {
 
 interface GoogleTourismMapProps<T extends GoogleTourismMapItem> {
   items: readonly T[];
+  /** Optional hard viewport boundary for the itinerary. */
+  area?: GeoArea;
   current?: GeoPoint | null;
   selectedId?: string;
   onSelect: (item: T) => void;
@@ -49,6 +51,7 @@ function loadGoogleMaps(key: string): Promise<any> {
 
 export function GoogleTourismMap<T extends GoogleTourismMapItem>({
   items,
+  area,
   current,
   selectedId,
   onSelect,
@@ -66,6 +69,7 @@ export function GoogleTourismMap<T extends GoogleTourismMapItem>({
     let cancelled = false;
     const markers: any[] = [];
     let line: any = null;
+    let areaCircle: any = null;
     let directionsRenderer: any = null;
 
     void loadGoogleMaps(key).then((google) => {
@@ -93,8 +97,28 @@ export function GoogleTourismMap<T extends GoogleTourismMapItem>({
           content: button,
         }));
       });
-      if (current) bounds.extend(current);
-      if (items.length > 0 || current) map.fitBounds(bounds, 56);
+      if (area) {
+        const latDelta = area.radiusMeters / 111_320;
+        const lngScale = Math.max(0.2, Math.cos(area.center.lat * Math.PI / 180));
+        const lngDelta = area.radiusMeters / (111_320 * lngScale);
+        bounds.extend({ lat: area.center.lat - latDelta, lng: area.center.lng - lngDelta });
+        bounds.extend({ lat: area.center.lat + latDelta, lng: area.center.lng + lngDelta });
+        map.fitBounds(bounds, 56);
+        areaCircle = new google.maps.Circle({
+          map,
+          center: area.center,
+          radius: area.radiusMeters,
+          clickable: false,
+          fillColor: "#168c87",
+          fillOpacity: 0.06,
+          strokeColor: "#168c87",
+          strokeOpacity: 0.65,
+          strokeWeight: 2,
+        });
+      } else {
+        if (current) bounds.extend(current);
+        if (items.length > 0 || current) map.fitBounds(bounds, 56);
+      }
 
       const route = items.filter((item) => item.order).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       if (route.length > 1 && showDirections) {
@@ -151,9 +175,10 @@ export function GoogleTourismMap<T extends GoogleTourismMapItem>({
       cancelled = true;
       markers.forEach((marker) => { marker.map = null; });
       directionsRenderer?.setMap(null);
+      areaCircle?.setMap(null);
       line?.setMap(null);
     };
-  }, [key, items, current, selectedId, onSelect, showDirections]);
+  }, [key, items, area, current, selectedId, onSelect, showDirections]);
 
   if (!key || failed) return <>{fallback}</>;
   return <div ref={hostRef} className={`${className} google-tourism-map`} role="group" aria-label={ariaLabel} />;

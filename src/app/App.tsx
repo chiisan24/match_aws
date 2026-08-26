@@ -6,80 +6,44 @@ import { I18nProvider, useI18n } from "../i18n";
 import {
   AIPlanFirst,
   LanguageSelect,
-  Login,
   ModeShell,
   Settings,
   TourismRouteBuilder,
   WelcomeScreen,
 } from "../ui/screens";
-import { AuthProvider, useAuth } from "./AuthContext";
 import { createGateway } from "./gateway";
 import { ImageProvider } from "./ImageContext";
 import { ModeProvider, useMode } from "./ModeContext";
-import { PilgrimageProvider } from "./PilgrimageContext";
 import { SpotProvider } from "./SpotContext";
 import { TourismProvider, useTourism } from "./TourismContext";
 
 /**
- * App shell.
+ * App shell for the tourism-only experience.
  *
- * Wires the AWS_Gateway (mock by default on Vercel), the i18n provider and the
- * ModeManager, then drives the first-run flow:
- *
- *   language selection → five AI trip ideas → per-mode layout
- *
- * The first decision is a concrete trip rather than a feature mode. Choosing a
- * plan implicitly selects the appropriate mode, while the header and settings
- * still let the user switch modes later. Per-mode state is held in the
- * {@link ModeProvider} store so switching modes never loses progress.
- *
- * Login is associated with お遍路モード (記録/進捗の継続保持, Req 15): entering
- * pilgrimage mode without a session shows the {@link Login} gate, while 通常
- * 観光モード is usable without signing in. Session state is provided app-wide by
- * the {@link AuthProvider}, backed by the gateway's mock AuthPort when AWS is
- * not configured (Req 15.5).
+ * The first-run flow is:
+ * language selection → five AI tourism ideas → route builder → tourism tabs.
  */
 export function App(): JSX.Element {
-  // One gateway for the app lifetime; mock unless AWS env is configured.
   const gateway = useMemo(() => createGateway(), []);
 
   return (
     <I18nProvider storage={gateway.storage} translate={gateway.translate}>
-      <ModeProvider storage={gateway.storage}>
-        <AuthProvider auth={gateway.auth}>
-          <ImageProvider image={gateway.image}>
-            <SpotProvider spots={gateway.spots}>
+      <ModeProvider storage={gateway.storage} rehydrate={false}>
+        <ImageProvider image={gateway.image}>
+          <SpotProvider spots={gateway.spots}>
             <LocalizedTourismProvider chat={gateway.chat} storage={gateway.storage}>
-              {/* Shared お遍路 state — the visited set read by the 札所マップ
-                  filter plus the progress store (selected 対象県, 達成率) and the
-                  visit-record seam the 巡礼進捗ダッシュボード (task 10.4) and
-                  デジタル納経帳 (task 10.5) build on. Persisted via the storage
-                  port under "progress" / "visitRecords". */}
-              <PilgrimageProvider storage={gateway.storage}>
-                <main className="app-shell">
-                  <AppFlow
-                    map={gateway.map}
-                    chat={gateway.chat}
-                    storage={gateway.storage}
-                  />
-                </main>
-              </PilgrimageProvider>
+              <main className="app-shell">
+                <AppFlow map={gateway.map} chat={gateway.chat} />
+              </main>
             </LocalizedTourismProvider>
-            </SpotProvider>
-          </ImageProvider>
-        </AuthProvider>
+          </SpotProvider>
+        </ImageProvider>
       </ModeProvider>
     </I18nProvider>
   );
 }
 
-/**
- * Bridges the active i18n language into the {@link TourismProvider} so the AI
- * chat session is stamped with the language the user selected on the first
- * screen (Req 1.x / 19.x). Without this the chat session defaults to Japanese
- * and the AI backend — which replies in `session.lang` — always answers in
- * Japanese regardless of the chosen UI language.
- */
+/** Keeps the tourism chat session aligned with the selected UI language. */
 function LocalizedTourismProvider({
   chat,
   storage,
@@ -97,26 +61,18 @@ function LocalizedTourismProvider({
   );
 }
 
-/** Top-level navigation phases of the shell. */
 type Phase = "welcome" | "language" | "plan-select" | "route-builder" | "app";
 
 interface AppFlowProps {
-  /** Map/location backend handed to お遍路 screens (Req 8.5). */
   map: MapLocationPort;
-  /** AI backend handed to the 今日のお遍路プラン screen (Req 12.5). */
   chat: ChatPort;
-  /** Storage backend handed to the 札所到着 offline queue (Req 13.5/13.6). */
-  storage: StoragePort;
 }
 
-function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
+function AppFlow({ map, chat }: AppFlowProps): JSX.Element {
   const [phase, setPhase] = useState<Phase>("welcome");
   const [routeTheme, setRouteTheme] = useState<RecommendedPlan | null>(null);
-  const { mode, switchMode, setTab } = useMode();
+  const { switchMode, setTab } = useMode();
   const { selectPlan } = useTourism();
-  const { isAuthenticated, initializing } = useAuth();
-  // Settings overlays the current mode layout; track it independently so
-  // returning lands back on the same mode/tab.
   const [showSettings, setShowSettings] = useState(false);
 
   if (phase === "welcome") {
@@ -141,15 +97,9 @@ function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
       <AIPlanFirst
         chat={chat}
         onStart={(plan) => {
-          if (plan.mode === "tourism") {
-            setRouteTheme(plan);
-            switchMode("tourism");
-            setPhase("route-builder");
-            return;
-          }
-          selectPlan(plan);
-          switchMode(plan.mode);
-          setPhase("app");
+          setRouteTheme({ ...plan, mode: "tourism" });
+          switchMode("tourism");
+          setPhase("route-builder");
         }}
       />
     );
@@ -171,21 +121,9 @@ function AppFlow({ map, chat, storage }: AppFlowProps): JSX.Element {
     );
   }
 
-  // phase === "app": per-mode layout, with settings as an overlay screen.
   if (showSettings) {
     return <Settings onClose={() => setShowSettings(false)} />;
   }
 
-  // Gate お遍路モード behind authentication (Req 15): the pilgrimage experience
-  // keeps records/progress for the signed-in user, so it requires a session.
-  // 通常観光モード stays open without login. While the remembered session is
-  // still rehydrating we hold off so a logged-in user never flashes the gate.
-  if (mode === "pilgrimage" && !isAuthenticated) {
-    if (initializing) {
-      return <div className="app-loading" aria-busy="true" />;
-    }
-    return <Login onBack={() => switchMode("tourism")} />;
-  }
-
-  return <ModeShell onOpenSettings={() => setShowSettings(true)} map={map} chat={chat} storage={storage} />;
+  return <ModeShell onOpenSettings={() => setShowSettings(true)} map={map} />;
 }

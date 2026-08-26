@@ -68,6 +68,7 @@ function isInEhime(place: GooglePlace): boolean {
 export async function searchEhimePlace(
   query: string,
   lang: string,
+  area?: { center: { lat: number; lng: number }; radiusMeters: number },
 ): Promise<EnrichedPlace | null> {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY?.trim();
   if (!apiKey) return null;
@@ -86,12 +87,22 @@ export async function searchEhimePlace(
         languageCode: placesLanguage(lang),
         regionCode: "JP",
         pageSize: 3,
-        locationBias: {
-          rectangle: {
-            low: { latitude: 32.8, longitude: 131.8 },
-            high: { latitude: 34.6, longitude: 134.3 },
-          },
-        },
+        locationBias: area
+          ? {
+              circle: {
+                center: {
+                  latitude: area.center.lat,
+                  longitude: area.center.lng,
+                },
+                radius: Math.min(50_000, Math.max(1, area.radiusMeters)),
+              },
+            }
+          : {
+              rectangle: {
+                low: { latitude: 32.8, longitude: 131.8 },
+                high: { latitude: 34.6, longitude: 134.3 },
+              },
+            },
       }),
     },
   );

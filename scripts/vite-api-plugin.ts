@@ -10,6 +10,7 @@ const ROUTES: Record<string, () => Promise<ApiModule>> = {
   "/api/plan": () => import("../api/plan.ts"),
   "/api/recommendations": () => import("../api/recommendations.ts"),
   "/api/route-candidates": () => import("../api/route-candidates.ts"),
+  "/api/tourism-route-plan": () => import("../api/tourism-route-plan.ts"),
   "/api/spots": () => import("../api/spots.ts"),
   "/api/temple-nav": () => import("../api/temple-nav.ts"),
   "/api/translate": () => import("../api/translate.ts"),
