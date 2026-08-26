@@ -5177,6 +5177,8 @@ textarea.nokyocho-field__control {
 }
 
 .route-builder-preview__list { display: grid; gap: var(--space-2); padding-inline-start: 1.5rem; }
+.route-builder-preview__list li { display: grid; grid-template-columns: 4.5rem 1fr; align-items: baseline; gap: var(--space-2); }
+.route-builder-preview__list time { color: var(--color-vermilion-500); font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; }
 .route-builder-preview__selected { color: var(--color-vermilion-500); font-weight: var(--weight-bold); }
 
 .route-builder__custom-form { display: flex; gap: var(--space-2); margin: var(--space-3) 0; }
@@ -5195,6 +5197,8 @@ textarea.nokyocho-field__control {
 .route-builder-editor li { display: grid; grid-template-columns: auto 3.5rem 1fr auto; align-items: center; gap: var(--space-2); padding: var(--space-2); border: 1px solid var(--color-line); border-radius: var(--radius-md); }
 .route-builder-editor img { width: 3.5rem; height: 3.5rem; object-fit: cover; border-radius: var(--radius-sm); }
 .route-builder-editor__number { width: 1.8rem; height: 1.8rem; display: grid; place-items: center; border-radius: 50%; background: var(--color-mikan-500); color: #fff; font-weight: var(--weight-bold); }
+.route-builder-editor__details { min-width: 0; display: grid; gap: 0.2rem; }
+.route-builder-editor__time { width: fit-content; padding: 0.15rem 0.5rem; border-radius: 999px; background: var(--color-mikan-100); color: var(--color-vermilion-600); font-size: var(--text-sm); font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; }
 .route-builder-editor__name { font-weight: var(--weight-bold); color: var(--color-teal-800); }
 .route-builder-editor__buttons { display: flex; gap: 0.25rem; }
 .route-builder-editor__buttons button { min-width: 2rem; min-height: 2rem; border: 1px solid var(--color-line); border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-ink); }

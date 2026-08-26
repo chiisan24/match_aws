@@ -33,7 +33,7 @@ interface PlanStop {
 
 interface RecommendationPlan {
   id: string;
-  mode: "tourism" | "pilgrimage";
+  mode: "tourism";
   icon: string;
   title: string;
   summary: string;
@@ -43,6 +43,7 @@ interface RecommendationPlan {
   intensity: string;
   imageUrl?: string;
   imageAttributions?: EnrichedPlace["photoAttributions"];
+  area?: { center: { lat: number; lng: number }; radiusMeters: number };
   stops: PlanStop[];
 }
 
@@ -128,6 +129,9 @@ async function enrichPlans(
       return {
         ...plan,
         stops,
+        ...(heroPlace?.location
+          ? { area: { center: heroPlace.location, radiusMeters: 5_000 } }
+          : {}),
         ...(heroPlace?.photoUrl ? { imageUrl: heroPlace.photoUrl } : {}),
         ...(heroPlace?.photoAttributions?.length
           ? { imageAttributions: heroPlace.photoAttributions }

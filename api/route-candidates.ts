@@ -15,6 +15,7 @@ interface CandidateInput {
   lang?: unknown;
   kind?: unknown;
   theme?: { id?: unknown; title?: unknown; summary?: unknown; reason?: unknown };
+  area?: unknown;
   route?: Array<{ title?: unknown; placeId?: unknown; location?: unknown }>;
   customRequest?: unknown;
   count?: unknown;
@@ -39,9 +40,46 @@ function boundedText(value: unknown, field: string, max: number): string {
   }
   return value.trim().slice(0, max);
 }
+
+interface CandidateArea {
+  center: { lat: number; lng: number };
+  radiusMeters: number;
+}
+
+function parseArea(value: unknown): CandidateArea {
+  if (!value || typeof value !== "object") {
+    throw new Error("A route candidate area is required.");
+  }
+  const area = value as { center?: { lat?: unknown; lng?: unknown }; radiusMeters?: unknown };
+  const lat = Number(area.center?.lat);
+  const lng = Number(area.center?.lng);
+  const requestedRadius = Number(area.radiusMeters);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng) || !Number.isFinite(requestedRadius)) {
+    throw new Error("The route candidate area is invalid.");
+  }
+  return {
+    center: { lat, lng },
+    radiusMeters: Math.min(5_000, Math.max(1, requestedRadius)),
+  };
+}
+
+function distanceMeters(
+  from: { lat: number; lng: number },
+  to: { lat: number; lng: number },
+): number {
+  const radians = (degrees: number): number => degrees * Math.PI / 180;
+  const dLat = radians(to.lat - from.lat);
+  const dLng = radians(to.lng - from.lng);
+  const lat1 = radians(from.lat);
+  const lat2 = radians(to.lat);
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 function candidatePrompt(
   kind: CandidateKind,
   theme: { title: string; summary: string; reason: string },
+  area: CandidateArea,
   route: Array<{ title?: unknown; location?: unknown }>,
   customRequest: string,
   count: number,
@@ -59,6 +97,7 @@ function candidatePrompt(
   return [
     "あなたは愛媛県専門の旅行プランナーです。",
     `旅行テーマ: ${theme.title} / ${theme.summary} / ${theme.reason}`,
+    `対象エリア: 緯度${area.center.lat}、経度${area.center.lng}を中心とする半径${area.radiusMeters}m以内。全候補を必ずこの範囲内にしてください。`,
     `現在ルート: ${routeSummary}`,
     `候補種別: ${kindInstruction[kind]}`,
     `表示文言は言語コード ${lang} で簡潔に書いてください。`,
@@ -86,6 +125,7 @@ async function generateCandidates(
     reason: boundedText(input.theme?.reason, "theme.reason", 320),
   };
   const route = Array.isArray(input.route) ? input.route.slice(0, 20) : [];
+  const area = parseArea(input.area);
   const customRequest = typeof input.customRequest === "string"
     ? input.customRequest.trim().slice(0, 160)
     : "";
@@ -94,7 +134,7 @@ async function generateCandidates(
   }
 
   const output = await invokeClaude({
-    system: candidatePrompt(kind, theme, route, customRequest, count, lang),
+    system: candidatePrompt(kind, theme, area, route, customRequest, count, lang),
     messages: [{ role: "user", text: "ルート候補を提案してください。" }],
     maxTokens: 1600,
   });
@@ -116,8 +156,12 @@ async function generateCandidates(
     route.map((stop) => typeof stop.placeId === "string" ? stop.placeId : "").filter(Boolean),
   );
   const enriched = await Promise.all(rawCandidates.map(async (candidate) => {
-    const place = await searchEhimePlace(candidate.searchQuery, lang).catch(() => null);
-    if (!place?.location || usedIds.has(place.id)) return null;
+    const place = await searchEhimePlace(candidate.searchQuery, lang, area).catch(() => null);
+    if (
+      !place?.location
+      || usedIds.has(place.id)
+      || distanceMeters(area.center, place.location) > area.radiusMeters
+    ) return null;
     usedIds.add(place.id);
     return {
       id: `${kind}:${place.id}`,
@@ -143,7 +187,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     }
     const lang = typeof input.lang === "string" ? input.lang.slice(0, 16) : "ja";
     const count = Math.min(8, Math.max(3, Number(input.count) || (input.kind === "cafe" ? 4 : 6)));
-    const key = JSON.stringify({ lang, kind: input.kind, theme: input.theme, route: input.route, customRequest: input.customRequest, count });
+    const key = JSON.stringify({ lang, kind: input.kind, theme: input.theme, area: input.area, route: input.route, customRequest: input.customRequest, count });
     const now = Date.now();
     const cached = cache.get(key);
     if (cached && cached.expiresAt > now) {

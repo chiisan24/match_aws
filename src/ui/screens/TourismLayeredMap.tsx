@@ -25,6 +25,7 @@ import { buildTourismLayerFeatures } from "../../adapters/mock";
 import { filterByLayers } from "../../domain/layers";
 import { haversineDistanceMeters } from "../../domain/geofence";
 import type {
+  GeoArea,
   GeoPoint,
   LayerKind,
   MapFeature,
@@ -100,7 +101,18 @@ const PURPOSE_PRESETS: PurposePreset[] = [
 const DEFAULT_ACTIVE: LayerKind[] = ["sightseeing", "restroom", "favorite"];
 
 const CANDIDATE_RADIUS_METERS = 6_000;
+const PLAN_AREA_RADIUS_METERS = 5_000;
 const MAX_CANDIDATES = 3;
+
+function boundsPointsForArea(area: GeoArea): GeoPoint[] {
+  const latDelta = area.radiusMeters / 111_320;
+  const lngScale = Math.max(0.2, Math.cos(area.center.lat * Math.PI / 180));
+  const lngDelta = area.radiusMeters / (111_320 * lngScale);
+  return [
+    { lat: area.center.lat - latDelta, lng: area.center.lng - lngDelta },
+    { lat: area.center.lat + latDelta, lng: area.center.lng + lngDelta },
+  ];
+}
 
 /** Rough travel-time estimates (metres per minute) for the access box. */
 const CAR_METERS_PER_MIN = 500; // ~30 km/h
@@ -234,11 +246,38 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
     [spots, favorites, shiori, later],
   );
 
+  const planArea = useMemo<GeoArea | null>(() => {
+    if (!activePlan) return null;
+    const center = activePlan.area?.center
+      ?? activePlan.stops.find((stop) => stop.place?.location)?.place?.location;
+    if (!center) return null;
+    return {
+      center,
+      radiusMeters: Math.min(
+        PLAN_AREA_RADIUS_METERS,
+        activePlan.area?.radiusMeters ?? PLAN_AREA_RADIUS_METERS,
+      ),
+    };
+  }, [activePlan]);
+
+  const featuresInArea = useMemo<TourismMapFeature[]>(
+    () => planArea
+      ? allFeatures.filter(
+          (feature) => haversineDistanceMeters(planArea.center, feature.location) <= planArea.radiusMeters,
+        )
+      : allFeatures,
+    [allFeatures, planArea],
+  );
+
   const planFeatures = useMemo<TourismMapFeature[]>(
     () =>
       (activePlan?.stops ?? []).flatMap((stop, index) => {
         const place = stop.place;
         if (!place?.location) return [];
+        if (
+          planArea
+          && haversineDistanceMeters(planArea.center, place.location) > planArea.radiusMeters
+        ) return [];
         return [{
           id: `plan:${activePlan?.id}:${index}`,
           layer: "sightseeing" as const,
@@ -249,7 +288,7 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
           order: index + 1,
         }];
       }),
-    [activePlan],
+    [activePlan, planArea],
   );
 
   const activeLayers = useMemo<LayerKind[]>(
@@ -258,23 +297,30 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
   );
 
   const visibleFeatures = useMemo<TourismMapFeature[]>(
-    () => filterByLayers(allFeatures, activeLayers),
-    [allFeatures, activeLayers],
+    () => filterByLayers(featuresInArea, activeLayers),
+    [featuresInArea, activeLayers],
   );
 
   // The selected AI itinerary is the primary map experience. Without one,
   // preserve the existing layered catalogue.
   const mapFeatures = planFeatures.length > 0 ? planFeatures : visibleFeatures;
 
-  // Fit the initial view to what's actually shown (not the whole prefecture),
-  // so the map doesn't zoom out to a near-empty overview. Falls back to all
-  // features when nothing is active yet.
+  const mapCurrent = useMemo<GeoPoint | null>(() => {
+    if (!current || !planArea) return current;
+    return haversineDistanceMeters(planArea.center, current) <= planArea.radiusMeters
+      ? current
+      : null;
+  }, [current, planArea]);
+
+  // A selected AI plan always uses its exact five-kilometre area for the
+  // viewport. A distant current location must not zoom the itinerary out.
   const boundsPoints = useMemo<GeoPoint[]>(() => {
-    const source = mapFeatures.length > 0 ? mapFeatures : allFeatures;
+    if (planArea) return boundsPointsForArea(planArea);
+    const source = mapFeatures.length > 0 ? mapFeatures : featuresInArea;
     const points: GeoPoint[] = source.map((f) => f.location);
-    if (current) points.push(current);
+    if (mapCurrent) points.push(mapCurrent);
     return points;
-  }, [mapFeatures, allFeatures, current]);
+  }, [mapFeatures, featuresInArea, mapCurrent, planArea]);
 
   const candidates = useMemo<TouringCandidate[]>(
     () => buildTouringCandidates(visibleFeatures, activeLayers),
@@ -283,9 +329,9 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
 
   const countByLayer = useMemo<Record<string, number>>(() => {
     const out: Record<string, number> = {};
-    for (const f of allFeatures) out[f.layer] = (out[f.layer] ?? 0) + 1;
+    for (const f of featuresInArea) out[f.layer] = (out[f.layer] ?? 0) + 1;
     return out;
-  }, [allFeatures]);
+  }, [featuresInArea]);
 
   const toggleLayer = (key: LayerKind): void => {
     setActivePurpose(null);
@@ -380,7 +426,8 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
                 className="layered-map__surface"
                 ariaLabel={t("tlmap.title")}
                 items={mapFeatures}
-                current={current}
+                area={planArea ?? undefined}
+                current={mapCurrent}
                 selectedId={selected?.id}
                 onSelect={setSelected}
                 showDirections={planFeatures.length > 1}
@@ -391,7 +438,7 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
                     ariaLabel={t("tlmap.title")}
                     items={mapFeatures}
                     boundsPoints={boundsPoints}
-                    current={current}
+                    current={mapCurrent}
                     renderCurrent={(style) => (
                       <span className="layered-map__here" style={style} aria-label={t("map.youAreHere")} />
                     )}

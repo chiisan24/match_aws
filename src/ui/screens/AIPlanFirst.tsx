@@ -29,7 +29,17 @@ const requestCache = new WeakMap<
   ChatPort,
   Map<LangCode, Promise<RecommendedPlan[]>>
 >();
-const RECOMMENDATIONS_CACHE_VERSION = "v2";
+const RECOMMENDATIONS_CACHE_VERSION = "v4-tourism-only";
+
+function isTourismRecommendations(value: unknown): value is RecommendedPlan[] {
+  return Array.isArray(value)
+    && value.length === 5
+    && value.every((plan) => (
+      plan != null
+      && typeof plan === "object"
+      && (plan as { mode?: unknown }).mode === "tourism"
+    ));
+}
 
 function recommendationDate(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -44,9 +54,7 @@ function readStoredRecommendations(lang: LangCode): RecommendedPlan[] | null {
     const raw = window.sessionStorage.getItem(storageKey(lang));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) && parsed.length === 5
-      ? parsed as RecommendedPlan[]
-      : null;
+    return isTourismRecommendations(parsed) ? parsed : null;
   } catch {
     return null;
   }
@@ -151,6 +159,9 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
     setErrorMessage("");
     try {
       const next = await recommendations(chat, lang, force);
+      if (!isTourismRecommendations(next)) {
+        throw new Error(t("planFirst.loadError"));
+      }
       setPlans(next);
       setSelected(null);
       setStatus("ready");
@@ -196,7 +207,7 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
           <div className="plan-first-detail__body">
             <div className="plan-first-card__tags">
               <Tag tone={TONES[planIndex % TONES.length]} leading={selected.icon}>
-                {t(selected.mode === "pilgrimage" ? "mode.tag.pilgrimage" : "mode.tag.tourism")}
+                {t("mode.tag.tourism")}
               </Tag>
               <Tag tone="outline">{t("planFirst.customized")}</Tag>
             </div>
@@ -296,7 +307,7 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
                       <span className="plan-first-card__body">
                         <span className="plan-first-card__tags">
                           <Tag tone={TONES[index % TONES.length]} leading={plan.icon}>
-                            {t(plan.mode === "pilgrimage" ? "mode.tag.pilgrimage" : "mode.tag.tourism")}
+                            {t("mode.tag.tourism")}
                           </Tag>
                           <Tag tone="outline">{t("planFirst.aiPick")}</Tag>
                         </span>

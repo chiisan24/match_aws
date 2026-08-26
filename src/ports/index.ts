@@ -27,6 +27,8 @@ import type {
   Spot,
   StorageKey,
   Temple,
+  TourismRoutePlan,
+  TourismRoutePlanInput,
   Unsubscribe,
 } from "../domain/types";
 
@@ -45,6 +47,10 @@ export interface ChatPort {
   generateRouteCandidates(
     input: RouteCandidatesInput,
   ): Promise<RouteCandidate[]>;
+  /** Optimize the order and estimated arrival times of user-selected stops. */
+  generateTourismRoutePlan(
+    input: TourismRoutePlanInput,
+  ): Promise<TourismRoutePlan>;
   generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan>;
   /**
    * Estimate the "next temple" navigation figures (distance / travel times /

@@ -38,6 +38,12 @@ export interface GeoPoint {
   lng: number;
 }
 
+/** A circular geographic area used to constrain AI plans and map content. */
+export interface GeoArea {
+  center: GeoPoint;
+  radiusMeters: number;
+}
+
 // ---------------------------------------------------------------------------
 // Temples & spots
 // ---------------------------------------------------------------------------
@@ -302,6 +308,8 @@ export interface RecommendedPlan {
   intensity: string;
   imageUrl?: string;
   imageAttributions?: PlacePhotoAttribution[];
+  /** Area used to generate this itinerary. Map content must stay inside it. */
+  area?: GeoArea;
   stops: RecommendedPlanStop[];
 }
 
@@ -334,9 +342,39 @@ export interface RouteCandidatesInput {
   lang: LangCode;
   kind: RouteCandidateKind;
   theme: Pick<RecommendedPlan, "id" | "title" | "summary" | "reason">;
+  /** Hard boundary for every generated and Google-verified candidate. */
+  area: GeoArea;
   route: RouteCandidateContextStop[];
   customRequest?: string;
   count?: number;
+}
+
+/** A selected stop sent to AI for final tourism-route optimization. */
+export interface TourismRoutePlanCandidate {
+  candidateId: string;
+  kind: RouteCandidateKind;
+  title: string;
+  location: GeoPoint;
+}
+
+/** Inputs for ordering only the places selected by the user. */
+export interface TourismRoutePlanInput {
+  lang: LangCode;
+  theme: Pick<RecommendedPlan, "id" | "title" | "summary" | "reason" | "transport">;
+  selectedStops: TourismRoutePlanCandidate[];
+  /** Preferred first arrival time in 24-hour HH:MM format. */
+  startTime?: string;
+}
+
+/** One AI-scheduled selected stop. */
+export interface TourismRoutePlanStop {
+  candidateId: string;
+  time: string;
+}
+
+/** AI-optimized order and estimated arrival times for selected tourism stops. */
+export interface TourismRoutePlan {
+  stops: TourismRoutePlanStop[];
 }
 
 /** Inputs for an AI next-temple navigation estimate (目安/参考情報). */

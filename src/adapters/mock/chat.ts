@@ -22,7 +22,10 @@ import type {
   RouteCandidate,
   RouteCandidatesInput,
   Spot,
+  TourismRoutePlan,
+  TourismRoutePlanInput,
 } from "../../ports";
+import { haversineDistanceMeters } from "../../domain/geofence";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
 import { EHIME_SPOTS } from "./spots";
 
@@ -134,6 +137,30 @@ function mockRecommendation(
   stopTitles: string[],
 ): RecommendedPlan {
   const times = ["09:00", "11:30", "14:00"];
+  const stops = stopTitles.map((stopTitle, index) => {
+    const spot = EHIME_SPOTS.find(
+      (candidate) => candidate.name.includes(stopTitle) || stopTitle.includes(candidate.name),
+    );
+    return {
+      time: times[index] ?? `${9 + index * 2}:00`,
+      title: stopTitle,
+      description: `${stopTitle}をゆっくり楽しみます。`,
+      searchQuery: `${stopTitle} 愛媛県`,
+      ...(spot
+        ? {
+            place: {
+              id: spot.id,
+              name: spot.name,
+              formattedAddress: "愛媛県",
+              location: spot.location,
+              ...(spot.website ? { websiteUri: spot.website } : {}),
+              ...(spot.imageUrls[0] ? { photoUrl: spot.imageUrls[0] } : {}),
+            },
+          }
+        : {}),
+    };
+  });
+  const center = stops.find((stop) => stop.place?.location)?.place?.location;
   return {
     id,
     mode,
@@ -145,12 +172,8 @@ function mockRecommendation(
     transport: "車＋徒歩",
     intensity: "ふつう",
     imageUrl,
-    stops: stopTitles.map((stopTitle, index) => ({
-      time: times[index] ?? `${9 + index * 2}:00`,
-      title: stopTitle,
-      description: `${stopTitle}をゆっくり楽しみます。`,
-      searchQuery: `${stopTitle} 愛媛県`,
-    })),
+    ...(center ? { area: { center, radiusMeters: 5_000 } } : {}),
+    stops,
   };
 }
 
@@ -164,7 +187,10 @@ const MOCK_RECOMMENDATIONS: RecommendedPlan[] = [
 
 function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidate[] {
   const used = new Set(input.route.map((stop) => stop.placeId));
-  let pool = EHIME_SPOTS.filter((spot) => !used.has(spot.id));
+  let pool = EHIME_SPOTS.filter(
+    (spot) => !used.has(spot.id)
+      && haversineDistanceMeters(input.area.center, spot.location) <= input.area.radiusMeters,
+  );
   if (input.kind === "food" || input.kind === "cafe") {
     pool = pool.filter((spot) => spot.category === "food");
     if (input.kind === "cafe") {
@@ -193,6 +219,58 @@ function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidate[] {
       ...(spot.imageUrls[0] ? { photoUrl: spot.imageUrls[0] } : {}),
     },
   }));
+}
+
+function mockTourismRoutePlan(input: TourismRoutePlanInput): TourismRoutePlan {
+  if (input.selectedStops.length === 0) return { stops: [] };
+
+  const routeFrom = (startIndex: number): TourismRoutePlanInput["selectedStops"] => {
+    const remaining = [...input.selectedStops];
+    const ordered = [remaining.splice(startIndex, 1)[0]];
+    while (remaining.length > 0) {
+      const previous = ordered[ordered.length - 1];
+      let nearestIndex = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      remaining.forEach((candidate, index) => {
+        const distance = haversineDistanceMeters(previous.location, candidate.location);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = index;
+        }
+      });
+      ordered.push(remaining.splice(nearestIndex, 1)[0]);
+    }
+    return ordered;
+  };
+  const routeDistance = (stops: TourismRoutePlanInput["selectedStops"]): number => stops
+    .slice(1)
+    .reduce((total, stop, index) => total + haversineDistanceMeters(stops[index].location, stop.location), 0);
+
+  let ordered = input.selectedStops
+    .map((_, index) => routeFrom(index))
+    .reduce((best, candidate) => routeDistance(candidate) < routeDistance(best) ? candidate : best);
+
+  const mealIndex = ordered.findIndex((stop) => stop.kind === "food");
+  if (mealIndex >= 0 && ordered.length >= 3) {
+    const [meal] = ordered.splice(mealIndex, 1);
+    const lunchIndex = Math.min(ordered.length, Math.max(1, Math.round(ordered.length * 0.35)));
+    ordered.splice(lunchIndex, 0, meal);
+  }
+
+  const [startHours = "09", startMinutes = "00"] = (input.startTime ?? "09:00").split(":");
+  let cursor = Number(startHours) * 60 + Number(startMinutes);
+  const dwellMinutes = Math.max(35, Math.min(65, Math.floor(540 / ordered.length)));
+  return {
+    stops: ordered.map((stop, index) => {
+      const result = { candidateId: stop.candidateId, time: formatTime(cursor) };
+      const next = ordered[index + 1];
+      if (next) {
+        const travelMinutes = Math.max(10, Math.round(haversineDistanceMeters(stop.location, next.location) / 500));
+        cursor += dwellMinutes + travelMinutes;
+      }
+      return result;
+    }),
+  };
 }
 
 export class MockChatAdapter implements ChatPort {
@@ -235,6 +313,12 @@ export class MockChatAdapter implements ChatPort {
     input: RouteCandidatesInput,
   ): Promise<RouteCandidate[]> {
     return mockRouteCandidates(input);
+  }
+
+  async generateTourismRoutePlan(
+    input: TourismRoutePlanInput,
+  ): Promise<TourismRoutePlan> {
+    return mockTourismRoutePlan(input);
   }
 
   async generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan> {

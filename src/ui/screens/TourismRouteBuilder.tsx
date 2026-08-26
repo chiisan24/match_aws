@@ -10,6 +10,7 @@ import {
 
 import type {
   ChatPort,
+  GeoArea,
   RecommendedPlan,
   RouteCandidate,
   RouteCandidateKind,
@@ -46,6 +47,15 @@ const FALLBACK_IMAGE: Record<RouteCandidateKind, string> = {
   cafe: "/images/ehime/brick-studio.jpg",
   custom: "/images/ehime/kurushima-bridge.jpg",
 };
+
+function fallbackRouteTimes(count: number): string[] {
+  const interval = Math.max(45, Math.min(90, Math.floor(600 / Math.max(1, count))));
+  return Array.from({ length: count }, (_, index) => {
+    const minutes = 9 * 60 + index * interval;
+    return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+  });
+}
+
 function insertAlongRoute(
   route: RouteCandidate[],
   candidate: RouteCandidate,
@@ -201,7 +211,15 @@ function BinarySwipeDeck({
     </div>
   );
 }
-function RoutePreview({ route }: { route: RouteCandidate[] }): JSX.Element {
+function RoutePreview({
+  route,
+  times = [],
+  area,
+}: {
+  route: RouteCandidate[];
+  times?: string[];
+  area: GeoArea;
+}): JSX.Element {
   const { t } = useI18n();
   const [selected, setSelected] = useState<RouteCandidate | null>(null);
   const items = useMemo(() => route.map((candidate, index) => ({
@@ -218,6 +236,7 @@ function RoutePreview({ route }: { route: RouteCandidate[] }): JSX.Element {
         className="route-builder-preview__map"
         ariaLabel={t("routeBuilder.routeTitle")}
         items={items}
+        area={area}
         selectedId={selected?.id}
         onSelect={setSelected}
         showDirections
@@ -225,7 +244,12 @@ function RoutePreview({ route }: { route: RouteCandidate[] }): JSX.Element {
       />
       {selected ? <p className="route-builder-preview__selected">📍 {selected.place.name}</p> : null}
       <ol className="route-builder-preview__list">
-        {route.map((candidate) => <li key={candidate.id}>{candidate.title}</li>)}
+        {route.map((candidate, index) => (
+          <li key={candidate.id}>
+            {times[index] ? <time dateTime={times[index]}>🕘 {times[index]}</time> : null}
+            <span>{candidate.title}</span>
+          </li>
+        ))}
       </ol>
     </section>
   );
@@ -244,9 +268,22 @@ export function TourismRouteBuilder({
   const [candidates, setCandidates] = useState<RouteCandidate[]>([]);
   const [index, setIndex] = useState(0);
   const [route, setRoute] = useState<RouteCandidate[]>([]);
+  const [routeTimes, setRouteTimes] = useState<string[]>([]);
+  const [planStatus, setPlanStatus] = useState<LoadStatus>("idle");
+  const [planError, setPlanError] = useState("");
   const [rejected, setRejected] = useState<RouteCandidate[]>([]);
   const [customRequest, setCustomRequest] = useState("");
   const started = useRef(false);
+
+  const area = useMemo<GeoArea | null>(() => {
+    const center = theme.area?.center
+      ?? theme.stops.find((stop) => stop.place?.location)?.place?.location;
+    if (!center) return null;
+    return {
+      center,
+      radiusMeters: Math.min(5_000, theme.area?.radiusMeters ?? 5_000),
+    };
+  }, [theme]);
 
   const routeContext = useMemo(() => route.map((candidate) => ({
     title: candidate.title,
@@ -263,6 +300,11 @@ export function TourismRouteBuilder({
     setError("");
     setCandidates([]);
     setIndex(0);
+    if (!area) {
+      setError(t("routeBuilder.loadError"));
+      setStatus("error");
+      return;
+    }
     try {
       const next = await chat.generateRouteCandidates({
         lang,
@@ -273,17 +315,22 @@ export function TourismRouteBuilder({
           summary: theme.summary,
           reason: theme.reason,
         },
+        area,
         route: routeContext,
         ...(request ? { customRequest: request } : {}),
         count: kind === "cafe" ? 4 : 6,
       });
-      setCandidates(next);
+      const bounded = next.filter(
+        (candidate) => haversineDistanceMeters(area.center, candidate.place.location) <= area.radiusMeters,
+      );
+      if (bounded.length === 0) throw new Error(t("routeBuilder.loadError"));
+      setCandidates(bounded);
       setStatus("ready");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("routeBuilder.loadError"));
       setStatus("error");
     }
-  }, [chat, lang, routeContext, t, theme]);
+  }, [area, chat, lang, routeContext, t, theme]);
 
   useEffect(() => {
     if (started.current) return;
@@ -308,17 +355,61 @@ export function TourismRouteBuilder({
     setIndex((current) => current + 1);
   }, [candidates, index]);
 
-  const removeFromRoute = (candidate: RouteCandidate): void => {
+  const generateFinalPlan = useCallback(async (selectedRoute: RouteCandidate[]): Promise<void> => {
+    setRoute(selectedRoute);
+    setRouteTimes(fallbackRouteTimes(selectedRoute.length));
+    setPlanStatus("loading");
+    setPlanError("");
+    try {
+      const plan = await chat.generateTourismRoutePlan({
+        lang,
+        theme: {
+          id: theme.id,
+          title: theme.title,
+          summary: theme.summary,
+          reason: theme.reason,
+          transport: theme.transport,
+        },
+        selectedStops: selectedRoute.map((candidate) => ({
+          candidateId: candidate.id,
+          kind: candidate.kind,
+          title: candidate.title,
+          location: candidate.place.location,
+        })),
+        startTime: "09:00",
+      });
+      const byId = new Map(selectedRoute.map((candidate) => [candidate.id, candidate] as const));
+      const ordered = plan.stops
+        .map((stop) => byId.get(stop.candidateId))
+        .filter((candidate): candidate is RouteCandidate => candidate != null);
+      if (ordered.length !== selectedRoute.length) throw new Error(t("routeBuilder.planError"));
+      setRoute(ordered);
+      setRouteTimes(plan.stops.map((stop) => stop.time));
+      setPlanStatus("ready");
+    } catch (cause) {
+      setPlanError(cause instanceof Error ? cause.message : t("routeBuilder.planError"));
+      setPlanStatus("error");
+    }
+  }, [chat, lang, t, theme]);
+
+  const openFinal = useCallback((selectedRoute: RouteCandidate[] = route): void => {
+    setStage("final");
+    void generateFinalPlan(selectedRoute);
+  }, [generateFinalPlan, route]);
+
+  const removeFromRoute = (candidate: RouteCandidate, routeIndex: number): void => {
     setRoute((current) => current.filter((item) => item.id !== candidate.id));
+    setRouteTimes((current) => current.filter((_, index) => index !== routeIndex));
     setRejected((current) => current.some((item) => item.id === candidate.id)
       ? current
       : [...current, candidate]);
   };
   const restoreCandidate = (candidate: RouteCandidate): void => {
+    const nextRoute = route.some((item) => item.place.id === candidate.place.id)
+      ? route
+      : insertAlongRoute(route, candidate);
     setRejected((current) => current.filter((item) => item.id !== candidate.id));
-    setRoute((current) => current.some((item) => item.place.id === candidate.place.id)
-      ? current
-      : insertAlongRoute(current, candidate));
+    openFinal(nextRoute);
   };
   const moveRoute = (from: number, delta: -1 | 1): void => {
     setRoute((current) => {
@@ -330,23 +421,24 @@ export function TourismRouteBuilder({
     });
   };
   const complete = (): void => {
-    const startMinutes = 9 * 60;
+    if (!area) return;
+    const times = routeTimes.length === route.length
+      ? routeTimes
+      : fallbackRouteTimes(route.length);
     onComplete({
       ...theme,
       mode: "tourism",
+      area,
       title: `${theme.title} — ${t("routeBuilder.myRoute")}`,
       imageUrl: route[0]?.place.photoUrl ?? theme.imageUrl,
       imageAttributions: route[0]?.place.photoAttributions ?? theme.imageAttributions,
-      stops: route.map((candidate, stopIndex) => {
-        const minutes = startMinutes + stopIndex * 90;
-        return {
-          time: `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`,
-          title: candidate.title,
-          description: candidate.description,
-          searchQuery: candidate.searchQuery,
-          place: candidate.place,
-        };
-      }),
+      stops: route.map((candidate, stopIndex) => ({
+        time: times[stopIndex],
+        title: candidate.title,
+        description: candidate.description,
+        searchQuery: candidate.searchQuery,
+        place: candidate.place,
+      })),
     });
   };
 
@@ -356,7 +448,7 @@ export function TourismRouteBuilder({
     if (stage === "sightseeing") setStage("food-question");
     else if (stage === "food") setStage("cafe-question");
     else if (stage === "cafe") setStage("custom-question");
-    else setStage("final");
+    else openFinal();
   };
 
   return (
@@ -397,7 +489,7 @@ export function TourismRouteBuilder({
 
       {exhausted ? (
         <Card className="route-builder__route-card" raised>
-          {route.length > 0 ? <RoutePreview route={route} /> : (
+          {route.length > 0 && area ? <RoutePreview route={route} area={area} /> : (
             <p role="alert">{t("routeBuilder.emptyRoute")}</p>
           )}
           <div className="route-builder__actions">
@@ -458,7 +550,7 @@ export function TourismRouteBuilder({
             />
             <Button type="submit" variant="accent" disabled={!customRequest.trim()}>{t("routeBuilder.findCustom")}</Button>
           </form>
-          <Button variant="ghost" onClick={() => setStage("final")}>{t("routeBuilder.skip")}</Button>
+          <Button variant="ghost" onClick={() => openFinal()}>{t("routeBuilder.skip")}</Button>
         </Card>
       ) : null}
       {stage === "final" ? (
@@ -468,7 +560,24 @@ export function TourismRouteBuilder({
             <h2>{t("routeBuilder.finalTitle")}</h2>
             <p>{t("routeBuilder.finalLead")}</p>
           </div>
-          {route.length > 0 ? <RoutePreview route={route} /> : <p role="alert">{t("routeBuilder.emptyRoute")}</p>}
+          {planStatus === "loading" ? (
+            <Card className="route-builder__status" raised>
+              <span className="plan-first-status__spinner" aria-hidden="true" />
+              <p role="status">{t("routeBuilder.planLoading")}</p>
+            </Card>
+          ) : null}
+          {planStatus === "error" ? (
+            <Card className="route-builder__status route-builder__status--error" raised>
+              <p role="alert">{planError || t("routeBuilder.planError")}</p>
+              <p>{t("routeBuilder.planFallback")}</p>
+              <Button variant="soft" onClick={() => void generateFinalPlan(route)}>
+                {t("routeBuilder.planRetry")}
+              </Button>
+            </Card>
+          ) : null}
+          {route.length > 0 && area
+            ? <RoutePreview route={route} times={routeTimes} area={area} />
+            : <p role="alert">{t("routeBuilder.emptyRoute")}</p>}
           <Card className="route-builder-editor" raised>
             <h3>{t("routeBuilder.editTitle")}</h3>
             <ol>
@@ -476,11 +585,16 @@ export function TourismRouteBuilder({
                 <li key={candidate.id}>
                   <span className="route-builder-editor__number">{routeIndex + 1}</span>
                   <img src={candidate.place.photoUrl ?? FALLBACK_IMAGE[candidate.kind]} alt="" />
-                  <span className="route-builder-editor__name">{candidate.title}</span>
+                  <span className="route-builder-editor__details">
+                    <time className="route-builder-editor__time" dateTime={routeTimes[routeIndex]}>
+                      {routeTimes[routeIndex] ?? "--:--"}
+                    </time>
+                    <span className="route-builder-editor__name">{candidate.title}</span>
+                  </span>
                   <span className="route-builder-editor__buttons">
                     <button type="button" disabled={routeIndex === 0} onClick={() => moveRoute(routeIndex, -1)} aria-label={t("routeBuilder.moveUp")}>↑</button>
                     <button type="button" disabled={routeIndex === route.length - 1} onClick={() => moveRoute(routeIndex, 1)} aria-label={t("routeBuilder.moveDown")}>↓</button>
-                    <button type="button" onClick={() => removeFromRoute(candidate)} aria-label={`${t("routeBuilder.remove")} ${candidate.title}`}>✕</button>
+                    <button type="button" onClick={() => removeFromRoute(candidate, routeIndex)} aria-label={`${t("routeBuilder.remove")} ${candidate.title}`}>✕</button>
                   </span>
                 </li>
               ))}
@@ -503,7 +617,10 @@ export function TourismRouteBuilder({
 
           <div className="route-builder-final__actions">
             <Button variant="soft" onClick={() => setStage("custom-question")}>{t("routeBuilder.addCustom")}</Button>
-            <Button variant="accent" size="lg" disabled={route.length === 0} onClick={complete}>
+            <Button variant="soft" disabled={route.length === 0 || planStatus === "loading"} onClick={() => void generateFinalPlan(route)}>
+              {t("routeBuilder.reoptimize")}
+            </Button>
+            <Button variant="accent" size="lg" disabled={route.length === 0 || planStatus === "loading"} onClick={complete}>
               {t("routeBuilder.complete")}
             </Button>
           </div>
