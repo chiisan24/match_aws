@@ -4,6 +4,7 @@ import type {
   ChatPort,
   LangCode,
   PlacePhotoAttribution,
+  RecommendationExclusion,
   RecommendedPlan,
 } from "../../ports";
 import { useI18n } from "../../i18n";
@@ -71,18 +72,11 @@ function writeStoredRecommendations(
   }
 }
 
-function clearStoredRecommendations(lang: LangCode): void {
-  try {
-    window.sessionStorage.removeItem(storageKey(lang));
-  } catch {
-    // A failed removal is harmless because force refresh still bypasses the API caches.
-  }
-}
-
 function recommendations(
   chat: ChatPort,
   lang: LangCode,
   force = false,
+  exclude: RecommendationExclusion[] = [],
 ): Promise<RecommendedPlan[]> {
   let byLanguage = requestCache.get(chat);
   if (!byLanguage) {
@@ -91,15 +85,22 @@ function recommendations(
   }
   if (force) {
     byLanguage.delete(lang);
-    clearStoredRecommendations(lang);
   } else {
     const stored = readStoredRecommendations(lang);
     if (stored) {
       if (!byLanguage.has(lang)) {
-        const refresh = chat.generateRecommendedPlans({ lang, count: 5 });
+        const refresh = chat.generateRecommendedPlans({
+          lang,
+          count: 5,
+          date: recommendationDate(),
+        });
         byLanguage.set(lang, refresh);
         void refresh.then(
-          (plans) => writeStoredRecommendations(lang, plans),
+          (plans) => {
+            if (byLanguage?.get(lang) === refresh) {
+              writeStoredRecommendations(lang, plans);
+            }
+          },
           () => {
             if (byLanguage?.get(lang) === refresh) byLanguage.delete(lang);
           },
@@ -113,7 +114,13 @@ function recommendations(
   if (cached) return cached;
 
   const request = chat
-    .generateRecommendedPlans({ lang, count: 5, refresh: force })
+    .generateRecommendedPlans({
+      lang,
+      count: 5,
+      date: recommendationDate(),
+      refresh: force,
+      ...(force && exclude.length > 0 ? { exclude } : {}),
+    })
     .then((plans) => {
       writeStoredRecommendations(lang, plans);
       return plans;
@@ -123,6 +130,15 @@ function recommendations(
     if (byLanguage?.get(lang) === request) byLanguage.delete(lang);
   });
   return request;
+}
+
+function exclusionsFrom(plans: RecommendedPlan[]): RecommendationExclusion[] {
+  return plans.map((plan) => ({
+    id: plan.id,
+    title: plan.title,
+    place: plan.stops[0]?.searchQuery ?? "",
+    ...(plan.stops[0]?.place?.id ? { placeId: plan.stops[0].place.id } : {}),
+  }));
 }
 
 function PhotoAttribution({
@@ -153,21 +169,38 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
   const [selected, setSelected] = useState<RecommendedPlan | null>(null);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState("");
 
-  const load = useCallback(async (force = false): Promise<void> => {
-    setStatus("loading");
-    setErrorMessage("");
+  const load = useCallback(async (
+    force = false,
+    exclude: RecommendationExclusion[] = [],
+  ): Promise<void> => {
+    if (force) {
+      setRefreshing(true);
+      setRefreshError("");
+    } else {
+      setStatus("loading");
+      setErrorMessage("");
+    }
     try {
-      const next = await recommendations(chat, lang, force);
+      const next = await recommendations(chat, lang, force, exclude);
       if (!isTourismRecommendations(next)) {
         throw new Error(t("planFirst.loadError"));
       }
       setPlans(next);
-      setSelected(null);
+      if (!force) setSelected(null);
       setStatus("ready");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : t("planFirst.loadError"));
-      setStatus("error");
+      const message = error instanceof Error ? error.message : t("planFirst.loadError");
+      if (force) {
+        setRefreshError(message);
+      } else {
+        setErrorMessage(message);
+        setStatus("error");
+      }
+    } finally {
+      if (force) setRefreshing(false);
     }
   }, [chat, lang, t]);
 
@@ -280,8 +313,25 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
         <>
           <div className="plan-first__count">
             <span>{t("planFirst.today")}</span>
-            <span>{t("planFirst.count").replace("{count}", String(plans.length))}</span>
+            <span className="plan-first__count-actions">
+              <span className="plan-first__count-value">
+                {t("planFirst.count").replace("{count}", String(plans.length))}
+              </span>
+              <Button
+                variant="soft"
+                size="sm"
+                leading="↻"
+                disabled={refreshing}
+                aria-busy={refreshing}
+                onClick={() => void load(true, exclusionsFrom(plans))}
+              >
+                {t(refreshing ? "planFirst.refreshing" : "planFirst.refresh")}
+              </Button>
+            </span>
           </div>
+          {refreshError ? (
+            <p className="plan-first__refresh-error" role="alert">{refreshError}</p>
+          ) : null}
 
           <ul className="plan-first__list" role="list">
             {plans.map((plan, index) => {
