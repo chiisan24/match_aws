@@ -2901,6 +2901,8 @@ Object.assign(UI_LABELS, {
   "planFirst.promise": { ja: "テーマを選んだ後、観光・食事・カフェの順にあなた向けのルートを作ります", en: "After choosing a theme, build your route through sights, food, and optional cafés", iyo: "テーマのあと、観光・ごはん・カフェの順でルートを作るけん" },
   "planFirst.today": { ja: "今日のおすすめ", en: "Today's picks", iyo: "今日のおすすめ" },
   "planFirst.count": { ja: "{count}つの旅", en: "{count} trips", iyo: "{count}つの旅" },
+  "planFirst.refresh": { ja: "別の5件を見る", en: "Show five different trips", iyo: "別の5件を見る" },
+  "planFirst.refreshing": { ja: "別の5件を生成中", en: "Finding five different trips", iyo: "別の5件を作りよる" },
   "planFirst.aiPick": { ja: "AIおすすめ", en: "AI pick", iyo: "AIおすすめ" },
   "planFirst.open": { ja: "プランを開く", en: "Open plan", iyo: "プランを見る" },
   "planFirst.viewDetail": { ja: "テーマを見る", en: "View this theme", iyo: "テーマを見る" },
