@@ -4161,14 +4161,41 @@ textarea.nokyocho-field__control {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-2);
   color: var(--color-teal-800);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
 }
 
-.plan-first__count span:last-child {
+.plan-first__count-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.plan-first__count-value {
   color: var(--color-ink-faint);
   font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.plan-first__refresh-error {
+  margin: calc(-1 * var(--space-2)) 0 0;
+  color: var(--color-mikan-700);
+  font-size: var(--text-xs);
+  text-align: right;
+}
+
+@media (max-width: 30rem) {
+  .plan-first__count {
+    align-items: flex-start;
+  }
+
+  .plan-first__count-actions {
+    flex-direction: column;
+    align-items: flex-end;
+  }
 }
 
 .plan-first__list {

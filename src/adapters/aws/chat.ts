@@ -52,7 +52,19 @@ interface ApiErrorResponse {
   detail?: string;
 }
 
-function chatErrorMessage(status: number, detail = ""): string {
+function chatErrorMessage(
+  status: number,
+  detail = "",
+  apiError = "",
+  retryAfter = "",
+): string {
+  if (status === 429) {
+    const seconds = /^\d+$/.test(retryAfter) ? retryAfter : "60";
+    return `おすすめの再生成は${seconds}秒後にもう一度お試しください。`;
+  }
+  if (status === 400) {
+    return apiError || "おすすめの再生成条件が正しくありません。";
+  }
   if (/AccessDenied|Unauthorized|UnrecognizedClient|InvalidSignature|credential/i.test(detail)) {
     return "Bedrockの認証に失敗しました。APIキーと適用環境を確認してください。";
   }
@@ -198,16 +210,25 @@ export class AwsChatAdapter implements ChatPort {
   ): Promise<RecommendedPlan[]> {
     const base = apiBase(this.env, "ChatPort.generateRecommendedPlans");
     const count = input.count ?? 5;
+    const date = input.date
+      ?? new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const query = new URLSearchParams({
       lang: input.lang,
       count: String(count),
       schema: RECOMMENDATION_SCHEMA,
+      date,
     });
     const res = await fetch(`${base}/recommendations?${query.toString()}`, input.refresh
       ? {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lang: input.lang, count, schema: RECOMMENDATION_SCHEMA }),
+          body: JSON.stringify({
+            lang: input.lang,
+            count,
+            schema: RECOMMENDATION_SCHEMA,
+            date,
+            exclude: input.exclude ?? [],
+          }),
           cache: "no-store",
         }
       : { method: "GET" });
@@ -225,7 +246,12 @@ export class AwsChatAdapter implements ChatPort {
         error: apiError.error,
         detail: apiError.detail,
       });
-      throw new Error(chatErrorMessage(res.status, apiError.detail));
+      throw new Error(chatErrorMessage(
+        res.status,
+        apiError.detail,
+        apiError.error,
+        res.headers.get("Retry-After") ?? "",
+      ));
     }
 
     const data = (await res.json()) as RecommendationsApiResponse;

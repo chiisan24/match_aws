@@ -317,11 +317,24 @@ export interface RecommendedPlan {
   stops: RecommendedPlanStop[];
 }
 
+export interface RecommendationExclusion {
+  id: string;
+  title: string;
+  /** Representative Google Maps search query. */
+  place: string;
+  /** Stable Google Place identifier when enrichment succeeded. */
+  placeId?: string;
+}
+
 export interface RecommendedPlansInput {
   lang: LangCode;
   count?: number;
+  /** JST date included in the GET URL so CDN entries rotate daily. */
+  date?: string;
   /** Bypass browser/CDN/server caches and ask Bedrock for a new set. */
   refresh?: boolean;
+  /** Existing recommendations Bedrock must not repeat during refresh. */
+  exclude?: RecommendationExclusion[];
 }
 
 /** A Google-verified candidate presented by the interactive route builder. */

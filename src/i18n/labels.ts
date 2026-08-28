@@ -2901,6 +2901,8 @@ Object.assign(UI_LABELS, {
   "planFirst.promise": { ja: "AI旅程の立寄先を引き継ぎ、観光・食事・カフェを追加・見直しできます", en: "Start with the AI itinerary, then add or review sights, food, and cafés", iyo: "AI旅程の場所を引き継いで、観光・ごはん・カフェを足したり見直したりできるけん" },
   "planFirst.today": { ja: "AIのおすすめ", en: "AI picks", iyo: "AIのおすすめ" },
   "planFirst.count": { ja: "{count}つの旅", en: "{count} trips", iyo: "{count}つの旅" },
+  "planFirst.refresh": { ja: "別の5件を見る", en: "Show five different trips", iyo: "別の5件を見る" },
+  "planFirst.refreshing": { ja: "別の5件を生成中", en: "Finding five different trips", iyo: "別の5件を作りよる" },
   "planFirst.aiPick": { ja: "AIおすすめ", en: "AI pick", iyo: "AIおすすめ" },
   "planFirst.open": { ja: "AI旅程を開く", en: "Open AI itinerary", iyo: "AI旅程を見る" },
   "planFirst.viewDetail": { ja: "AI旅程を見る", en: "View AI itinerary", iyo: "AI旅程を見る" },
