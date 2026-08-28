@@ -69,6 +69,8 @@ interface PlanApiResponse {
   stops?: PlanStop[];
 }
 
+const RECOMMENDATION_SCHEMA = "itinerary-v1";
+
 interface RecommendationsApiResponse {
   plans?: RecommendedPlan[];
 }
@@ -196,12 +198,16 @@ export class AwsChatAdapter implements ChatPort {
   ): Promise<RecommendedPlan[]> {
     const base = apiBase(this.env, "ChatPort.generateRecommendedPlans");
     const count = input.count ?? 5;
-    const query = new URLSearchParams({ lang: input.lang, count: String(count) });
+    const query = new URLSearchParams({
+      lang: input.lang,
+      count: String(count),
+      schema: RECOMMENDATION_SCHEMA,
+    });
     const res = await fetch(`${base}/recommendations?${query.toString()}`, input.refresh
       ? {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lang: input.lang, count }),
+          body: JSON.stringify({ lang: input.lang, count, schema: RECOMMENDATION_SCHEMA }),
           cache: "no-store",
         }
       : { method: "GET" });
@@ -212,11 +218,21 @@ export class AwsChatAdapter implements ChatPort {
       } catch {
         // Platform-level failures may return non-JSON bodies.
       }
+      // Without this the screen only shows "HTTP 502" and the real cause
+      // (throttling, model output, credentials) is lost.
+      console.error("Recommendations backend failed", {
+        status: res.status,
+        error: apiError.error,
+        detail: apiError.detail,
+      });
       throw new Error(chatErrorMessage(res.status, apiError.detail));
     }
 
     const data = (await res.json()) as RecommendationsApiResponse;
     if (!Array.isArray(data.plans) || data.plans.length !== 5) {
+      console.error("Recommendations backend returned an unexpected shape", {
+        plans: Array.isArray(data.plans) ? data.plans.length : null,
+      });
       throw new Error("おすすめプランを5件取得できませんでした。");
     }
     return data.plans;

@@ -29,16 +29,43 @@ const requestCache = new WeakMap<
   ChatPort,
   Map<LangCode, Promise<RecommendedPlan[]>>
 >();
-const RECOMMENDATIONS_CACHE_VERSION = "v4-tourism-only";
+const RECOMMENDATIONS_CACHE_VERSION = "v6-itinerary-v1";
+const ITINERARY_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const ITINERARY_KINDS = new Set(["sightseeing", "food", "cafe", "custom"]);
 
 function isTourismRecommendations(value: unknown): value is RecommendedPlan[] {
   return Array.isArray(value)
     && value.length === 5
-    && value.every((plan) => (
-      plan != null
-      && typeof plan === "object"
-      && (plan as { mode?: unknown }).mode === "tourism"
-    ));
+    && value.every((plan) => {
+      if (plan == null || typeof plan !== "object") return false;
+      const candidate = plan as { mode?: unknown; stops?: unknown };
+      let previousTime = "";
+      return candidate.mode === "tourism"
+        && Array.isArray(candidate.stops)
+        && candidate.stops.length >= 2
+        && candidate.stops.length <= 4
+        && candidate.stops.every((stop) => {
+          if (stop == null || typeof stop !== "object") return false;
+          const item = stop as {
+            time?: unknown;
+            kind?: unknown;
+            title?: unknown;
+            place?: { location?: { lat?: unknown; lng?: unknown } };
+          };
+          const time = String(item.time ?? "");
+          const location = item.place?.location;
+          const valid = ITINERARY_TIME_PATTERN.test(time)
+            && (!previousTime || time > previousTime)
+            && typeof item.kind === "string"
+            && ITINERARY_KINDS.has(item.kind)
+            && typeof item.title === "string"
+            && item.title.trim() !== ""
+            && Number.isFinite(location?.lat)
+            && Number.isFinite(location?.lng);
+          previousTime = time;
+          return valid;
+        });
+    });
 }
 
 function recommendationDate(): string {
@@ -147,6 +174,41 @@ function PhotoAttribution({
   );
 }
 
+function TravelerLoadingIllustration(): JSX.Element {
+  return (
+    <div className="plan-first-status__journey" aria-hidden="true">
+      <svg
+        className="plan-first-journey__canvas"
+        viewBox="0 0 320 120"
+        focusable="false"
+      >
+        <circle className="plan-first-journey__sun" cx="270" cy="25" r="12" />
+        <g className="plan-first-journey__cloud">
+          <circle cx="34" cy="25" r="8" />
+          <circle cx="44" cy="20" r="11" />
+          <circle cx="56" cy="26" r="8" />
+          <rect x="34" y="25" width="22" height="8" rx="4" />
+        </g>
+        <path className="plan-first-journey__hill plan-first-journey__hill--back" d="M0 77 Q48 35 94 77 T188 77 T282 77 T376 77 V120 H0 Z" />
+        <path className="plan-first-journey__hill" d="M0 91 Q55 57 110 91 T220 91 T330 91 V120 H0 Z" />
+        <path className="plan-first-journey__road" d="M-10 105 C70 87 145 113 330 92" />
+        <path className="plan-first-journey__road-dash" d="M-10 105 C70 87 145 113 330 92" />
+        <g className="plan-first-journey__traveler">
+          <g className="plan-first-journey__traveler-body">
+            <rect className="plan-first-journey__backpack" x="3" y="54" width="13" height="24" rx="5" />
+            <circle className="plan-first-journey__head" cx="22" cy="42" r="9" />
+            <path className="plan-first-journey__hat" d="M12 40 Q22 27 32 40 Z M10 40 H35" />
+            <path className="plan-first-journey__body" d="M20 52 L22 78" />
+            <path className="plan-first-journey__arm" d="M20 57 L8 69 M21 57 L34 68" />
+            <path className="plan-first-journey__leg plan-first-journey__leg--front" d="M22 77 L34 96" />
+            <path className="plan-first-journey__leg plan-first-journey__leg--back" d="M22 77 L14 97" />
+          </g>
+        </g>
+      </svg>
+    </div>
+  );
+}
+
 export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
   const { t, lang } = useI18n();
   const [plans, setPlans] = useState<RecommendedPlan[]>([]);
@@ -228,6 +290,57 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
               </div>
             </aside>
 
+            <section aria-labelledby="plan-first-route-title">
+              <h3 id="plan-first-route-title" className="plan-first-detail__section-title">
+                {t("planFirst.routeTitle")}
+              </h3>
+              <ol className="plan-first-route plan-first-route--places">
+                {selected.stops.map((stop, index) => (
+                  <li key={`${stop.time}-${stop.title}`}>
+                    <time className="plan-first-route__time" dateTime={stop.time}>{stop.time}</time>
+                    <span className="plan-first-route__number">{index + 1}</span>
+                    <div className={`plan-first-place${stop.place?.photoUrl ? "" : " plan-first-place--no-photo"}`}>
+                      {stop.place?.photoUrl ? (
+                        <div className="plan-first-place__photo-wrap">
+                          <img
+                            className="plan-first-place__photo"
+                            src={stop.place.photoUrl}
+                            alt={stop.place.name}
+                            loading="lazy"
+                          />
+                          <PhotoAttribution items={stop.place.photoAttributions} />
+                        </div>
+                      ) : null}
+                      <div className="plan-first-place__body">
+                        <strong>{stop.title}</strong>
+                        <p>{stop.description}</p>
+                        {stop.place ? (
+                          <div className="plan-first-place__google">
+                            <span className="plan-first-place__verified">
+                              {t("planFirst.googleVerified")}
+                            </span>
+                            <span>{stop.place.name}</span>
+                            {stop.place.formattedAddress ? (
+                              <address>{stop.place.formattedAddress}</address>
+                            ) : null}
+                            {stop.place.googleMapsUri ? (
+                              <a href={stop.place.googleMapsUri} target="_blank" rel="noreferrer">
+                                {t("planFirst.openGoogleMaps")} ↗
+                              </a>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <small className="plan-first-place__unavailable">
+                            {t("planFirst.placeUnavailable")}
+                          </small>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </section>
+
             <aside className="plan-first-reason plan-first-theme-next">
               <span className="plan-first-reason__icon" aria-hidden="true">🃏</span>
               <div>
@@ -262,7 +375,7 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
 
       {status === "loading" && (
         <Card className="plan-first-status" raised>
-          <span className="plan-first-status__spinner" aria-hidden="true" />
+          <TravelerLoadingIllustration />
           <p role="status">{t("planFirst.loading")}</p>
         </Card>
       )}

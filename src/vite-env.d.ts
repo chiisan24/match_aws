@@ -12,6 +12,7 @@ interface ImportMetaEnv {
   readonly VITE_MAP_STYLE_URL?: string;
   readonly VITE_FORCE_MOCK?: string;
   readonly VITE_DEBUG_MODE?: string;
+  readonly VITE_DEBUG_SKIP_SWIPE?: string;
   readonly VITE_SPOT_ADMIN_TOKEN?: string;
 }
 

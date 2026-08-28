@@ -15,6 +15,7 @@ import type {
   RouteCandidate,
   RouteCandidateKind,
 } from "../../ports";
+import { debugSkipSwipeEnabled } from "../../config/debug";
 import { haversineDistanceMeters } from "../../domain/geofence";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
@@ -41,6 +42,13 @@ type BuilderStage =
 
 type LoadStatus = "idle" | "loading" | "ready" | "error";
 
+/**
+ * デバッグでスワイプを飛ばすとき、残り候補の先頭から何件を自動で「興味あり」に
+ * するか。ルートが空だと以降のステップが disabled になるため、後続の画面
+ * （ルートプレビュー / 最終プラン）が成立する最小限だけ拾う。
+ */
+const DEBUG_SKIP_AUTO_PICK = 2;
+
 const FALLBACK_IMAGE: Record<RouteCandidateKind, string> = {
   sightseeing: "/images/ehime/matsuyama-castle.jpg",
   food: "/images/ehime/michi-no-eki.jpg",
@@ -54,6 +62,41 @@ function fallbackRouteTimes(count: number): string[] {
     const minutes = 9 * 60 + index * interval;
     return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
   });
+}
+
+function initialRouteFromTheme(theme: RecommendedPlan): {
+  route: RouteCandidate[];
+  times: string[];
+} {
+  const center = theme.area?.center
+    ?? theme.stops.find((stop) => stop.place?.location)?.place?.location;
+  const radiusMeters = Math.min(5_000, theme.area?.radiusMeters ?? 5_000);
+  const seen = new Set<string>();
+  const route: RouteCandidate[] = [];
+  const times: string[] = [];
+
+  theme.stops.forEach((stop, index) => {
+    const place = stop.place;
+    const location = place?.location;
+    if (
+      !place
+      || !location
+      || seen.has(place.id)
+      || (center && haversineDistanceMeters(center, location) > radiusMeters)
+    ) return;
+    seen.add(place.id);
+    route.push({
+      id: `theme:${theme.id}:${index}:${place.id}`,
+      kind: stop.kind,
+      title: stop.title,
+      description: stop.description,
+      searchQuery: stop.searchQuery,
+      place: { ...place, location },
+    });
+    times.push(stop.time);
+  });
+
+  return { route, times };
 }
 
 function insertAlongRoute(
@@ -262,13 +305,14 @@ export function TourismRouteBuilder({
   onComplete,
 }: TourismRouteBuilderProps): JSX.Element {
   const { t, lang } = useI18n();
+  const initialSelection = useMemo(() => initialRouteFromTheme(theme), [theme]);
   const [stage, setStage] = useState<BuilderStage>("sightseeing");
   const [status, setStatus] = useState<LoadStatus>("idle");
   const [error, setError] = useState("");
   const [candidates, setCandidates] = useState<RouteCandidate[]>([]);
   const [index, setIndex] = useState(0);
-  const [route, setRoute] = useState<RouteCandidate[]>([]);
-  const [routeTimes, setRouteTimes] = useState<string[]>([]);
+  const [route, setRoute] = useState<RouteCandidate[]>(() => initialSelection.route);
+  const [routeTimes, setRouteTimes] = useState<string[]>(() => initialSelection.times);
   const [planStatus, setPlanStatus] = useState<LoadStatus>("idle");
   const [planError, setPlanError] = useState("");
   const [rejected, setRejected] = useState<RouteCandidate[]>([]);
@@ -397,6 +441,40 @@ export function TourismRouteBuilder({
     void generateFinalPlan(selectedRoute);
   }, [generateFinalPlan, route]);
 
+  const candidateStage = stage === "sightseeing" || stage === "food" || stage === "cafe" || stage === "custom";
+  const canDebugOpenFinal = route.length > 0
+    || (candidateStage && status === "ready" && index < candidates.length);
+
+  // ---- Debug-only skip shortcuts ----------------------------------------
+  // Gated by `debugSkipSwipeEnabled`, so a production build drops both the
+  // handlers and the UI below. Nothing here touches the normal swipe path.
+
+  /** 残り候補の先頭から最大 count 件を自動で採用し、デッキを消化済みにする。 */
+  const debugAutoAccept = useCallback((count: number): RouteCandidate[] => {
+    let next = route;
+    for (const candidate of candidates.slice(index, index + count)) {
+      if (!next.some((item) => item.place.id === candidate.place.id)) {
+        next = insertAlongRoute(next, candidate);
+      }
+    }
+    setRoute(next);
+    setIndex(candidates.length);
+    return next;
+  }, [candidates, index, route]);
+
+  /** 現在のデッキを飛ばして、そのステージのルートプレビューまで進める。 */
+  const debugSkipDeck = useCallback((): void => {
+    debugAutoAccept(DEBUG_SKIP_AUTO_PICK);
+  }, [debugAutoAccept]);
+
+  /** 残りのスワイプ・質問を全部飛ばして最終プランへ。 */
+  const debugSkipToFinal = useCallback((): void => {
+    if (!canDebugOpenFinal) return;
+    const next = debugAutoAccept(DEBUG_SKIP_AUTO_PICK);
+    if (next.length === 0) return;
+    openFinal(next);
+  }, [canDebugOpenFinal, debugAutoAccept, openFinal]);
+
   const removeFromRoute = (candidate: RouteCandidate, routeIndex: number): void => {
     setRoute((current) => current.filter((item) => item.id !== candidate.id));
     setRouteTimes((current) => current.filter((_, index) => index !== routeIndex));
@@ -433,6 +511,7 @@ export function TourismRouteBuilder({
       imageUrl: route[0]?.place.photoUrl ?? theme.imageUrl,
       imageAttributions: route[0]?.place.photoAttributions ?? theme.imageAttributions,
       stops: route.map((candidate, stopIndex) => ({
+        kind: candidate.kind,
         time: times[stopIndex],
         title: candidate.title,
         description: candidate.description,
@@ -442,7 +521,6 @@ export function TourismRouteBuilder({
     });
   };
 
-  const candidateStage = stage === "sightseeing" || stage === "food" || stage === "cafe" || stage === "custom";
   const exhausted = candidateStage && status === "ready" && index >= candidates.length;
   const nextAfterDeck = (): void => {
     if (stage === "sightseeing") setStage("food-question");
@@ -459,6 +537,31 @@ export function TourismRouteBuilder({
         <h1 id="route-builder-title">{theme.icon} {theme.title}</h1>
         <p>{theme.summary}</p>
       </header>
+
+      {/* Debug-only skip bar. Removed from production builds by the flag. */}
+      {debugSkipSwipeEnabled && stage !== "final" ? (
+        <div className="debug-skip" role="group" aria-label={t("debug.label")}>
+          <span className="debug-skip__tag">{t("debug.label")}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            leading="⏭"
+            disabled={!candidateStage || status !== "ready" || exhausted}
+            onClick={debugSkipDeck}
+          >
+            {t("debug.skipSwipe")}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            leading="⏩"
+            disabled={!canDebugOpenFinal}
+            onClick={debugSkipToFinal}
+          >
+            {t("debug.skipToFinal")}
+          </Button>
+        </div>
+      ) : null}
 
       {candidateStage && status === "loading" ? (
         <Card className="route-builder__status" raised>
