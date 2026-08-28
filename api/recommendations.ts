@@ -306,6 +306,40 @@ function createTaskLimiter(maxConcurrency: number) {
   });
 }
 
+/**
+ * Re-resolves the stops that sit outside the anchor's area, keeping the model's
+ * visiting order and rejecting duplicates. Returns the stops that are verified
+ * and inside {@link ITINERARY_RADIUS_METERS} of the anchor.
+ */
+async function rescueStopsNearAnchor(
+  enrichedStops: PlanStop[],
+  cluster: { anchor: { lat: number; lng: number }; stops: LocatedPlanStop[] },
+  findPlaceNear: (
+    query: string,
+    area: { center: { lat: number; lng: number }; radiusMeters: number },
+  ) => Promise<EnrichedPlace | null>,
+): Promise<LocatedPlanStop[]> {
+  const area = { center: cluster.anchor, radiusMeters: ITINERARY_RADIUS_METERS };
+  const keptPlaceIds = new Set(cluster.stops.map((stop) => stop.place.id));
+  const candidates = await Promise.all(
+    enrichedStops.map(async (stop): Promise<PlanStop> => {
+      if (stop.place && keptPlaceIds.has(stop.place.id)) return stop;
+      const place = await findPlaceNear(stop.searchQuery, area);
+      return place ? { ...stop, place } : stop;
+    }),
+  );
+
+  const seenPlaceIds = new Set<string>();
+  return candidates.filter((stop): stop is LocatedPlanStop => {
+    if (!isLocatedStop(stop) || seenPlaceIds.has(stop.place.id)) return false;
+    if (distanceMeters(area.center, stop.place.location) > ITINERARY_RADIUS_METERS) {
+      return false;
+    }
+    seenPlaceIds.add(stop.place.id);
+    return true;
+  });
+}
+
 async function enrichPlans(
   plans: RecommendationPlan[],
   lang: string,
@@ -318,6 +352,25 @@ async function enrichPlans(
     if (existing) return existing;
     const request = limit(() => searchEhimePlace(query, lang)).catch((error) => {
       console.error("Google Places enrichment failed", { query, error });
+      return null;
+    });
+    cache.set(key, request);
+    return request;
+  };
+  /**
+   * Same lookup, biased towards an itinerary's anchor, used to pull a stop back
+   * into the area when the unbiased match landed on the far side of the
+   * prefecture (e.g. a common place name shared by several towns).
+   */
+  const findPlaceNear = (
+    query: string,
+    area: { center: { lat: number; lng: number }; radiusMeters: number },
+  ): Promise<EnrichedPlace | null> => {
+    const key = `${query.toLowerCase()}@${area.center.lat.toFixed(3)},${area.center.lng.toFixed(3)}`;
+    const existing = cache.get(key);
+    if (existing) return existing;
+    const request = limit(() => searchEhimePlace(query, lang, area)).catch((error) => {
+      console.error("Google Places nearby enrichment failed", { query, error });
       return null;
     });
     cache.set(key, request);
@@ -339,12 +392,24 @@ async function enrichPlans(
         return true;
       });
       const cluster = largestNearbyCluster(verifiedStops);
-      if (!cluster || cluster.stops.length < 2) {
+      if (!cluster) {
         throw new Error(
           `Recommendation ${plan.id} must contain at least two verified stops within 5km.`,
         );
       }
-      const stops = cluster.stops.slice(0, 4);
+      // One itinerary that cannot be pinned to a single area used to reject all
+      // five recommendations, because the plans are enriched with Promise.all.
+      // Retry the stops that fell outside the anchor's area with a biased search
+      // first, which usually recovers the intended nearby place.
+      const clusteredStops = cluster.stops.length < 2
+        ? await rescueStopsNearAnchor(enrichedStops, cluster, findPlaceNear)
+        : cluster.stops;
+      if (clusteredStops.length < 2) {
+        throw new Error(
+          `Recommendation ${plan.id} must contain at least two verified stops within 5km.`,
+        );
+      }
+      const stops = clusteredStops.slice(0, 4);
       const heroPlace = stops.map((stop) => stop.place).find((place) => place.photoUrl);
       return {
         ...plan,
