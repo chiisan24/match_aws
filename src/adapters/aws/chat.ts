@@ -65,14 +65,16 @@ function chatErrorMessage(
   if (status === 400) {
     return apiError || "おすすめの再生成条件が正しくありません。";
   }
+  // 利用者向け文言では基盤サービス名を出さない。切り分けに必要な詳細は
+  // console.error 側で status / error / detail を出しているのでそちらを見る。
   if (/AccessDenied|Unauthorized|UnrecognizedClient|InvalidSignature|credential/i.test(detail)) {
-    return "Bedrockの認証に失敗しました。APIキーと適用環境を確認してください。";
+    return "AIの認証に失敗しました。APIキーと適用環境を確認してください。";
   }
   if (/ValidationException|ResourceNotFound|model|inference profile/i.test(detail)) {
-    return "Bedrockモデルを利用できません。モデルIDとリージョンを確認してください。";
+    return "AIモデルを利用できません。モデルIDとリージョンを確認してください。";
   }
   if (/Throttl|TooManyRequests|ServiceUnavailable|timeout/i.test(detail)) {
-    return "Bedrockが混雑中です。少し待ってから再試行してください。";
+    return "AIが混雑中です。少し待ってから再試行してください。";
   }
   return `AIバックエンドでエラーが発生しました（HTTP ${status}）。`;
 }
