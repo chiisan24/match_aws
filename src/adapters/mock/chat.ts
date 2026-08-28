@@ -20,6 +20,7 @@ import type {
   RecommendedPlan,
   RecommendedPlansInput,
   RouteCandidate,
+  RouteCandidateKind,
   RouteCandidatesInput,
   Spot,
   TourismRoutePlan,
@@ -129,41 +130,48 @@ function looksLikeDiscovery(message: string): boolean {
 
 function mockRecommendation(
   id: string,
-  mode: RecommendedPlan["mode"],
   icon: string,
   title: string,
   summary: string,
   imageUrl: string,
-  stopTitles: string[],
+  stopSpecs: Array<{ spotId: string; kind: RouteCandidateKind }>,
 ): RecommendedPlan {
-  const times = ["09:00", "11:30", "14:00"];
-  const stops = stopTitles.map((stopTitle, index) => {
-    const spot = EHIME_SPOTS.find(
-      (candidate) => candidate.name.includes(stopTitle) || stopTitle.includes(candidate.name),
-    );
+  const times = ["09:00", "11:30", "14:00", "16:00"];
+  const seen = new Set<string>();
+  const stops = stopSpecs.map(({ spotId, kind }, index) => {
+    const spot = EHIME_SPOTS.find((candidate) => candidate.id === spotId);
+    if (!spot || seen.has(spot.id)) {
+      throw new Error(`Invalid mock recommendation spot: ${spotId}`);
+    }
+    seen.add(spot.id);
     return {
-      time: times[index] ?? `${9 + index * 2}:00`,
-      title: stopTitle,
-      description: `${stopTitle}をゆっくり楽しみます。`,
-      searchQuery: `${stopTitle} 愛媛県`,
-      ...(spot
-        ? {
-            place: {
-              id: spot.id,
-              name: spot.name,
-              formattedAddress: "愛媛県",
-              location: spot.location,
-              ...(spot.website ? { websiteUri: spot.website } : {}),
-              ...(spot.imageUrls[0] ? { photoUrl: spot.imageUrls[0] } : {}),
-            },
-          }
-        : {}),
+      time: times[index],
+      kind,
+      title: spot.name,
+      description: spot.localizedDescriptions.ja ?? `${spot.name}をゆっくり楽しみます。`,
+      searchQuery: `${spot.name} 愛媛県`,
+      place: {
+        id: spot.id,
+        name: spot.name,
+        formattedAddress: "愛媛県",
+        location: spot.location,
+        ...(spot.website ? { websiteUri: spot.website } : {}),
+        ...(spot.imageUrls[0] ? { photoUrl: spot.imageUrls[0] } : {}),
+      },
     };
   });
-  const center = stops.find((stop) => stop.place?.location)?.place?.location;
+  const center = stops[0]?.place.location;
+  if (
+    !center
+    || stops.length < 2
+    || stops.length > 4
+    || stops.some((stop) => haversineDistanceMeters(center, stop.place.location) > 5_000)
+  ) {
+    throw new Error(`Mock recommendation ${id} must contain two to four stops within 5km.`);
+  }
   return {
     id,
-    mode,
+    mode: "tourism",
     icon,
     title,
     summary,
@@ -172,17 +180,33 @@ function mockRecommendation(
     transport: "車＋徒歩",
     intensity: "ふつう",
     imageUrl,
-    ...(center ? { area: { center, radiusMeters: 5_000 } } : {}),
+    area: { center, radiusMeters: 5_000 },
     stops,
   };
 }
 
 const MOCK_RECOMMENDATIONS: RecommendedPlan[] = [
-  mockRecommendation("matsuyama", "tourism", "🏯", "松山の王道を楽しむ旅", "松山城と道後温泉を巡る定番コース。", "/images/ehime/matsuyama-castle.jpg", ["松山城", "道後温泉", "大街道"]),
-  mockRecommendation("dogo", "tourism", "♨️", "道後でほどける温泉旅", "温泉街とカフェをのんびり楽しみます。", "/images/ehime/onsen-bath.jpg", ["道後温泉本館", "道後商店街", "道後公園"]),
-  mockRecommendation("uchiko", "tourism", "🏘️", "内子の町並みと手仕事", "歴史ある町並みを歩く静かな旅。", "/images/ehime/uchiko-townscape.jpg", ["内子町並保存地区", "内子座", "道の駅 内子フレッシュパークからり"]),
-  mockRecommendation("nanyo", "tourism", "🌿", "南予の城下町と里山", "宇和島の歴史と穏やかな風景に触れる旅。", "/images/ehime/uwajima-castle.jpg", ["宇和島城"]),
-  mockRecommendation("shimanami", "tourism", "🚲", "しまなみ海道の絶景旅", "橋と海を眺めながら島時間を楽しみます。", "/images/ehime/kurushima-bridge.jpg", ["来島海峡展望館", "亀老山展望公園", "大山祇神社"]),
+  mockRecommendation("matsuyama", "🏯", "松山の王道と郷土料理", "松山城と愛媛の味を巡る定番コース。", "/images/ehime/matsuyama-castle.jpg", [
+    { spotId: "osm-node-611661255", kind: "sightseeing" },
+    { spotId: "curated-food-gansui-matsuyama", kind: "food" },
+  ]),
+  mockRecommendation("dogo", "♨️", "道後でほどける温泉旅", "温泉街をのんびり楽しみます。", "/images/ehime/onsen-bath.jpg", [
+    { spotId: "osm-way-235751036", kind: "sightseeing" },
+    { spotId: "osm-node-5697638322", kind: "sightseeing" },
+  ]),
+  mockRecommendation("uwajima", "🏯", "宇和島の城下町と味", "宇和島の歴史と郷土料理に触れる旅。", "/images/ehime/uwajima-castle.jpg", [
+    { spotId: "osm-node-3698448508", kind: "sightseeing" },
+    { spotId: "osm-node-1423733742", kind: "sightseeing" },
+    { spotId: "curated-food-hozumitei-uwajima", kind: "food" },
+  ]),
+  mockRecommendation("imabari", "🍳", "今治のご当地グルメ旅", "今治名物を食べ比べる気軽な旅。", "/images/ehime/imabari-castle.jpg", [
+    { spotId: "curated-food-hakurakuten-imabari", kind: "food" },
+    { spotId: "curated-food-shigematsu-imabari", kind: "food" },
+  ]),
+  mockRecommendation("mitsuhama", "🌊", "三津浜のまち歩きと味", "港町で名物の三津浜焼きを楽しみます。", "/images/ehime/seaside-rails.jpg", [
+    { spotId: "curated-food-hinode-mitsuhama", kind: "food" },
+    { spotId: "curated-food-konaya-mitsuhama", kind: "food" },
+  ]),
 ];
 
 function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidate[] {

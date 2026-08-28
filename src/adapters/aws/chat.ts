@@ -52,15 +52,29 @@ interface ApiErrorResponse {
   detail?: string;
 }
 
-function chatErrorMessage(status: number, detail = ""): string {
+function chatErrorMessage(
+  status: number,
+  detail = "",
+  apiError = "",
+  retryAfter = "",
+): string {
+  if (status === 429) {
+    const seconds = /^\d+$/.test(retryAfter) ? retryAfter : "60";
+    return `おすすめの再生成は${seconds}秒後にもう一度お試しください。`;
+  }
+  if (status === 400) {
+    return apiError || "おすすめの再生成条件が正しくありません。";
+  }
+  // 利用者向け文言では基盤サービス名を出さない。切り分けに必要な詳細は
+  // console.error 側で status / error / detail を出しているのでそちらを見る。
   if (/AccessDenied|Unauthorized|UnrecognizedClient|InvalidSignature|credential/i.test(detail)) {
-    return "Bedrockの認証に失敗しました。APIキーと適用環境を確認してください。";
+    return "AIの認証に失敗しました。APIキーと適用環境を確認してください。";
   }
   if (/ValidationException|ResourceNotFound|model|inference profile/i.test(detail)) {
-    return "Bedrockモデルを利用できません。モデルIDとリージョンを確認してください。";
+    return "AIモデルを利用できません。モデルIDとリージョンを確認してください。";
   }
   if (/Throttl|TooManyRequests|ServiceUnavailable|timeout/i.test(detail)) {
-    return "Bedrockが混雑中です。少し待ってから再試行してください。";
+    return "AIが混雑中です。少し待ってから再試行してください。";
   }
   return `AIバックエンドでエラーが発生しました（HTTP ${status}）。`;
 }
@@ -68,6 +82,8 @@ function chatErrorMessage(status: number, detail = ""): string {
 interface PlanApiResponse {
   stops?: PlanStop[];
 }
+
+const RECOMMENDATION_SCHEMA = "itinerary-v1";
 
 interface RecommendationsApiResponse {
   plans?: RecommendedPlan[];
@@ -201,6 +217,7 @@ export class AwsChatAdapter implements ChatPort {
     const query = new URLSearchParams({
       lang: input.lang,
       count: String(count),
+      schema: RECOMMENDATION_SCHEMA,
       date,
     });
     const res = await fetch(`${base}/recommendations?${query.toString()}`, input.refresh
@@ -210,6 +227,7 @@ export class AwsChatAdapter implements ChatPort {
           body: JSON.stringify({
             lang: input.lang,
             count,
+            schema: RECOMMENDATION_SCHEMA,
             date,
             exclude: input.exclude ?? [],
           }),
@@ -223,11 +241,26 @@ export class AwsChatAdapter implements ChatPort {
       } catch {
         // Platform-level failures may return non-JSON bodies.
       }
-      throw new Error(chatErrorMessage(res.status, apiError.detail));
+      // Without this the screen only shows "HTTP 502" and the real cause
+      // (throttling, model output, credentials) is lost.
+      console.error("Recommendations backend failed", {
+        status: res.status,
+        error: apiError.error,
+        detail: apiError.detail,
+      });
+      throw new Error(chatErrorMessage(
+        res.status,
+        apiError.detail,
+        apiError.error,
+        res.headers.get("Retry-After") ?? "",
+      ));
     }
 
     const data = (await res.json()) as RecommendationsApiResponse;
     if (!Array.isArray(data.plans) || data.plans.length !== 5) {
+      console.error("Recommendations backend returned an unexpected shape", {
+        plans: Array.isArray(data.plans) ? data.plans.length : null,
+      });
       throw new Error("おすすめプランを5件取得できませんでした。");
     }
     return data.plans;

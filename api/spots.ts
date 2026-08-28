@@ -113,12 +113,41 @@ function buildSpot(body: NewSpotInput): { spot?: Record<string, unknown>; error?
   return { spot };
 }
 
+/**
+ * True when the failure means "DynamoDB is simply not set up here" rather than
+ * a real backend fault: no IAM credentials (the Bedrock API key does not work
+ * for DynamoDB) or the table does not exist yet.
+ */
+function isCatalogueUnconfigured(err: unknown): boolean {
+  const name = err instanceof Error ? err.name : "";
+  return (
+    name === "CredentialsProviderError" ||
+    name === "ResourceNotFoundException"
+  );
+}
+
+/**
+ * Remembers an unconfigured catalogue so repeated page loads stop paying for a
+ * DynamoDB round-trip that can only fail the same way. Reset by a redeploy /
+ * dev-server restart, which is also when the configuration can change.
+ */
+let catalogueUnconfigured = false;
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
   try {
     if (req.method === "GET") {
+      // Reads are an optional enhancement: the ~400 seed spots are bundled in
+      // the client, so "no runtime additions" is a valid answer when DynamoDB
+      // is not configured. Returning 200 keeps the console clean instead of
+      // reporting a backend outage that does not exist.
+      if (catalogueUnconfigured) {
+        res.setHeader("Cache-Control", "private, no-store");
+        res.status(200).json({ spots: [] });
+        return;
+      }
       const { ScanCommand } = await loadDocSdk();
       const out = await (await docClient()).send(
         new ScanCommand({ TableName: TABLE }),
@@ -155,6 +184,17 @@ export default async function handler(
 
     res.status(405).json({ error: "Method not allowed" });
   } catch (err) {
+    if (req.method === "GET" && isCatalogueUnconfigured(err)) {
+      if (!catalogueUnconfigured) {
+        catalogueUnconfigured = true;
+        console.warn(
+          `spots catalogue unavailable, serving bundled seed only: ${errorDetail(err)}`,
+        );
+      }
+      res.setHeader("Cache-Control", "private, no-store");
+      res.status(200).json({ spots: [] });
+      return;
+    }
     console.error("spots error", err);
     res.status(502).json({ error: "Spots backend error", detail: errorDetail(err) });
   }

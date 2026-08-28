@@ -286,9 +286,13 @@ export interface RecommendedPlace {
   photoAttributions?: PlacePhotoAttribution[];
 }
 
-/** A stop proposed by Bedrock and optionally verified by Google Places. */
+/** Kinds shared by AI itinerary stops and interactive route candidates. */
+export type RouteCandidateKind = "sightseeing" | "food" | "cafe" | "custom";
+
+/** A stop proposed by AI and optionally verified by Google Places. */
 export interface RecommendedPlanStop {
   time: string;
+  kind: RouteCandidateKind;
   title: string;
   description: string;
   searchQuery: string;
@@ -332,8 +336,6 @@ export interface RecommendedPlansInput {
   /** Existing recommendations Bedrock must not repeat during refresh. */
   exclude?: RecommendationExclusion[];
 }
-
-export type RouteCandidateKind = "sightseeing" | "food" | "cafe" | "custom";
 
 /** A Google-verified candidate presented by the interactive route builder. */
 export interface RouteCandidate {
