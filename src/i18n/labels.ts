@@ -3116,4 +3116,5 @@ Object.assign(UI_LABELS, {
   "debug.label": { ja: "デバッグ", en: "Debug", iyo: "デバッグ" },
   "debug.skipSwipe": { ja: "スワイプをスキップ", en: "Skip swiping", iyo: "スワイプを飛ばす" },
   "debug.skipToFinal": { ja: "最終プランへジャンプ", en: "Jump to final plan", iyo: "最終プランへ飛ぶ" },
+  "debug.skipScreen": { ja: "この画面ごとスキップ", en: "Skip this screen", iyo: "この画面ごと飛ばす" },
 } satisfies LangDict);

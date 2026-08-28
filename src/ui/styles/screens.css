@@ -5403,6 +5403,9 @@ textarea.nokyocho-field__control {
  * Safe to delete together with the flag.
  * ====================================================================== */
 .debug-skip {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -5412,7 +5415,9 @@ textarea.nokyocho-field__control {
   padding: var(--space-2);
   border: 1px dashed var(--color-mikan-600);
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--color-mikan-600) 6%, transparent);
+  /* Opaque so the sticky bar stays readable over the card it scrolls past. */
+  background: var(--color-paper, #fff);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 8%);
 }
 
 .debug-skip__tag {

@@ -475,6 +475,19 @@ export function TourismRouteBuilder({
     openFinal(next);
   }, [canDebugOpenFinal, debugAutoAccept, openFinal]);
 
+  /**
+   * ルートビルダーごと飛ばしてアプリ本体（地図タブ）へ。AI 旅程の立寄先
+   * （`theme.stops`）をそのまま採用するので、スワイプも最終プラン生成も
+   * 一切走らない。プラン作成フローを毎回通さずに先の画面を触りたいとき用。
+   */
+  const debugSkipScreen = useCallback((): void => {
+    onComplete({
+      ...theme,
+      mode: "tourism",
+      ...(area ? { area } : {}),
+    });
+  }, [area, onComplete, theme]);
+
   const removeFromRoute = (candidate: RouteCandidate, routeIndex: number): void => {
     setRoute((current) => current.filter((item) => item.id !== candidate.id));
     setRouteTimes((current) => current.filter((_, index) => index !== routeIndex));
@@ -559,6 +572,9 @@ export function TourismRouteBuilder({
             onClick={debugSkipToFinal}
           >
             {t("debug.skipToFinal")}
+          </Button>
+          <Button variant="ghost" size="sm" leading="⏏" onClick={debugSkipScreen}>
+            {t("debug.skipScreen")}
           </Button>
         </div>
       ) : null}
