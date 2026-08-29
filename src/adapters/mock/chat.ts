@@ -22,10 +22,19 @@ import type {
   RouteCandidate,
   RouteCandidateKind,
   RouteCandidatesInput,
+  RouteCandidatesResult,
   Spot,
   TourismRoutePlan,
   TourismRoutePlanInput,
 } from "../../ports";
+import {
+  CANDIDATE_BASE_RADIUS_METERS,
+  CANDIDATE_MAXIMUM_COUNT,
+  CANDIDATE_MINIMUM_COUNT,
+  clampCandidateCount,
+  finalizeCandidates,
+} from "../../domain/candidateFallback";
+import { DEFAULT_FALLBACK_POOLS } from "../../data/fallbackPools";
 import { haversineDistanceMeters } from "../../domain/geofence";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
 import { EHIME_SPOTS } from "./spots";
@@ -209,8 +218,14 @@ const MOCK_RECOMMENDATIONS: RecommendedPlan[] = [
   ]),
 ];
 
-function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidate[] {
-  const used = new Set(input.route.map((stop) => stop.placeId));
+/**
+ * Mock swipe candidates settled through the shared finalisation logic, so the
+ * mock adapter obeys the same count clamping, radius expansion and Fallback
+ * rules as `api/route-candidates.ts` (Req 6.1-6.4 / Property 13).
+ */
+function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidatesResult {
+  const usedPlaceIds = input.route.map((stop) => stop.placeId);
+  const used = new Set(usedPlaceIds);
   let pool = EHIME_SPOTS.filter(
     (spot) => !used.has(spot.id)
       && haversineDistanceMeters(input.area.center, spot.location) <= input.area.radiusMeters,
@@ -225,7 +240,12 @@ function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidate[] {
     pool = pool.filter((spot) => spot.category !== "food");
   }
 
-  return pool.slice(0, input.count ?? 6).map((spot) => ({
+  const count = clampCandidateCount(
+    input.count,
+    input.kind === "cafe" ? 4 : 6,
+    input.kind === "sightseeing" ? CANDIDATE_MINIMUM_COUNT : 3,
+  );
+  const primary: RouteCandidate[] = pool.slice(0, count).map((spot) => ({
     id: `${input.kind}:${spot.id}`,
     kind: input.kind,
     title: spot.name,
@@ -243,6 +263,19 @@ function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidate[] {
       ...(spot.imageUrls[0] ? { photoUrl: spot.imageUrls[0] } : {}),
     },
   }));
+
+  return finalizeCandidates(
+    primary,
+    {
+      kind: input.kind,
+      lang: input.lang,
+      center: input.area.center,
+      baseRadiusMeters: Math.min(CANDIDATE_BASE_RADIUS_METERS, input.area.radiusMeters),
+      usedPlaceIds,
+      maximumCount: CANDIDATE_MAXIMUM_COUNT,
+    },
+    DEFAULT_FALLBACK_POOLS,
+  );
 }
 
 function mockTourismRoutePlan(input: TourismRoutePlanInput): TourismRoutePlan {
@@ -335,7 +368,7 @@ export class MockChatAdapter implements ChatPort {
 
   async generateRouteCandidates(
     input: RouteCandidatesInput,
-  ): Promise<RouteCandidate[]> {
+  ): Promise<RouteCandidatesResult> {
     return mockRouteCandidates(input);
   }
 

@@ -337,6 +337,12 @@ export interface RecommendedPlansInput {
   exclude?: RecommendationExclusion[];
 }
 
+/**
+ * Origin of a route candidate. Primary candidates come from Bedrock proposals
+ * verified by Google Places; the others are local-data fallbacks.
+ */
+export type CandidateSource = "primary" | "temple" | "spot";
+
 /** A Google-verified candidate presented by the interactive route builder. */
 export interface RouteCandidate {
   id: string;
@@ -344,7 +350,18 @@ export interface RouteCandidate {
   title: string;
   description: string;
   searchQuery: string;
+  /** Omitted means primary (Google-verified). Fallbacks use "temple" / "spot". */
+  source?: CandidateSource;
   place: RecommendedPlace & { location: GeoPoint };
+}
+
+/** Route candidate set plus the radius and minimum count used to settle it. */
+export interface RouteCandidatesResult {
+  candidates: RouteCandidate[];
+  /** Radius (metres) actually applied when the candidate set was settled. */
+  appliedRadiusMeters: number;
+  /** Minimum candidate count the provider aimed for. */
+  minimumCount: number;
 }
 
 export interface RouteCandidateContextStop {

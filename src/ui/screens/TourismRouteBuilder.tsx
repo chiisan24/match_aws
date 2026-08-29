@@ -11,12 +11,20 @@ import {
 import type {
   ChatPort,
   GeoArea,
+  GeoPoint,
   RecommendedPlan,
   RouteCandidate,
   RouteCandidateKind,
 } from "../../ports";
 import { debugSkipSwipeEnabled } from "../../config/debug";
+import {
+  CANDIDATE_MAXIMUM_COUNT,
+  CANDIDATE_MINIMUM_COUNT,
+  centerDistanceLabel,
+  finalizeCandidates,
+} from "../../domain/candidateFallback";
 import { haversineDistanceMeters } from "../../domain/geofence";
+import { DEFAULT_FALLBACK_POOLS } from "../../data/fallbackPools";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -156,10 +164,16 @@ function CandidatePhoto({ candidate }: { candidate: RouteCandidate }): JSX.Eleme
 function BinarySwipeDeck({
   candidates,
   index,
+  center,
+  minimumCount,
   onDecision,
 }: {
   candidates: RouteCandidate[];
   index: number;
+  /** 距離表示の基準となるエリア中心。未指定なら距離を表示しない。 */
+  center?: GeoPoint;
+  /** 候補確定に用いられた下限件数。これを下回るときは不足注記を表示する。 */
+  minimumCount: number;
   onDecision: (interested: boolean) => void;
 }): JSX.Element | null {
   const { t } = useI18n();
@@ -195,6 +209,9 @@ function BinarySwipeDeck({
     decide(event.key === "ArrowRight");
   };
   const leaning = Math.abs(offsetX) > 20 ? (offsetX > 0 ? "like" : "skip") : null;
+  const distance = center
+    ? centerDistanceLabel(haversineDistanceMeters(center, current.place.location))
+    : null;
 
   return (
     <div className="route-builder-swipe">
@@ -203,6 +220,11 @@ function BinarySwipeDeck({
           .replace("{current}", String(index + 1))
           .replace("{total}", String(candidates.length))}
       </p>
+      {candidates.length < minimumCount ? (
+        <p className="route-builder-swipe__notice" role="status">
+          {t("routeBuilder.shortageNotice").replace("{count}", String(candidates.length))}
+        </p>
+      ) : null}
       <div className="route-builder-swipe__stage">
         {candidates[index + 1] ? (
           <div className="route-builder-card route-builder-card--peek" aria-hidden="true">
@@ -233,7 +255,15 @@ function BinarySwipeDeck({
               <Tag tone={current.kind === "food" || current.kind === "cafe" ? "accent" : "teal"}>
                 {t(`routeBuilder.kind.${current.kind}`)}
               </Tag>
+              {current.source === "temple" ? (
+                <Tag tone="moss" leading="🛕">{t("routeBuilder.templeTag")}</Tag>
+              ) : null}
             </div>
+            {distance ? (
+              <small className="route-builder-card__distance">
+                {t(distance.key).replace("{value}", distance.value)}
+              </small>
+            ) : null}
             <p>{current.description}</p>
             {current.place.rating != null ? (
               <small>★ {current.place.rating} ({current.place.userRatingCount ?? 0})</small>
@@ -317,6 +347,13 @@ export function TourismRouteBuilder({
   const [planError, setPlanError] = useState("");
   const [rejected, setRejected] = useState<RouteCandidate[]>([]);
   const [customRequest, setCustomRequest] = useState("");
+  /**
+   * 応答の `appliedRadiusMeters` を反映した実効エリア。半径が拡大された場合に
+   * マップ範囲が立寄先を切り落とさないよう、プレビューへはこちらを渡す。
+   */
+  const [effectiveArea, setEffectiveArea] = useState<GeoArea | null>(null);
+  /** 不足注記の判定に使う、候補確定に用いられた下限件数。 */
+  const [minimumCount, setMinimumCount] = useState(CANDIDATE_MINIMUM_COUNT);
   const started = useRef(false);
 
   const area = useMemo<GeoArea | null>(() => {
@@ -350,7 +387,7 @@ export function TourismRouteBuilder({
       return;
     }
     try {
-      const next = await chat.generateRouteCandidates({
+      const result = await chat.generateRouteCandidates({
         lang,
         kind,
         theme: {
@@ -364,11 +401,36 @@ export function TourismRouteBuilder({
         ...(request ? { customRequest: request } : {}),
         count: kind === "cafe" ? 4 : 6,
       });
-      const bounded = next.filter(
-        (candidate) => haversineDistanceMeters(area.center, candidate.place.location) <= area.radiusMeters,
+      // 距離判定は「要求半径」ではなく「応答で実際に適用された半径」に従う。
+      // サーバーが段階拡大した候補をクライアントが取りこぼさないようにする。
+      const appliedRadius = Math.max(area.radiusMeters, result.appliedRadiusMeters);
+      const bounded = result.candidates.filter(
+        (candidate) => haversineDistanceMeters(area.center, candidate.place.location) <= appliedRadius,
       );
-      if (bounded.length === 0) throw new Error(t("routeBuilder.loadError"));
-      setCandidates(bounded);
+      // 最終ガード: サーバー応答が下限に届かない場合はクライアント側でも
+      // ローカルデータから補完する（上限は CANDIDATE_MAXIMUM_COUNT）。
+      const guarded = bounded.length >= result.minimumCount
+        ? {
+          candidates: bounded,
+          appliedRadiusMeters: appliedRadius,
+          minimumCount: result.minimumCount,
+        }
+        : finalizeCandidates(bounded, {
+          kind,
+          lang,
+          center: area.center,
+          baseRadiusMeters: area.radiusMeters,
+          usedPlaceIds: routeContext.map((stop) => stop.placeId),
+          maximumCount: CANDIDATE_MAXIMUM_COUNT,
+          minimumCount: result.minimumCount,
+        }, DEFAULT_FALLBACK_POOLS);
+      if (guarded.candidates.length === 0) throw new Error(t("routeBuilder.loadError"));
+      setCandidates(guarded.candidates);
+      setMinimumCount(guarded.minimumCount);
+      setEffectiveArea({
+        center: area.center,
+        radiusMeters: Math.max(appliedRadius, guarded.appliedRadiusMeters),
+      });
       setStatus("ready");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("routeBuilder.loadError"));
@@ -602,13 +664,19 @@ export function TourismRouteBuilder({
             <h2>{t(`routeBuilder.heading.${stage}`)}</h2>
             <p>{t(`routeBuilder.lead.${stage}`)}</p>
           </div>
-          <BinarySwipeDeck candidates={candidates} index={index} onDecision={decide} />
+          <BinarySwipeDeck
+            candidates={candidates}
+            index={index}
+            {...(area ? { center: area.center } : {})}
+            minimumCount={minimumCount}
+            onDecision={decide}
+          />
         </>
       ) : null}
 
       {exhausted ? (
         <Card className="route-builder__route-card" raised>
-          {route.length > 0 && area ? <RoutePreview route={route} area={area} /> : (
+          {route.length > 0 && area ? <RoutePreview route={route} area={effectiveArea ?? area} /> : (
             <p role="alert">{t("routeBuilder.emptyRoute")}</p>
           )}
           <div className="route-builder__actions">
@@ -695,7 +763,7 @@ export function TourismRouteBuilder({
             </Card>
           ) : null}
           {route.length > 0 && area
-            ? <RoutePreview route={route} times={routeTimes} area={area} />
+            ? <RoutePreview route={route} times={routeTimes} area={effectiveArea ?? area} />
             : <p role="alert">{t("routeBuilder.emptyRoute")}</p>}
           <Card className="route-builder-editor" raised>
             <h3>{t("routeBuilder.editTitle")}</h3>

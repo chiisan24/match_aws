@@ -1,0 +1,411 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 `src/domain/types.ts` に候補判別属性と結果型を追加する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965654749
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965672531
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787967651841
+      }
+    ],
+    "1.2 `src/domain/candidateFallback.ts` に定数と型を定義する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965654800
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787967657241
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968330747
+      }
+    ],
+    "1.3 `clampCandidateCount` を実装する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965654844
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968341308
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968551551
+      }
+    ],
+    "1.4 `centerDistanceLabel` を実装する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965654910
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968566260
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968668344
+      }
+    ],
+    "1.5 `finalizeCandidates` の Primary 採用と重複排除を実装する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965654976
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968678558
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787969481659
+      }
+    ],
+    "1.6 `finalizeCandidates` の Fallback 補完と半径段階拡大を実装する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655027
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787969505574
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787970303448
+      }
+    ],
+    "1.7 `FallbackPoint` → `RouteCandidate` 変換と既定説明文を実装する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655070
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787970320182
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787970742889
+      }
+    ],
+    "2.1 `src/data/fallbackPools.ts` を新規作成する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655111
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968346048
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968556247
+      }
+    ],
+    "3.1 `api/_fallback-candidates.ts` を新規作成する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655149
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968682856
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787969487894
+      }
+    ],
+    "3.2 `api/route-candidates.ts` を共有ロジックに接続する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655188
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787969510604
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787970308202
+      }
+    ],
+    "4.1 `ChatPort.generateRouteCandidates` の戻り値を `RouteCandidatesResult` に変更する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655226
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968571175
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968673334
+      }
+    ],
+    "4.2 `src/adapters/aws/chat.ts` で応答フィールドを検証・補完する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655258
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968687560
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787969493284
+      }
+    ],
+    "4.3 `mockRouteCandidates` を共有ロジックに合わせる": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655292
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787969515384
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787970313608
+      }
+    ],
+    "5. チェックポイント - 型と既存テストの健全性を確認する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655324
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787970773960
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787971022571
+      }
+    ],
+    "6.1 `TourismRouteBuilder` の `loadCandidates` に最終ガードを組み込む": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655397
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787970325385
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787970747563
+      }
+    ],
+    "6.2 候補カードに札所タグと中心距離を表示する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655438
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787971029690
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787971226949
+      }
+    ],
+    "6.3 候補不足の注記を表示する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655514
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787971231674
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787971350645
+      }
+    ],
+    "7.1 `src/i18n/labels.ts` に `routeBuilder.*` キーを追加する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655556
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968352067
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968561265
+      }
+    ],
+    "7.2 `src/ui/styles/screens.css` にカード距離と注記のスタイルを追加する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655608
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787967663011
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968335906
+      }
+    ],
+    "9.2 推薦系の既存不変条件を壊していないことを確認する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655655
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787971355470
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787971590713
+      }
+    ],
+    "10. 最終チェックポイント - 型チェックと全テスト": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787965655715
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787971596669
+      },
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787971905705
+      }
+    ],
+    "2. Fallback データプールを構築する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968556389
+      }
+    ],
+    "7. i18n とスタイルを追加する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787968561334
+      }
+    ],
+    "3. サーバー側の候補確定を共有ロジックに置き換える": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787970308348
+      }
+    ],
+    "4. ポートとアダプタを結果オブジェクトに移行する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787970313704
+      }
+    ],
+    "1. 共有ドメインの型とロジックを追加する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787970742977
+      }
+    ],
+    "6. クライアント最終ガードと候補カード表示を実装する": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787971350709
+      }
+    ],
+    "9. 既存不変条件の回帰確認": [
+      {
+        "executionId": "08aa1ad1-8f2d-44f8-9a59-4001d2bb2e70",
+        "chatSessionId": "sess_2d133028-6b42-4cf6-8e19-cfe7f0c3363e",
+        "timestamp": 1787971590851
+      }
+    ]
+  }
+}

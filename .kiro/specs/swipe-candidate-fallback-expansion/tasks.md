@@ -10,40 +10,40 @@
 
 ## Tasks
 
-- [ ] 1. 共有ドメインの型とロジックを追加する
-  - [ ] 1.1 `src/domain/types.ts` に候補判別属性と結果型を追加する
+- [x] 1. 共有ドメインの型とロジックを追加する
+  - [x] 1.1 `src/domain/types.ts` に候補判別属性と結果型を追加する
     - `CandidateSource`（`"primary" | "temple" | "spot"`）を追加
     - `RouteCandidate` に **optional** な `source?: CandidateSource` を追加（既存フィクスチャを壊さないため必須にしない）
     - `RouteCandidatesResult`（`candidates` / `appliedRadiusMeters` / `minimumCount`）を追加
     - _Requirements: 2.6, 3.6_
     - _Properties: 8_
 
-  - [ ] 1.2 `src/domain/candidateFallback.ts` に定数と型を定義する
+  - [x] 1.2 `src/domain/candidateFallback.ts` に定数と型を定義する
     - `CANDIDATE_MINIMUM_COUNT = 5`、`CANDIDATE_MAXIMUM_COUNT = 8`、`CANDIDATE_BASE_RADIUS_METERS = 5_000`、`CANDIDATE_RADII_METERS = [5_000, 10_000, 20_000]`
     - `FallbackPoint` / `FallbackPools` / `FinalizeContext` / `FinalizeResult` を定義
     - 依存は `./types` の型と `./geofence` の `haversineDistanceMeters` のみに限定（DOM / React / import.meta / 環境変数に依存しない）
     - _Requirements: 1.1, 1.3, 3.1_
     - _Properties: 1, 9_
 
-  - [ ] 1.3 `clampCandidateCount` を実装する
+  - [x] 1.3 `clampCandidateCount` を実装する
     - 非数値・NaN・負数は `fallback` へ、範囲内整数は恒等、結果は下限以上 `CANDIDATE_MAXIMUM_COUNT` 以下
     - _Requirements: 1.6_
     - _Properties: 4_
 
-  - [ ] 1.4 `centerDistanceLabel` を実装する
+  - [x] 1.4 `centerDistanceLabel` を実装する
     - 1,000m 未満は `routeBuilder.distanceMeters` と整数メートル値、1,000m 以上は `routeBuilder.distanceKilometers` と小数第 1 位のキロメートル値を返す
     - 表示は呼び出し側の `t()` に委ねる（キーと差し込み値のみ返す）
     - _Requirements: 5.3_
     - _Properties: 12_
 
-  - [ ] 1.5 `finalizeCandidates` の Primary 採用と重複排除を実装する
+  - [x] 1.5 `finalizeCandidates` の Primary 採用と重複排除を実装する
     - `usedPlaceIds` を初期 `seen` 集合とし、`place.id` の重複を排除して Primary を順序保持で採用
     - `maximumCount` で打ち切り、Primary は Fallback より前に並べる
     - `kind !== "sightseeing"` の場合は Fallback を追加せず `appliedRadiusMeters = baseRadiusMeters` で即返す
     - _Requirements: 1.3, 1.4, 1.5, 8.3, 8.4_
     - _Properties: 2, 3, 14_
 
-  - [ ] 1.6 `finalizeCandidates` の Fallback 補完と半径段階拡大を実装する
+  - [x] 1.6 `finalizeCandidates` の Fallback 補完と半径段階拡大を実装する
     - `CANDIDATE_RADII_METERS` のうち `baseRadiusMeters` 以上のものを昇順に適用
     - プールは `temples` + `spots` から、`seen` 未登録・`sightseeing` かつ `category === "food"` を除外・中心距離が半径以内のものに限定
     - 中心距離昇順（同距離は `id` 昇順）で決定的にソートし、`result.length < min(maximumCount, minimum)` の間だけ採用
@@ -51,15 +51,15 @@
     - _Requirements: 1.2, 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 3.4_
     - _Properties: 1, 5, 6, 9, 10_
 
-  - [ ] 1.7 `FallbackPoint` → `RouteCandidate` 変換と既定説明文を実装する
+  - [x] 1.7 `FallbackPoint` → `RouteCandidate` 変換と既定説明文を実装する
     - `id = "{kind}:{source}:{point.id}"`、`description` は `descriptions[lang] ?? descriptions.ja ?? defaultDescription(point)`
     - `defaultDescription` は札所なら「第{n}番札所 …をお参りできます。」相当、Spot なら「{name}を楽しめるスポットです。」を返し、必ず非空にする
     - `source` に `"temple"` / `"spot"` を付与し、`photoUrl` / `websiteUri` は存在時のみ展開
     - _Requirements: 2.4, 2.5, 2.6_
     - _Properties: 7, 8_
 
-- [ ] 2. Fallback データプールを構築する
-  - [ ] 2.1 `src/data/fallbackPools.ts` を新規作成する
+- [x] 2. Fallback データプールを構築する
+  - [x] 2.1 `src/data/fallbackPools.ts` を新規作成する
     - `TEMPLE_GEO` + `TEMPLE_DETAILS` から `TEMPLE_FALLBACK_POINTS`（`id = "temple-{n}"`、`name = "第{n}番札所 {寺名}"`、`descriptions = { ja, en }`、`formattedAddress = TEMPLE_GEO[n].address`）を生成
     - `EHIME_SPOTS` から `SPOT_FALLBACK_POINTS`（`id` / `name` / `location` / `localizedDescriptions` / `category` / `imageUrls[0]` / `website`、`formattedAddress = "愛媛県"`）を生成
     - 緯度経度が有限数でない地点はプールから除外
@@ -67,15 +67,15 @@
     - _Requirements: 2.1, 2.4, 2.5_
     - _Properties: 7_
 
-- [ ] 3. サーバー側の候補確定を共有ロジックに置き換える
-  - [ ] 3.1 `api/_fallback-candidates.ts` を新規作成する
+- [x] 3. サーバー側の候補確定を共有ロジックに置き換える
+  - [x] 3.1 `api/_fallback-candidates.ts` を新規作成する
     - `../src/domain/candidateFallback.js` から定数・`clampCandidateCount`・`finalizeCandidates`・型を再エクスポート
     - `../src/data/fallbackPools.js` から `DEFAULT_FALLBACK_POOLS` を再エクスポート
     - src への import はこのファイルのみに閉じる（`_aws.ts` / `_google-places.ts` の `_` プレフィックス慣習に倣う）
     - _Requirements: 8.3_
     - _Properties: 13_
 
-  - [ ] 3.2 `api/route-candidates.ts` を共有ロジックに接続する
+  - [x] 3.2 `api/route-candidates.ts` を共有ロジックに接続する
     - ローカル `RouteCandidate` に `source?: CandidateSource` を追加して構造的に一致させる
     - `count` クランプを `sightseeing` は `clampCandidateCount(input.count, 6, 5)`（5〜8）、`food` / `cafe` / `custom` は従来の 3〜8（cafe 既定 4）に分岐
     - `parseArea` の 5,000m クランプは維持し、Places 検証の距離判定も基準半径のまま据え置く
@@ -85,31 +85,31 @@
     - _Requirements: 1.1, 1.2, 1.3, 1.6, 3.5, 3.6, 8.1, 8.3, 8.4_
     - _Properties: 1, 4, 9, 13, 14_
 
-- [ ] 4. ポートとアダプタを結果オブジェクトに移行する
-  - [ ] 4.1 `ChatPort.generateRouteCandidates` の戻り値を `RouteCandidatesResult` に変更する
+- [x] 4. ポートとアダプタを結果オブジェクトに移行する
+  - [x] 4.1 `ChatPort.generateRouteCandidates` の戻り値を `RouteCandidatesResult` に変更する
     - `src/ports/index.ts` のシグネチャを更新し、`CandidateSource` / `RouteCandidatesResult` の再エクスポートを追加
     - _Requirements: 3.6, 4.1_
     - _Properties: 11_
 
-  - [ ] 4.2 `src/adapters/aws/chat.ts` で応答フィールドを検証・補完する
+  - [x] 4.2 `src/adapters/aws/chat.ts` で応答フィールドを検証・補完する
     - `appliedRadiusMeters` / `minimumCount` を検証し、欠落・不正時は `input.area.radiusMeters` と `CANDIDATE_MINIMUM_COUNT` で補う
     - _Requirements: 4.1_
     - _Properties: 11_
 
-  - [ ] 4.3 `mockRouteCandidates` を共有ロジックに合わせる
+  - [x] 4.3 `mockRouteCandidates` を共有ロジックに合わせる
     - `slice(0, count ?? 6)` を `clampCandidateCount(input.count, kind === "cafe" ? 4 : 6, kind === "sightseeing" ? CANDIDATE_MINIMUM_COUNT : 3)` に置換
     - Primary を `finalizeCandidates`（`baseRadiusMeters = Math.min(CANDIDATE_BASE_RADIUS_METERS, input.area.radiusMeters)`、`usedPlaceIds = input.route.map(...)`、`maximumCount = CANDIDATE_MAXIMUM_COUNT`、`DEFAULT_FALLBACK_POOLS`）に通して `RouteCandidatesResult` を返す
     - `food` / `cafe` / `custom` の既存フィルタは変更しない。`MOCK_RECOMMENDATIONS` と `mockRecommendation` は無変更
     - _Requirements: 6.1, 6.2, 6.3, 6.4, 8.2, 8.3, 8.4_
     - _Properties: 8, 13, 14, 16_
 
-- [ ] 5. チェックポイント - 型と既存テストの健全性を確認する
+- [x] 5. チェックポイント - 型と既存テストの健全性を確認する
   - `npm run typecheck` と `node node_modules/typescript/bin/tsc --noEmit -p api/tsconfig.json` を実行し、ポート戻り値変更による型崩れをすべて解消する
   - `npm test` を実行し、既存テストのスタブ（`generateRouteCandidates` の戻り値）を新しい結果オブジェクトに更新する
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. クライアント最終ガードと候補カード表示を実装する
-  - [ ] 6.1 `TourismRouteBuilder` の `loadCandidates` に最終ガードを組み込む
+- [x] 6. クライアント最終ガードと候補カード表示を実装する
+  - [x] 6.1 `TourismRouteBuilder` の `loadCandidates` に最終ガードを組み込む
     - `effectiveArea` state（`GeoArea | null`）を追加し、`appliedRadiusMeters` を反映
     - 再フィルタ閾値を `Math.max(area.radiusMeters, result.appliedRadiusMeters)` に変更
     - フィルタ後件数が `result.minimumCount` 未満なら `finalizeCandidates` をクライアント側で実行して `CANDIDATE_MAXIMUM_COUNT` を上限に補完
@@ -120,25 +120,25 @@
     - _Requirements: 4.1, 4.2, 4.3, 4.4, 8.1, 8.3_
     - _Properties: 1, 11_
 
-  - [ ] 6.2 候補カードに札所タグと中心距離を表示する
+  - [x] 6.2 候補カードに札所タグと中心距離を表示する
     - `source === "temple"` のとき既存 `Tag`（`tone="moss"`、`leading="🛕"`）で `routeBuilder.templeTag` を表示
     - `centerDistanceLabel` の結果を `.route-builder-card__distance` に表示（`area.center` からの距離を `BinarySwipeDeck` に props で渡す）
     - _Requirements: 5.1, 5.2, 5.3, 7.5_
     - _Properties: 12_
 
-  - [ ] 6.3 候補不足の注記を表示する
+  - [x] 6.3 候補不足の注記を表示する
     - `candidates.length < minimumCount` のとき進捗表示の下に `role="status"` で `routeBuilder.shortageNotice` を表示し、確定件数を `{count}` に差し込む
     - _Requirements: 5.4, 5.5, 7.5_
     - _Properties: 15_
 
-- [ ] 7. i18n とスタイルを追加する
-  - [ ] 7.1 `src/i18n/labels.ts` に `routeBuilder.*` キーを追加する
+- [x] 7. i18n とスタイルを追加する
+  - [x] 7.1 `src/i18n/labels.ts` に `routeBuilder.*` キーを追加する
     - `templeTag` / `distanceMeters` / `distanceKilometers` / `shortageNotice` を ja / en / iyo の 3 言語すべてで追加
     - 差し込みは既存 `routeBuilder.progress` と同じ `String.replace("{...}", ...)` 方式に揃える
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
     - _Properties: 15_
 
-  - [ ] 7.2 `src/ui/styles/screens.css` にカード距離と注記のスタイルを追加する
+  - [x] 7.2 `src/ui/styles/screens.css` にカード距離と注記のスタイルを追加する
     - `.route-builder-card__distance` と `.route-builder-swipe__notice` を既存 `route-builder-*` 命名に合わせて追加
     - _Requirements: 5.2, 5.4_
 
@@ -196,19 +196,19 @@
     - 応答に `appliedRadiusMeters` と `minimumCount` が含まれること、`count` が 5〜8 に丸められることを確認
     - **Validates: Requirements 1.6, 3.5, 3.6**
 
-- [ ] 9. 既存不変条件の回帰確認
+- [x] 9. 既存不変条件の回帰確認
   - [ ]* 9.1 `src/adapters/mock/routeCandidates.test.ts` にモック推薦の全数検査を追加する
     - **Property 16: モック推薦の既存不変条件**（立寄先 2〜4 件、すべて中心から 5,000m 以内、`source` 属性を持たない）
     - **Validates: Requirements 8.1, 8.2, 8.3**
 
-  - [ ] 9.2 推薦系の既存不変条件を壊していないことを確認する
+  - [x] 9.2 推薦系の既存不変条件を壊していないことを確認する
     - `api/recommendations.ts` の探索半径 5,000m と `mockRecommendation` のランタイム検証（2〜4 件・5km）が無変更であることを差分で確認
     - 推薦系の既存テストを一切変更せずに `npm test` が通ることを確認（変更が漏れていれば既存テストが落ちる）
     - 半径拡大と Fallback がスワイプ候補生成のみに閉じていることをコード上で確認
     - _Requirements: 8.1, 8.2, 8.3, 8.4_
     - _Properties: 14, 16_
 
-- [ ] 10. 最終チェックポイント - 型チェックと全テスト
+- [x] 10. 最終チェックポイント - 型チェックと全テスト
   - `npm run typecheck` を実行して root 側の型を検証する
   - `node node_modules/typescript/bin/tsc --noEmit -p api/tsconfig.json` を実行して `api/` 側の型を個別に検証する（root `tsconfig.json` の対象外のため必須）
   - `npm test` を実行して全テストが通ることを確認する
