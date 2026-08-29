@@ -17,10 +17,9 @@ import type {
   PilgrimagePlan,
   PlanInput,
   PlanStop,
-  RecommendedPlan,
   RecommendedPlansInput,
+  RecommendedPlansResult,
   RouteCandidate,
-  RouteCandidateKind,
   RouteCandidatesInput,
   RouteCandidatesResult,
   Spot,
@@ -35,6 +34,8 @@ import {
   finalizeCandidates,
 } from "../../domain/candidateFallback";
 import { DEFAULT_FALLBACK_POOLS } from "../../data/fallbackPools";
+import { RECOMMENDATION_FALLBACK_PLANS } from "../../data/recommendationFallbackPlans";
+import { ITINERARY_PLAN_COUNT } from "../../domain/itineraryContract";
 import { haversineDistanceMeters } from "../../domain/geofence";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
 import { EHIME_SPOTS } from "./spots";
@@ -136,87 +137,6 @@ function looksLikeDiscovery(message: string): boolean {
   const lower = message.toLowerCase();
   return DISCOVERY_HINTS.some((hint) => lower.includes(hint.toLowerCase()));
 }
-
-function mockRecommendation(
-  id: string,
-  icon: string,
-  title: string,
-  summary: string,
-  imageUrl: string,
-  stopSpecs: Array<{ spotId: string; kind: RouteCandidateKind }>,
-): RecommendedPlan {
-  const times = ["09:00", "11:30", "14:00", "16:00"];
-  const seen = new Set<string>();
-  const stops = stopSpecs.map(({ spotId, kind }, index) => {
-    const spot = EHIME_SPOTS.find((candidate) => candidate.id === spotId);
-    if (!spot || seen.has(spot.id)) {
-      throw new Error(`Invalid mock recommendation spot: ${spotId}`);
-    }
-    seen.add(spot.id);
-    return {
-      time: times[index],
-      kind,
-      title: spot.name,
-      description: spot.localizedDescriptions.ja ?? `${spot.name}をゆっくり楽しみます。`,
-      searchQuery: `${spot.name} 愛媛県`,
-      place: {
-        id: spot.id,
-        name: spot.name,
-        formattedAddress: "愛媛県",
-        location: spot.location,
-        ...(spot.website ? { websiteUri: spot.website } : {}),
-        ...(spot.imageUrls[0] ? { photoUrl: spot.imageUrls[0] } : {}),
-      },
-    };
-  });
-  const center = stops[0]?.place.location;
-  if (
-    !center
-    || stops.length < 2
-    || stops.length > 4
-    || stops.some((stop) => haversineDistanceMeters(center, stop.place.location) > 5_000)
-  ) {
-    throw new Error(`Mock recommendation ${id} must contain two to four stops within 5km.`);
-  }
-  return {
-    id,
-    mode: "tourism",
-    icon,
-    title,
-    summary,
-    reason: "愛媛らしい景色と文化を無理のない流れで楽しめる組み合わせです。",
-    duration: "約4時間",
-    transport: "車＋徒歩",
-    intensity: "ふつう",
-    imageUrl,
-    area: { center, radiusMeters: 5_000 },
-    stops,
-  };
-}
-
-const MOCK_RECOMMENDATIONS: RecommendedPlan[] = [
-  mockRecommendation("matsuyama", "🏯", "松山の王道と郷土料理", "松山城と愛媛の味を巡る定番コース。", "/images/ehime/matsuyama-castle.jpg", [
-    { spotId: "osm-node-611661255", kind: "sightseeing" },
-    { spotId: "curated-food-gansui-matsuyama", kind: "food" },
-  ]),
-  mockRecommendation("dogo", "♨️", "道後でほどける温泉旅", "温泉街をのんびり楽しみます。", "/images/ehime/onsen-bath.jpg", [
-    { spotId: "osm-way-235751036", kind: "sightseeing" },
-    { spotId: "osm-node-5697638322", kind: "sightseeing" },
-  ]),
-  mockRecommendation("uwajima", "🏯", "宇和島の城下町と味", "宇和島の歴史と郷土料理に触れる旅。", "/images/ehime/uwajima-castle.jpg", [
-    { spotId: "osm-node-3698448508", kind: "sightseeing" },
-    { spotId: "osm-node-1423733742", kind: "sightseeing" },
-    { spotId: "curated-food-hozumitei-uwajima", kind: "food" },
-  ]),
-  mockRecommendation("imabari", "🍳", "今治のご当地グルメ旅", "今治名物を食べ比べる気軽な旅。", "/images/ehime/imabari-castle.jpg", [
-    { spotId: "curated-food-hakurakuten-imabari", kind: "food" },
-    { spotId: "curated-food-shigematsu-imabari", kind: "food" },
-  ]),
-  mockRecommendation("mitsuhama", "🌊", "三津浜のまち歩きと味", "港町で名物の三津浜焼きを楽しみます。", "/images/ehime/seaside-rails.jpg", [
-    { spotId: "curated-food-hinode-mitsuhama", kind: "food" },
-    { spotId: "curated-food-konaya-mitsuhama", kind: "food" },
-  ]),
-];
 
 /**
  * Mock swipe candidates settled through the shared finalisation logic, so the
@@ -357,13 +277,22 @@ export class MockChatAdapter implements ChatPort {
     };
   }
 
+  /**
+   * The mock stands in for AI generation, so it never reports a degraded
+   * response and hands back the first {@link ITINERARY_PLAN_COUNT} plans of the
+   * shared Fallback_Plan_Pool (Req 1.5). Plans and stops are shallow-copied so
+   * callers cannot mutate the pool.
+   */
   async generateRecommendedPlans(
     _input: RecommendedPlansInput,
-  ): Promise<RecommendedPlan[]> {
-    return MOCK_RECOMMENDATIONS.map((plan) => ({
-      ...plan,
-      stops: plan.stops.map((stop) => ({ ...stop })),
-    }));
+  ): Promise<RecommendedPlansResult> {
+    return {
+      plans: RECOMMENDATION_FALLBACK_PLANS.map((plan) => ({
+        ...plan,
+        stops: plan.stops.map((stop) => ({ ...stop })),
+      })).slice(0, ITINERARY_PLAN_COUNT),
+      degraded: false,
+    };
   }
 
   async generateRouteCandidates(

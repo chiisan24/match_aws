@@ -2,6 +2,13 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { errorDetail } from "./_aws.js";
 import { extractJson, invokeClaude } from "./_bedrock.js";
 import { searchEhimePlace, type EnrichedPlace } from "./_google-places.js";
+import {
+  isItineraryPlan,
+  isTourismRecommendations,
+  ITINERARY_PLAN_COUNT as PLAN_COUNT,
+  itineraryPlanViolations,
+  RECOMMENDATION_FALLBACK_PLANS,
+} from "./_recommendation-fallback.js";
 
 interface RawStop {
   time?: unknown;
@@ -35,6 +42,14 @@ interface RecommendationExclusion {
 
 class InvalidRequestError extends Error {}
 
+/**
+ * Generation errors that a retry may fix but that Bedrock did not cause: the
+ * reply arrived and simply failed the itinerary contract. Keeping it apart from
+ * the transport errors of `invokeClaude` is what lets a degraded response name
+ * `contract` rather than `bedrock` as its cause.
+ */
+class ContractViolationError extends Error {}
+
 interface PlanStop {
   time: string;
   kind: StopKind;
@@ -43,6 +58,12 @@ interface PlanStop {
   searchQuery: string;
   place?: EnrichedPlace;
 }
+
+/** Provenance of a plan in the response. */
+type PlanOrigin = "ai" | "cache" | "fallback";
+
+/** Why a response had to be degraded. Logged with the origin breakdown. */
+type DegradedCause = "bedrock" | "contract" | "enrichment";
 
 interface RecommendationPlan {
   id: string;
@@ -58,11 +79,41 @@ interface RecommendationPlan {
   imageAttributions?: EnrichedPlace["photoAttributions"];
   area?: { center: { lat: number; lng: number }; radiusMeters: number };
   stops: PlanStop[];
+  /** Omitted until synthesis assigns one. */
+  origin?: PlanOrigin;
 }
+
+/** Result of one or more generation attempts. */
+interface GenerationOutcome {
+  /** Verified plans, in the model's original order. */
+  verified: RecommendationPlan[];
+  /** Absent when {@link verified} reached Plan_Count. */
+  cause?: DegradedCause;
+  /** Failure summary for the log line and the 502 body. */
+  detail?: string;
+  /** `true` for a Fatal_Failure, which must not be retried. */
+  fatal?: boolean;
+}
+
+/** The response payload after synthesis. */
+interface ComposedResult {
+  plans: RecommendationPlan[];
+  degraded: boolean;
+  counts: Record<PlanOrigin, number>;
+  detail?: string;
+}
+
+/**
+ * Fallback_Plan_Pool as seen by this handler.
+ *
+ * `ItineraryPlan` is structurally the same shape as {@link RecommendationPlan},
+ * so the shared pool needs no conversion here.
+ */
+const FALLBACK_PLANS: RecommendationPlan[] = RECOMMENDATION_FALLBACK_PLANS;
 
 function text(value: unknown, field: string, max = 240): string {
   if (typeof value !== "string" || value.trim() === "") {
-    throw new Error(`Bedrock recommendation is missing ${field}.`);
+    throw new ContractViolationError(`Bedrock recommendation is missing ${field}.`);
   }
   return value.trim().slice(0, max);
 }
@@ -122,47 +173,187 @@ function comparisonKey(value: string): string {
     .replace(/[\s\p{P}\p{S}]/gu, "");
 }
 
-function duplicateReasons(
-  plans: RecommendationPlan[],
-  exclusions: RecommendationExclusion[],
-): string[] {
-  const excludedIds = new Set(exclusions.map((item) => comparisonKey(item.id)).filter(Boolean));
-  const excludedTitles = new Set(exclusions.map((item) => comparisonKey(item.title)).filter(Boolean));
-  const excludedPlaces = new Set(exclusions.map((item) => comparisonKey(item.place)).filter(Boolean));
-  const excludedPlaceIds = new Set(
-    exclusions.map((item) => item.placeId ?? "").filter(Boolean),
-  );
-  const seenIds = new Set<string>();
-  const seenTitles = new Set<string>();
-  const seenPlaces = new Set<string>();
-  const seenPlaceIds = new Set<string>();
-  const reasons: string[] = [];
+/**
+ * Collision signals of one plan.
+ *
+ * The five normalized keys are what the comparisons run on. {@link PlanKeys.raw}
+ * carries the pre-normalization strings alongside them purely so reason strings
+ * read the same way `duplicateReasons` used to write them into the log.
+ */
+interface PlanKeys {
+  id: string;
+  title: string;
+  place: string;
+  placeName: string;
+  placeId: string;
+  /** Original values, used only to build reason strings. */
+  raw: { id: string; title: string; place: string; placeName: string };
+}
 
-  plans.forEach((plan) => {
-    const id = comparisonKey(plan.id);
-    const title = comparisonKey(plan.title);
-    const searchQuery = plan.stops[0]?.searchQuery ?? "";
-    const place = comparisonKey(searchQuery);
+function planKeys(plan: RecommendationPlan): PlanKeys {
+  const searchQuery = plan.stops[0]?.searchQuery ?? "";
+  const placeName = plan.stops[0]?.place?.name ?? "";
+  return {
+    id: comparisonKey(plan.id),
+    title: comparisonKey(plan.title),
+    place: comparisonKey(searchQuery),
     // Google's canonical name and id are the only表記揺れ-proof signals, so they
     // are compared once enrichment has resolved the representative place.
-    const placeName = comparisonKey(plan.stops[0]?.place?.name ?? "");
-    const placeId = plan.stops[0]?.place?.id ?? "";
-    if (excludedIds.has(id) || seenIds.has(id)) reasons.push(`id:${plan.id}`);
-    if (excludedTitles.has(title) || seenTitles.has(title)) reasons.push(`title:${plan.title}`);
-    if (excludedPlaces.has(place) || seenPlaces.has(place)) reasons.push(`place:${searchQuery}`);
-    if (placeName && (excludedPlaces.has(placeName) || seenPlaces.has(placeName))) {
-      reasons.push(`placeName:${plan.stops[0]?.place?.name ?? ""}`);
+    placeName: comparisonKey(placeName),
+    placeId: plan.stops[0]?.place?.id ?? "",
+    raw: { id: plan.id, title: plan.title, place: searchQuery, placeName },
+  };
+}
+
+/**
+ * Keys of the plans already accepted into a response. Only the three signals
+ * that make two plans the same plan are tracked (Requirements 2.4-2.6); a
+ * shared area query is not one of them.
+ */
+interface SeenKeys {
+  ids: Set<string>;
+  titles: Set<string>;
+  placeIds: Set<string>;
+}
+
+/**
+ * Keys named by the Exclusion_List. `place` and `placeName` share one set
+ * because a caller's `place` string may be either the query it swiped on or the
+ * canonical name Google resolved for it.
+ */
+interface ExcludedKeys {
+  ids: Set<string>;
+  titles: Set<string>;
+  places: Set<string>;
+  placeIds: Set<string>;
+}
+
+function excludedKeys(exclusions: readonly RecommendationExclusion[]): ExcludedKeys {
+  return {
+    ids: new Set(exclusions.map((item) => comparisonKey(item.id)).filter(Boolean)),
+    titles: new Set(exclusions.map((item) => comparisonKey(item.title)).filter(Boolean)),
+    places: new Set(exclusions.map((item) => comparisonKey(item.place)).filter(Boolean)),
+    placeIds: new Set(exclusions.map((item) => item.placeId ?? "").filter(Boolean)),
+  };
+}
+
+/**
+ * Splits collisions into the two decisions the caller needs: `duplicate`
+ * always rejects (Requirements 2.4-2.6), `excluded` only rejects while enough
+ * non-excluded candidates remain (Requirement 2.7). The asymmetry in signals is
+ * deliberate — duplication is judged on 3, exclusion on 5.
+ */
+function collisionReasons(
+  keys: PlanKeys,
+  seen: SeenKeys,
+  excluded: ExcludedKeys,
+): { duplicate: string[]; excluded: string[] } {
+  const duplicate: string[] = [];
+  const excludedReasons: string[] = [];
+
+  if (keys.id && seen.ids.has(keys.id)) duplicate.push(`id:${keys.raw.id}`);
+  if (keys.title && seen.titles.has(keys.title)) duplicate.push(`title:${keys.raw.title}`);
+  if (keys.placeId && seen.placeIds.has(keys.placeId)) duplicate.push(`placeId:${keys.placeId}`);
+
+  if (keys.id && excluded.ids.has(keys.id)) excludedReasons.push(`id:${keys.raw.id}`);
+  if (keys.title && excluded.titles.has(keys.title)) {
+    excludedReasons.push(`title:${keys.raw.title}`);
+  }
+  if (keys.place && excluded.places.has(keys.place)) {
+    excludedReasons.push(`place:${keys.raw.place}`);
+  }
+  if (keys.placeName && excluded.places.has(keys.placeName)) {
+    excludedReasons.push(`placeName:${keys.raw.placeName}`);
+  }
+  if (keys.placeId && excluded.placeIds.has(keys.placeId)) {
+    excludedReasons.push(`placeId:${keys.placeId}`);
+  }
+  return { duplicate, excluded: excludedReasons };
+}
+
+/** Registers an accepted plan so that later candidates collide with it. */
+function remember(keys: PlanKeys, seen: SeenKeys): void {
+  if (keys.id) seen.ids.add(keys.id);
+  if (keys.title) seen.titles.add(keys.title);
+  if (keys.placeId) seen.placeIds.add(keys.placeId);
+}
+
+/** Order the origins appear in the response (Requirement 1.2). */
+const ORIGIN_RANK: Record<PlanOrigin, number> = { ai: 0, cache: 1, fallback: 2 };
+
+/**
+ * Fills the response with {@link PLAN_COUNT} plans: the verified ones first,
+ * topped up from the retained cache and then the Fallback_Plan_Pool
+ * (Requirements 1.2, 4.3, 4.4).
+ *
+ * Acceptance runs in two sweeps. The first one passes over candidates the caller
+ * excluded; the second one admits them, and because a candidate skipped for
+ * exclusion is never registered in `seen`, it is still available to be picked
+ * up. Count therefore wins over exclusion only when it has to (Requirement 2.7),
+ * while the response order stays ai → cache → fallback because the accepted
+ * plans are re-sorted by origin afterwards.
+ *
+ * `origin` is stamped on every plan, not just on the degraded ones Requirement
+ * 1.3 asks for, so that the response always carries the breakdown `degraded`
+ * summarises.
+ *
+ * Named for the test suite; Vercel only reads this module's default export. May
+ * return fewer than {@link PLAN_COUNT} plans when the pools run dry — answering
+ * that with a 502 is the caller's call (Requirement 1.6).
+ */
+export function composeRecommendations(input: {
+  verified: readonly RecommendationPlan[];
+  cached: readonly RecommendationPlan[];
+  fallback: readonly RecommendationPlan[];
+  exclusions: readonly RecommendationExclusion[];
+}): ComposedResult {
+  const candidates = [
+    ...input.verified.map((plan) => ({ plan, origin: "ai" as const })),
+    ...input.cached.map((plan) => ({ plan, origin: "cache" as const })),
+    ...input.fallback.map((plan) => ({ plan, origin: "fallback" as const })),
+    // Requirement 2.2: a plan that breaks the contract is no candidate at all,
+    // whichever pool it came from.
+  ].filter(({ plan }) => isItineraryPlan(plan));
+
+  const excluded = excludedKeys(input.exclusions);
+  const seen: SeenKeys = {
+    ids: new Set<string>(),
+    titles: new Set<string>(),
+    placeIds: new Set<string>(),
+  };
+  const accepted: Array<{
+    plan: RecommendationPlan;
+    origin: PlanOrigin;
+    order: number;
+  }> = [];
+
+  const sweep = (allowExcluded: boolean): void => {
+    for (const candidate of candidates) {
+      if (accepted.length >= PLAN_COUNT) return;
+      const keys = planKeys(candidate.plan);
+      const reasons = collisionReasons(keys, seen, excluded);
+      // Requirements 2.4-2.6: a duplicate is rejected in both sweeps.
+      if (reasons.duplicate.length > 0) continue;
+      if (!allowExcluded && reasons.excluded.length > 0) continue;
+      remember(keys, seen);
+      accepted.push({ ...candidate, order: accepted.length });
     }
-    if (placeId && (excludedPlaceIds.has(placeId) || seenPlaceIds.has(placeId))) {
-      reasons.push(`placeId:${placeId}`);
-    }
-    if (id) seenIds.add(id);
-    if (title) seenTitles.add(title);
-    if (place) seenPlaces.add(place);
-    if (placeName) seenPlaces.add(placeName);
-    if (placeId) seenPlaceIds.add(placeId);
-  });
-  return reasons;
+  };
+  // Requirement 2.7: prefer candidates the caller did not exclude, then top up
+  // with excluded ones only while the response is still short of Plan_Count.
+  sweep(false);
+  sweep(true);
+
+  // Requirement 1.2: ai → cache → fallback, input order kept within an origin.
+  accepted.sort((a, b) => ORIGIN_RANK[a.origin] - ORIGIN_RANK[b.origin]
+    || a.order - b.order);
+
+  const plans = accepted.map(({ plan, origin }) => ({ ...plan, origin }));
+  const counts: Record<PlanOrigin, number> = { ai: 0, cache: 0, fallback: 0 };
+  for (const { origin } of accepted) counts[origin] += 1;
+  // Requirements 1.4, 1.5, 4.6: degraded iff a plan came from somewhere else
+  // than this request's own generation.
+  return { plans, degraded: counts.cache + counts.fallback > 0, counts };
 }
 
 function slug(value: unknown, index: number): string {
@@ -178,14 +369,14 @@ const FALLBACK_TIMES = ["09:00", "11:00", "13:00", "15:00"] as const;
 
 function normalizeKind(value: unknown): StopKind {
   if (typeof value !== "string" || !STOP_KINDS.has(value as StopKind)) {
-    throw new Error("Bedrock recommendation is missing stop.kind.");
+    throw new ContractViolationError("Bedrock recommendation is missing stop.kind.");
   }
   return value as StopKind;
 }
 
 function normalizeStop(value: unknown, index: number): PlanStop {
   if (!value || typeof value !== "object") {
-    throw new Error("Bedrock returned an invalid recommendation stop.");
+    throw new ContractViolationError("Bedrock returned an invalid recommendation stop.");
   }
   const stop = value as RawStop;
   const proposedTime = typeof stop.time === "string" ? stop.time.trim() : "";
@@ -202,12 +393,14 @@ function normalizeStop(value: unknown, index: number): PlanStop {
 
 function normalizePlan(value: unknown, index: number): RecommendationPlan {
   if (!value || typeof value !== "object") {
-    throw new Error("Bedrock returned an invalid recommendation plan.");
+    throw new ContractViolationError("Bedrock returned an invalid recommendation plan.");
   }
   const plan = value as RawPlan;
   const rawStops = Array.isArray(plan.stops) ? plan.stops : [];
   if (rawStops.length < 2 || rawStops.length > 4) {
-    throw new Error("Each itinerary must contain between two and four stops.");
+    throw new ContractViolationError(
+      "Each itinerary must contain between two and four stops.",
+    );
   }
   const stops = rawStops.map(normalizeStop);
   if (stops.some((stop, stopIndex) => stopIndex > 0 && stop.time <= stops[stopIndex - 1].time)) {
@@ -340,10 +533,21 @@ async function rescueStopsNearAnchor(
   });
 }
 
+/**
+ * Outcome of enriching a single plan.
+ *
+ * `enrichPlans` reports shortages instead of throwing them, because the plans
+ * are enriched concurrently: a rejection used to discard the four itineraries
+ * that verified fine alongside the one that did not.
+ */
+type PlanEnrichment =
+  | { status: "verified"; plan: RecommendationPlan }
+  | { status: "insufficient"; planId: string; reason: string };
+
 async function enrichPlans(
   plans: RecommendationPlan[],
   lang: string,
-): Promise<RecommendationPlan[]> {
+): Promise<PlanEnrichment[]> {
   const limit = createTaskLimiter(MAX_PLACES_CONCURRENCY);
   const cache = new Map<string, Promise<EnrichedPlace | null>>();
   const findPlace = (query: string): Promise<EnrichedPlace | null> => {
@@ -378,65 +582,110 @@ async function enrichPlans(
   };
 
   return Promise.all(
-    plans.map(async (plan) => {
-      const enrichedStops = await Promise.all(
-        plan.stops.map(async (stop) => {
-          const place = await findPlace(stop.searchQuery);
-          return place ? { ...stop, place } : stop;
-        }),
-      );
-      const seenPlaceIds = new Set<string>();
-      const verifiedStops = enrichedStops.filter((stop): stop is LocatedPlanStop => {
-        if (!isLocatedStop(stop) || seenPlaceIds.has(stop.place.id)) return false;
-        seenPlaceIds.add(stop.place.id);
-        return true;
-      });
-      const cluster = largestNearbyCluster(verifiedStops);
-      if (!cluster) {
-        throw new Error(
-          `Recommendation ${plan.id} must contain at least two verified stops within 5km.`,
+    plans.map(async (plan): Promise<PlanEnrichment> => {
+      try {
+        const enrichedStops = await Promise.all(
+          plan.stops.map(async (stop) => {
+            const place = await findPlace(stop.searchQuery);
+            return place ? { ...stop, place } : stop;
+          }),
         );
+        const seenPlaceIds = new Set<string>();
+        const verifiedStops = enrichedStops.filter((stop): stop is LocatedPlanStop => {
+          if (!isLocatedStop(stop) || seenPlaceIds.has(stop.place.id)) return false;
+          seenPlaceIds.add(stop.place.id);
+          return true;
+        });
+        const cluster = largestNearbyCluster(verifiedStops);
+        if (!cluster) {
+          return { status: "insufficient", planId: plan.id, reason: "no verified stop" };
+        }
+        // One itinerary that cannot be pinned to a single area used to reject all
+        // five recommendations, because the plans are enriched with Promise.all.
+        // Retry the stops that fell outside the anchor's area with a biased search
+        // first, which usually recovers the intended nearby place.
+        const clusteredStops = cluster.stops.length < 2
+          ? await rescueStopsNearAnchor(enrichedStops, cluster, findPlaceNear)
+          : cluster.stops;
+        if (clusteredStops.length < 2) {
+          return {
+            status: "insufficient",
+            planId: plan.id,
+            reason: "fewer than two verified stops within 5km",
+          };
+        }
+        const stops = clusteredStops.slice(0, 4);
+        const heroPlace = stops.map((stop) => stop.place).find((place) => place.photoUrl);
+        return {
+          status: "verified",
+          plan: {
+            ...plan,
+            stops,
+            area: { center: cluster.anchor, radiusMeters: ITINERARY_RADIUS_METERS },
+            ...(heroPlace?.photoUrl ? { imageUrl: heroPlace.photoUrl } : {}),
+            ...(heroPlace?.photoAttributions?.length
+              ? { imageAttributions: heroPlace.photoAttributions }
+              : {}),
+          },
+        };
+      } catch (error) {
+        // One plan's lookup must never discard the other four.
+        return { status: "insufficient", planId: plan.id, reason: errorDetail(error) };
       }
-      // One itinerary that cannot be pinned to a single area used to reject all
-      // five recommendations, because the plans are enriched with Promise.all.
-      // Retry the stops that fell outside the anchor's area with a biased search
-      // first, which usually recovers the intended nearby place.
-      const clusteredStops = cluster.stops.length < 2
-        ? await rescueStopsNearAnchor(enrichedStops, cluster, findPlaceNear)
-        : cluster.stops;
-      if (clusteredStops.length < 2) {
-        throw new Error(
-          `Recommendation ${plan.id} must contain at least two verified stops within 5km.`,
-        );
-      }
-      const stops = clusteredStops.slice(0, 4);
-      const heroPlace = stops.map((stop) => stop.place).find((place) => place.photoUrl);
-      return {
-        ...plan,
-        stops,
-        area: { center: cluster.anchor, radiusMeters: ITINERARY_RADIUS_METERS },
-        ...(heroPlace?.photoUrl ? { imageUrl: heroPlace.photoUrl } : {}),
-        ...(heroPlace?.photoAttributions?.length
-          ? { imageAttributions: heroPlace.photoAttributions }
-          : {}),
-      };
     }),
   );
 }
 
-interface RecommendationResult {
-  plans: RecommendationPlan[];
-}
-
 const RECOMMENDATION_SCHEMA = "itinerary-v1";
 const CACHE_TTL_MS = 15 * 60 * 1000;
+/** Stale_Retention: how long an expired entry may still back a degraded reply. */
+const STALE_RETENTION_MS = 24 * 60 * 60 * 1000;
 const REFRESH_INTERVAL_MS = 60 * 1000;
 const refreshAllowedAt = new Map<string, number>();
-const recommendationCache = new Map<
-  string,
-  { expiresAt: number; result: RecommendationResult }
->();
-const recommendationRequests = new Map<string, Promise<RecommendationResult>>();
+
+/**
+ * A cached response with two lifetimes rather than one. Past {@link freshUntil}
+ * the entry stops being an answer and becomes filler material: dropping it right
+ * then is what left a failing generation with nothing but canned fallbacks.
+ */
+interface CacheEntry {
+  plans: RecommendationPlan[];
+  /** Until this instant the entry may be served as-is (Cache_TTL). */
+  freshUntil: number;
+  /** After this instant the entry is dropped (Stale_Retention). */
+  staleUntil: number;
+}
+
+const recommendationCache = new Map<string, CacheEntry>();
+const recommendationRequests = new Map<string, Promise<ComposedResult>>();
+
+/** Drops entries past Stale_Retention. Expiry of Cache_TTL alone keeps them. */
+function pruneRecommendationCache(now: number): void {
+  for (const [key, entry] of recommendationCache) {
+    if (entry.staleUntil <= now) recommendationCache.delete(key);
+  }
+}
+
+/** The entry serveable as-is for this key, or `null` once Cache_TTL passed. */
+function freshPlans(cacheKey: string, now: number): RecommendationPlan[] | null {
+  const entry = recommendationCache.get(cacheKey);
+  return entry && entry.freshUntil > now ? entry.plans : null;
+}
+
+/**
+ * Retained cache plans usable as degraded filler, this key's entry first and
+ * then other keys newest-first. A Stale_Cache_Entry always qualifies; a still
+ * fresh entry of another key (or of this key during a refresh, where the fresh
+ * entry is deliberately bypassed) is a strictly better filler than a canned
+ * fallback, so it is included too.
+ */
+function cachedPlanCandidates(cacheKey: string, now: number): RecommendationPlan[] {
+  return [...recommendationCache.entries()]
+    .filter(([, entry]) => entry.staleUntil > now)
+    .sort(([keyA, a], [keyB, b]) => Number(keyB === cacheKey) - Number(keyA === cacheKey)
+      || b.freshUntil - a.freshUntil)
+    .flatMap(([, entry]) => entry.plans);
+}
 
 function japanDate(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -471,31 +720,70 @@ function recommendationPrompt(
   ].join("\n");
 }
 
+/**
+ * One generation attempt, returning only the plans that passed Place_Enricher
+ * verification and the itinerary contract.
+ *
+ * The result may hold fewer than {@link PLAN_COUNT} plans, or none at all: the
+ * caller tops the response up from the cache and the Fallback_Plan_Pool instead
+ * of failing the request. Only a reply that cannot yield a single usable plan
+ * raises {@link ContractViolationError}, which a retry may still fix.
+ */
 async function generateRecommendations(
   lang: string,
   exclusions: RecommendationExclusion[],
   retrying: boolean,
-): Promise<RecommendationResult> {
+): Promise<RecommendationPlan[]> {
   const output = await invokeClaude({
     system: recommendationPrompt(lang, exclusions, retrying),
     messages: [{ role: "user", text: "今日の愛媛旅行プランを時刻付きで5件生成してください。" }],
     maxTokens: 3500,
   });
   const parsed = extractJson<{ plans?: unknown }>(output);
-  if (!Array.isArray(parsed?.plans) || parsed.plans.length !== 5) {
-    throw new Error("Bedrock did not return exactly five recommendations.");
+  if (!Array.isArray(parsed?.plans) || parsed.plans.length !== PLAN_COUNT) {
+    throw new ContractViolationError("Bedrock did not return exactly five recommendations.");
   }
 
-  const normalized = parsed.plans.map(normalizePlan);
-  if (new Set(normalized.map((plan) => plan.id)).size !== normalized.length) {
-    throw new Error("Bedrock returned duplicate recommendation ids.");
+  // Normalization is per plan so a single malformed itinerary costs one plan
+  // rather than the whole reply.
+  const normalized: RecommendationPlan[] = [];
+  parsed.plans.forEach((rawPlan, index) => {
+    try {
+      normalized.push(normalizePlan(rawPlan, index));
+    } catch (error) {
+      console.warn("recommendations plan not normalized", {
+        planIndex: index,
+        reason: errorDetail(error),
+      });
+    }
+  });
+  if (normalized.length === 0) {
+    throw new ContractViolationError("Bedrock returned no usable recommendation plan.");
   }
-  const plans = await enrichPlans(normalized, lang);
-  const duplicates = duplicateReasons(plans, exclusions);
-  if (duplicates.length > 0) {
-    throw new Error(`Bedrock repeated excluded recommendations: ${duplicates.join(", ")}`);
+
+  const enrichments = await enrichPlans(normalized, lang);
+  for (const result of enrichments) {
+    if (result.status === "insufficient") {
+      console.warn("recommendations plan not verified", {
+        planId: result.planId,
+        reason: result.reason,
+      });
+    }
   }
-  return { plans };
+  return enrichments
+    .filter((result): result is Extract<PlanEnrichment, { status: "verified" }> =>
+      result.status === "verified")
+    .map((result) => result.plan)
+    // Requirement 2.2: never let a non-conforming plan reach the response.
+    .filter((plan) => {
+      const violations = itineraryPlanViolations(plan);
+      if (violations.length === 0) return true;
+      console.warn("recommendations plan violates contract", {
+        planId: plan.id,
+        violations,
+      });
+      return false;
+    });
 }
 
 /**
@@ -527,54 +815,157 @@ function isRetryable(error: unknown): boolean {
     && (status === "" || !FATAL_BEDROCK_STATUSES.has(status));
 }
 
+/** Backoff_Delays, inserted before the 2nd and the 3rd attempt. */
+const BACKOFF_DELAYS_MS = [300, 900] as const;
+
+/** Maximum number of generation attempts, the first one included. */
+const MAX_GENERATION_ATTEMPTS = 3;
+
 /**
- * A full generation takes ~35s, so only retry while enough of the function's
- * time budget is left for a second attempt to finish. In practice that retries
- * the fast failures (throttling) and lets slow ones surface immediately instead
- * of turning one timeout into two.
+ * Retry_Budget. A full generation takes ~35s, so only retry while enough of the
+ * function's time budget is left for another attempt to finish. In practice that
+ * retries the fast failures (throttling) and lets slow ones surface immediately
+ * instead of turning one timeout into several.
  */
 const RETRY_BUDGET_MS = 20_000;
 
-async function generateWithRetry(
+/**
+ * Retry timing indirection. Production waits for real time; the test suite
+ * replaces `sleep` (and optionally `now`) so backoff assertions run instantly.
+ * Vercel only reads this module's default export, so an extra named export is
+ * safe here.
+ */
+export const recommendationTiming = {
+  now: (): number => Date.now(),
+  sleep: (ms: number): Promise<void> =>
+    new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    }),
+};
+
+/**
+ * One generation attempt, with its failure classified for the degraded-response
+ * log (Requirement 1.8).
+ *
+ * A shortage of verified plans is reported as `enrichment` rather than thrown:
+ * the plans that did verify are kept so the caller can top the response up.
+ */
+async function attemptGeneration(
   lang: string,
   exclusions: RecommendationExclusion[],
-): Promise<RecommendationResult> {
-  const startedAt = Date.now();
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      return await generateRecommendations(lang, exclusions, attempt > 0);
-    } catch (error) {
-      lastError = error;
-      const elapsed = Date.now() - startedAt;
-      if (attempt === 1 || !isRetryable(error) || elapsed > RETRY_BUDGET_MS) {
-        throw error;
-      }
-      console.warn(
-        `recommendations retrying after ${elapsed}ms: ${errorDetail(error)}`,
-      );
-    }
+  retrying: boolean,
+): Promise<GenerationOutcome> {
+  try {
+    const verified = await generateRecommendations(lang, exclusions, retrying);
+    if (verified.length === PLAN_COUNT) return { verified };
+    return {
+      verified,
+      cause: "enrichment",
+      detail: `only ${verified.length} of ${PLAN_COUNT} plans were verified`,
+    };
+  } catch (error) {
+    return {
+      verified: [],
+      cause: error instanceof ContractViolationError ? "contract" : "bedrock",
+      detail: errorDetail(error),
+      fatal: !isRetryable(error),
+    };
   }
-  throw lastError;
 }
 
-function recommendationsFor(
+/**
+ * Runs up to {@link MAX_GENERATION_ATTEMPTS} generations, waiting out
+ * {@link BACKOFF_DELAYS_MS} before each retry.
+ *
+ * Never throws. An unexpected error is reported as a `bedrock` failure so the
+ * caller can still synthesise a degraded response, which is what keeps the
+ * screen selectable (Requirement 1.1).
+ */
+async function generateWithBackoff(
+  lang: string,
+  exclusions: RecommendationExclusion[],
+): Promise<GenerationOutcome> {
+  const startedAt = recommendationTiming.now();
+  let outcome: GenerationOutcome = { verified: [] };
+  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt += 1) {
+    outcome = await attemptGeneration(lang, exclusions, attempt > 1);
+    if (!outcome.cause) return outcome;
+    // Place_Enricher shortage is not a Retryable_Failure: the verified plans
+    // are kept and Requirement 4.3 tops the response up instead.
+    if (outcome.cause === "enrichment") return outcome;
+    if (outcome.fatal) {
+      console.error("recommendations generation failed fatally", {
+        attempt,
+        cause: outcome.cause,
+        detail: outcome.detail,
+      });
+      return outcome;
+    }
+    const elapsedMs = recommendationTiming.now() - startedAt;
+    // Annotated because running past the last delay is only `undefined` at run
+    // time; the tuple's type never admits it.
+    const delayMs: number | undefined = BACKOFF_DELAYS_MS[attempt - 1];
+    if (attempt === MAX_GENERATION_ATTEMPTS || delayMs === undefined) {
+      console.warn("recommendations retries exhausted", {
+        attempt,
+        elapsedMs,
+        cause: outcome.cause,
+        detail: outcome.detail,
+      });
+      return outcome;
+    }
+    // Measured before the wait, so the budget gates the decision to retry
+    // rather than the retry's own duration.
+    if (elapsedMs > RETRY_BUDGET_MS) {
+      console.warn("recommendations retry budget exhausted", {
+        attempt,
+        elapsedMs,
+        cause: outcome.cause,
+        detail: outcome.detail,
+      });
+      return outcome;
+    }
+    console.warn("recommendations retrying", {
+      attempt,
+      elapsedMs,
+      delayMs,
+      cause: outcome.cause,
+      detail: outcome.detail,
+    });
+    await recommendationTiming.sleep(delayMs);
+  }
+  return outcome;
+}
+
+/**
+ * Resolves the response for one request: a fresh cache hit, or a generation
+ * topped up from the retained cache and the Fallback_Plan_Pool.
+ *
+ * Always resolves. A generation that yielded nothing still comes back with
+ * {@link PLAN_COUNT} plans and `degraded: true` as long as either pool has
+ * material (Requirements 1.1, 4.3, 4.4, 5.5).
+ */
+async function recommendationsFor(
   date: string,
   lang: string,
   schema: string,
   bypassCache: boolean,
   exclusions: RecommendationExclusion[],
-): Promise<RecommendationResult> {
+): Promise<ComposedResult> {
   const now = Date.now();
   const cacheKey = `${schema}:${date}:${lang}`;
-
-  for (const [cachedKey, entry] of recommendationCache) {
-    if (entry.expiresAt <= now) recommendationCache.delete(cachedKey);
-  }
+  pruneRecommendationCache(now);
 
   if (!bypassCache) {
-    const cached = recommendationCache.get(cacheKey);
-    if (cached) return Promise.resolve(cached.result);
+    const fresh = freshPlans(cacheKey, now);
+    // Only an `ai`-only response is ever stored, so a hit needs no synthesis.
+    if (fresh) {
+      return {
+        plans: fresh,
+        degraded: false,
+        counts: { ai: fresh.length, cache: 0, fallback: 0 },
+      };
+    }
   }
 
   const requestKey = bypassCache
@@ -583,18 +974,35 @@ function recommendationsFor(
   const pending = recommendationRequests.get(requestKey);
   if (pending) return pending;
 
-  const request = (async () => {
+  const request = (async (): Promise<ComposedResult> => {
     try {
-      const result = await generateWithRetry(lang, exclusions);
-      // Refresh responses are tailored to one caller's exclusions, so they must
-      // not become the shared default for later plain GETs on this instance.
-      if (!bypassCache) {
-        recommendationCache.set(cacheKey, {
-          expiresAt: Date.now() + CACHE_TTL_MS,
-          result,
+      const outcome = await generateWithBackoff(lang, exclusions);
+      const composed = composeRecommendations({
+        verified: outcome.verified,
+        cached: cachedPlanCandidates(cacheKey, Date.now()),
+        fallback: FALLBACK_PLANS,
+        exclusions,
+      });
+      if (composed.degraded || composed.plans.length !== PLAN_COUNT) {
+        // Requirement 1.8: one line carrying the cause and the origin mix.
+        console.error("recommendations degraded", {
+          cause: outcome.cause ?? "composition",
+          detail: outcome.detail,
+          origins: composed.counts,
+          plans: composed.plans.length,
         });
       }
-      return result;
+      // Requirement 1.9: a degraded response never becomes the shared default,
+      // and neither does a refresh, which is tailored to one caller's exclusions.
+      if (!bypassCache && !composed.degraded && composed.plans.length === PLAN_COUNT) {
+        const storedAt = Date.now();
+        recommendationCache.set(cacheKey, {
+          plans: composed.plans,
+          freshUntil: storedAt + CACHE_TTL_MS,
+          staleUntil: storedAt + STALE_RETENTION_MS,
+        });
+      }
+      return { ...composed, ...(outcome.detail ? { detail: outcome.detail } : {}) };
     } finally {
       recommendationRequests.delete(requestKey);
     }
@@ -616,16 +1024,25 @@ function refreshClientKey(req: VercelRequest): string {
   return typeof realIp === "string" && realIp.trim() ? realIp.trim() : "unknown";
 }
 
-function refreshRetryAfterSeconds(req: VercelRequest): number {
-  const now = Date.now();
+/**
+ * Read-only check. Never consumes the caller's refresh slot: deciding and
+ * reserving in one call is what turned a failed fetch into a 60 second block.
+ */
+function refreshWaitSeconds(req: VercelRequest, now: number): number {
   for (const [key, allowedAt] of refreshAllowedAt) {
     if (allowedAt <= now) refreshAllowedAt.delete(key);
   }
-  const key = refreshClientKey(req);
-  const allowedAt = refreshAllowedAt.get(key) ?? 0;
-  if (allowedAt > now) return Math.ceil((allowedAt - now) / 1000);
-  refreshAllowedAt.set(key, now + REFRESH_INTERVAL_MS);
-  return 0;
+  const allowedAt = refreshAllowedAt.get(refreshClientKey(req)) ?? 0;
+  return allowedAt > now ? Math.ceil((allowedAt - now) / 1000) : 0;
+}
+
+/**
+ * Consumes the caller's refresh slot. Called only just before answering an
+ * Intentional_Refresh with a Plan_Origin `ai`-only response, so a failed or
+ * degraded attempt never blocks the next try (Requirements 6.2-6.4).
+ */
+function reserveRefresh(req: VercelRequest, now: number): void {
+  refreshAllowedAt.set(refreshClientKey(req), now + REFRESH_INTERVAL_MS);
 }
 
 export default async function handler(
@@ -666,7 +1083,7 @@ export default async function handler(
       res.status(400).json({ error: "Query and body dates must match" });
       return;
     }
-    if (rawCount != null && Number(rawCount) !== 5) {
+    if (rawCount != null && Number(rawCount) !== PLAN_COUNT) {
       res.status(400).json({ error: "Exactly five recommendations are required" });
       return;
     }
@@ -683,7 +1100,7 @@ export default async function handler(
     const bypassCache = req.method === "POST" || refresh;
     const exclusions = bypassCache ? parseExclusions(body.exclude) : [];
     if (bypassCache) {
-      const retryAfter = refreshRetryAfterSeconds(req);
+      const retryAfter = refreshWaitSeconds(req, Date.now());
       if (retryAfter > 0) {
         res.setHeader("Cache-Control", "private, no-store");
         res.setHeader("Retry-After", String(retryAfter));
@@ -691,21 +1108,49 @@ export default async function handler(
         return;
       }
     }
-    // Shared caching requires the JST date in the URL; without it a CDN entry
-    // would keep serving yesterday's picks under the same key.
-    res.setHeader(
-      "Cache-Control",
-      bypassCache || !hasDate
-        ? "private, no-store"
-        : "public, s-maxage=900, stale-while-revalidate=86400",
-    );
-    res.status(200).json(await recommendationsFor(
+    const result = await recommendationsFor(
       date,
       lang,
       RECOMMENDATION_SCHEMA,
       bypassCache,
       exclusions,
-    ));
+    );
+
+    // Requirement 2.2: the last check before the response leaves. Synthesis
+    // already filters its candidates with `isItineraryPlan`, so this is a safety
+    // net; when it trips, the violations name what broke and why the count fell
+    // short (Requirement 1.6).
+    if (result.plans.length !== PLAN_COUNT || !isTourismRecommendations(result.plans)) {
+      console.error("recommendations contract violation", {
+        plans: result.plans.length,
+        detail: result.detail,
+        violations: result.plans
+          .map((plan) => ({ planId: plan.id, violations: itineraryPlanViolations(plan) }))
+          .filter((entry) => entry.violations.length > 0),
+      });
+      res.setHeader("Cache-Control", "private, no-store");
+      res.status(502).json({
+        error: "AI recommendations backend error",
+        detail: result.detail
+          ?? `Only ${result.plans.length} of ${PLAN_COUNT} plans satisfied the itinerary contract.`,
+      });
+      return;
+    }
+
+    // Requirement 1.7: a degraded response is never cached, anywhere. Shared
+    // caching also requires the JST date in the URL; without it a CDN entry
+    // would keep serving yesterday's picks under the same key.
+    res.setHeader(
+      "Cache-Control",
+      result.degraded || bypassCache || !hasDate
+        ? "private, no-store"
+        : "public, s-maxage=900, stale-while-revalidate=86400",
+    );
+    // Requirements 6.2-6.4: the refresh slot is consumed here only, right before
+    // an `ai`-only 200. The 405 / 400 / 429 / 502 paths never reach this line, so
+    // a failed or degraded attempt leaves the next try unblocked.
+    if (bypassCache && !result.degraded) reserveRefresh(req, Date.now());
+    res.status(200).json({ plans: result.plans, degraded: result.degraded });
   } catch (error) {
     if (error instanceof InvalidRequestError) {
       res.status(400).json({ error: error.message });

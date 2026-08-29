@@ -3029,6 +3029,12 @@ Object.assign(UI_LABELS, {
     iyo: "おすすめを作れんかったけん、設定を見てもう一回試してや。",
   },
   "planFirst.retry": { ja: "もう一度生成", en: "Generate again", iyo: "もう一回作る" },
+  // Degraded_Notice (Req 8.6 / 8.7): 基盤サービス名と内部エラー内容は書かない。
+  "planFirst.degradedNotice": {
+    ja: "いまは新しい提案を作れないため、収録済みの旅程を表示しています。時間をおいて再試行すると最新の提案に切り替わります。",
+    en: "Fresh suggestions are unavailable right now, so saved itineraries are shown. Try again later to see new ideas.",
+    iyo: "今は新しい提案が作れんけん、前からある旅程を出しとるよ。ちょっと時間おいて試したら新しいのが出るけん。",
+  },
   "planFirst.googleVerified": {
     ja: "Google Mapsの場所情報",
     en: "Place information from Google Maps",

@@ -4157,6 +4157,19 @@ textarea.nokyocho-field__control {
   font-weight: var(--weight-medium);
 }
 
+.plan-first__degraded {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-teal-100);
+  border-radius: var(--radius-md);
+  background: var(--color-teal-50);
+  color: var(--color-teal-800);
+  font-size: var(--text-xs);
+}
+
 .plan-first__count {
   display: flex;
   align-items: center;

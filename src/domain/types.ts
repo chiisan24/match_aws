@@ -299,6 +299,9 @@ export interface RecommendedPlanStop {
   place?: RecommendedPlace;
 }
 
+/** Provenance of a recommended plan in a recommendations API response. */
+export type PlanOrigin = "ai" | "cache" | "fallback";
+
 /** One of the five AI-generated trip recommendations shown during onboarding. */
 export interface RecommendedPlan {
   id: string;
@@ -315,6 +318,15 @@ export interface RecommendedPlan {
   /** Area used to generate this itinerary. Map content must stay inside it. */
   area?: GeoArea;
   stops: RecommendedPlanStop[];
+  /** Omitted means AI-generated. Degraded responses use "cache" / "fallback". */
+  origin?: PlanOrigin;
+}
+
+/** A recommendation fetch result plus whether AI generation was degraded. */
+export interface RecommendedPlansResult {
+  plans: RecommendedPlan[];
+  /** `true` when at least one plan did not come from AI generation. */
+  degraded: boolean;
 }
 
 export interface RecommendationExclusion {

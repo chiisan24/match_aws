@@ -18,8 +18,8 @@ import type {
   OfflineEntry,
   PilgrimagePlan,
   PlanInput,
-  RecommendedPlan,
   RecommendedPlansInput,
+  RecommendedPlansResult,
   RouteCandidatesInput,
   RouteCandidatesResult,
   Session,
@@ -41,13 +41,22 @@ export type * from "../domain/types";
 // through the gateway entry point (Req 3.6, 4.1).
 export type { CandidateSource, RouteCandidatesResult } from "../domain/types";
 
+// 縮退応答の契約: Plan_First_Screen と両アダプタがゲートウェイ経由で読む
+// (Req 1.3, 1.4).
+export type { PlanOrigin, RecommendedPlansResult } from "../domain/types";
+
 /** AI チャット相談・プラン生成 (Req 3, 12). */
 export interface ChatPort {
   sendMessage(session: ChatSession, message: string): Promise<ChatReply>;
-  /** Generate five current Ehime trip ideas and enrich them with place data. */
+  /**
+   * Generate five current Ehime trip ideas and enrich them with place data.
+   * The result also reports whether the set is degraded — `degraded` is `true`
+   * when at least one plan came from a stale cache entry or the fallback pool
+   * instead of AI generation (Req 1.4).
+   */
   generateRecommendedPlans(
     input: RecommendedPlansInput,
-  ): Promise<RecommendedPlan[]>;
+  ): Promise<RecommendedPlansResult>;
   /**
    * Generate candidates for one route-building stage. The result carries the
    * radius actually applied when the set was settled and the minimum count

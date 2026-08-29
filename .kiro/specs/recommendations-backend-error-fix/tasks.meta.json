@@ -1,0 +1,501 @@
+{
+  "pbtResults": {
+    "2.2 `src/data/recommendationFallbackPlans.test.ts` で Fallback_Plan_Pool の契約適合を検証": {
+      "status": "passed",
+      "lastRunTimestamp": 1788002132469
+    },
+    "10.2 生成失敗時も 200 を返すことをプロパティテストで検証": {
+      "status": "passed",
+      "lastRunTimestamp": 1788042929076
+    },
+    "10.3 200 応答の契約適合をプロパティテストで検証": {
+      "status": "passed",
+      "lastRunTimestamp": 1788043339319
+    }
+  },
+  "executionHistory": {
+    "1.1 `vite.config.ts` の `test.include` に `api/**/*.{test,spec}.ts` を追加": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001251566
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001263653
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001637126
+      }
+    ],
+    "1.2 `src/domain/itineraryContract.ts` を新規作成": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001251616
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001264600
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001638495
+      }
+    ],
+    "2.1 `src/data/recommendationFallbackPlans.ts` を新規作成": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001251681
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001644917
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001973949
+      }
+    ],
+    "2.2 `src/data/recommendationFallbackPlans.test.ts` で Fallback_Plan_Pool の契約適合を検証": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001251724
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001995621
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788002210791
+      }
+    ],
+    "2.3 `api/_recommendation-fallback.ts` を新規作成": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001251763
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001996555
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788002211704
+      }
+    ],
+    "3.1 `src/domain/types.ts` に縮退応答の型を追加": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001251797
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001265638
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001639231
+      }
+    ],
+    "3.2 `src/ports/index.ts` の `ChatPort` 契約を更新": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001251843
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001645789
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001973266
+      }
+    ],
+    "3.3 `src/adapters/mock/chat.ts` を移設先 import に切り替え": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001251883
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001997672
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788002212734
+      }
+    ],
+    "4. Checkpoint - 共有モジュールと型変更の整合": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001251919
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788002218277
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788002254046
+      }
+    ],
+    "5.1 型の追加と失敗分類の土台": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001251952
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788002260412
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003023357
+      }
+    ],
+    "5.2 `enrichPlans` の部分成功化と `generateRecommendations` の戻り値変更": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252021
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003029159
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003385073
+      }
+    ],
+    "6.1 `generateWithBackoff` と再試行タイミングの注入点を実装": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252061
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003392301
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003745511
+      }
+    ],
+    "7.1 衝突判定を「重複」と「除外」に分離": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252094
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003752702
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788004034854
+      }
+    ],
+    "7.2 `composeRecommendations` を実装して named export": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252124
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788004035318
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788004258285
+      }
+    ],
+    "8.1 Recommendation_Cache の fresh / stale 二段化と `recommendationsFor` の再構成": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252156
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788004259394
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788004648687
+      }
+    ],
+    "8.2 Refresh_Rate_Limiter の判定と予約を分離": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252189
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788004649465
+      },
+      {
+        "executionId": "6c9ebe7a-cd0e-4b16-ae23-431b01c54d91",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788004761974
+      }
+    ],
+    "8.3 `handler` の流れを再構成": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252233
+      }
+    ],
+    "9. Checkpoint - サーバー実装の型と既存テスト": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252282
+      }
+    ],
+    "10.1 テストハーネスを作成": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252316
+      }
+    ],
+    "10.2 生成失敗時も 200 を返すことをプロパティテストで検証": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252354
+      }
+    ],
+    "10.3 200 応答の契約適合をプロパティテストで検証": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252393
+      }
+    ],
+    "10.4 Fatal_Failure が再試行されないことをプロパティテストで検証": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252431
+      }
+    ],
+    "10.5 リフレッシュ枠の消費条件をプロパティテストで検証": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252467
+      }
+    ],
+    "11.1 `src/adapters/aws/chat.ts` の `generateRecommendedPlans` を更新": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252499
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788002261774
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003022389
+      }
+    ],
+    "12.1 `src/i18n/labels.ts` に `planFirst.degradedNotice` を追加": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252551
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788002262741
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003020041
+      }
+    ],
+    "12.2 `src/ui/styles/screens.css` に `.plan-first__degraded` を追加": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252604
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788002263923
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003021032
+      }
+    ],
+    "12.3 `AIPlanFirst.tsx` の契約検証共有化と取得モード3分岐": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252641
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003030165
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003385965
+      }
+    ],
+    "12.4 `AIPlanFirst.tsx` に Degraded_Notice を追加": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252683
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003393120
+      },
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003746418
+      }
+    ],
+    "13.1 3種の検証コマンドを実行して型と回帰を確定させる": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252718
+      }
+    ],
+    "13.2 移設の副作用と対象外ファイルの無変更を確認": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252755
+      }
+    ],
+    "14. Final checkpoint - すべての検証が通ることを確認": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001252800
+      }
+    ],
+    "1. テスト実行範囲の拡張と Itinerary_Contract の切り出し": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788001638535
+      }
+    ],
+    "2. Fallback_Plan_Pool の共有化と Bridge_Module": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788002211757
+      }
+    ],
+    "3. クライアント契約型の拡張とモックアダプタの移設": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788002212770
+      }
+    ],
+    "11. AWS_Chat_Adapter の GET / POST 分離": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003022452
+      }
+    ],
+    "5. Recommendation_API の型・失敗分類・立寄先検証の部分成功": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003385144
+      }
+    ],
+    "6. スロットリング時のバックオフ再試行": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003745668
+      }
+    ],
+    "12. Plan_First_Screen の取得モードと Degraded_Notice": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788003746587
+      }
+    ],
+    "7. 合成パイプライン": [
+      {
+        "executionId": "3094b747-91da-4011-8792-2624c6dfb9e3",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788004258431
+      }
+    ]
+  }
+}
