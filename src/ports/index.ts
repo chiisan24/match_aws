@@ -20,8 +20,8 @@ import type {
   PlanInput,
   RecommendedPlan,
   RecommendedPlansInput,
-  RouteCandidate,
   RouteCandidatesInput,
+  RouteCandidatesResult,
   Session,
   ShikokuPrefecture,
   Spot,
@@ -36,6 +36,11 @@ import type {
 // gateway contract from a single entry point.
 export type * from "../domain/types";
 
+// Explicit re-exports for the swipe-candidate fallback contract: the route
+// builder and both adapters read `CandidateSource` / `RouteCandidatesResult`
+// through the gateway entry point (Req 3.6, 4.1).
+export type { CandidateSource, RouteCandidatesResult } from "../domain/types";
+
 /** AI チャット相談・プラン生成 (Req 3, 12). */
 export interface ChatPort {
   sendMessage(session: ChatSession, message: string): Promise<ChatReply>;
@@ -43,10 +48,14 @@ export interface ChatPort {
   generateRecommendedPlans(
     input: RecommendedPlansInput,
   ): Promise<RecommendedPlan[]>;
-  /** Generate Google-verified candidates for one route-building stage. */
+  /**
+   * Generate candidates for one route-building stage. The result carries the
+   * radius actually applied when the set was settled and the minimum count
+   * used, so the client can run its own final guard (Req 3.6, 4.1).
+   */
   generateRouteCandidates(
     input: RouteCandidatesInput,
-  ): Promise<RouteCandidate[]>;
+  ): Promise<RouteCandidatesResult>;
   /** Optimize the order and estimated arrival times of user-selected stops. */
   generateTourismRoutePlan(
     input: TourismRoutePlanInput,

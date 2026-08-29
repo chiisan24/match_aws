@@ -3053,6 +3053,11 @@ Object.assign(UI_LABELS, {
   "planFirst.themeNextLead": { ja: "選んだ旅程の立寄先と時刻を引き継ぎます。AIの追加候補を興味あり・なしで仕分けて、ルートを調整できます。", en: "Your selected stops and times carry over. Sort AI suggestions by interest to refine the route.", iyo: "選んだ旅程の場所と時刻を引き継ぐけん。AIの追加候補を選んでルートを整えられるよ。" },
   "routeBuilder.back": { ja: "テーマ選択に戻る", en: "Back to themes", iyo: "テーマ選びに戻る" },
   "routeBuilder.progress": { ja: "{current} / {total}件", en: "{current} of {total}", iyo: "{current} / {total}件" },
+  // {value} / {count} は描画時に String.replace で差し込む（routeBuilder.progress と同方式）。
+  "routeBuilder.templeTag": { ja: "お遍路札所", en: "Pilgrimage temple", iyo: "お遍路さんの札所" },
+  "routeBuilder.distanceMeters": { ja: "中心から約{value}m", en: "About {value} m from the centre", iyo: "中心から約{value}m" },
+  "routeBuilder.distanceKilometers": { ja: "中心から約{value}km", en: "About {value} km from the centre", iyo: "中心から約{value}km" },
+  "routeBuilder.shortageNotice": { ja: "この周辺で見つかった候補は{count}件です。範囲を広げて探しています。", en: "Only {count} candidates were found nearby, so the search area was widened.", iyo: "この辺で見つかったんは{count}件やけん、範囲を広げて探しとるよ。" },
   "routeBuilder.interested": { ja: "興味あり", en: "Interested", iyo: "行ってみたい" },
   "routeBuilder.notInterested": { ja: "興味なし", en: "Not interested", iyo: "今回はええかな" },
   "routeBuilder.swipeHint": { ja: "右へスワイプで興味あり、左で興味なし。ボタンや矢印キーでも選べます。", en: "Swipe right if interested, left if not. Buttons and arrow keys also work.", iyo: "右なら行きたい、左なら今回はなし。ボタンでも選べるけん。" },
@@ -3116,4 +3121,5 @@ Object.assign(UI_LABELS, {
   "debug.label": { ja: "デバッグ", en: "Debug", iyo: "デバッグ" },
   "debug.skipSwipe": { ja: "スワイプをスキップ", en: "Skip swiping", iyo: "スワイプを飛ばす" },
   "debug.skipToFinal": { ja: "最終プランへジャンプ", en: "Jump to final plan", iyo: "最終プランへ飛ぶ" },
+  "debug.skipScreen": { ja: "この画面ごとスキップ", en: "Skip this screen", iyo: "この画面ごと飛ばす" },
 } satisfies LangDict);

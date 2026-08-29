@@ -2,6 +2,15 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { errorDetail } from "./_aws.js";
 import { extractJson, invokeClaude } from "./_bedrock.js";
 import { searchEhimePlace, type EnrichedPlace } from "./_google-places.js";
+import {
+  CANDIDATE_MAXIMUM_COUNT,
+  CANDIDATE_MINIMUM_COUNT,
+  clampCandidateCount,
+  DEFAULT_FALLBACK_POOLS,
+  finalizeCandidates,
+  type CandidateSource,
+  type FinalizeResult,
+} from "./_fallback-candidates.js";
 
 type CandidateKind = "sightseeing" | "food" | "cafe" | "custom";
 
@@ -27,12 +36,14 @@ interface RouteCandidate {
   title: string;
   description: string;
   searchQuery: string;
+  /** Omitted means primary (Google-verified). Fallbacks use "temple" / "spot". */
+  source?: CandidateSource;
   place: EnrichedPlace & { location: { lat: number; lng: number } };
 }
 
 const CACHE_TTL_MS = 15 * 60 * 1000;
-const cache = new Map<string, { expiresAt: number; candidates: RouteCandidate[] }>();
-const pending = new Map<string, Promise<RouteCandidate[]>>();
+const cache = new Map<string, { expiresAt: number; result: FinalizeResult }>();
+const pending = new Map<string, Promise<FinalizeResult>>();
 
 function boundedText(value: unknown, field: string, max: number): string {
   if (typeof value !== "string" || !value.trim()) {
@@ -118,7 +129,7 @@ async function generateCandidates(
   kind: CandidateKind,
   lang: string,
   count: number,
-): Promise<RouteCandidate[]> {
+): Promise<FinalizeResult> {
   const theme = {
     title: boundedText(input.theme?.title, "theme.title", 120),
     summary: boundedText(input.theme?.summary, "theme.summary", 240),
@@ -133,13 +144,22 @@ async function generateCandidates(
     throw new Error("customRequest is required for custom candidates.");
   }
 
-  const output = await invokeClaude({
-    system: candidatePrompt(kind, theme, area, route, customRequest, count, lang),
-    messages: [{ role: "user", text: "ルート候補を提案してください。" }],
-    maxTokens: 1600,
-  });
-  const parsed = extractJson<{ candidates?: unknown }>(output);
+  // Bedrock or JSON failures propagate: local fallbacks only ever top up a
+  // successful proposal, they never stand in for a broken backend (Req 3.5).
+  let parsed: { candidates?: unknown } | null;
+  try {
+    const output = await invokeClaude({
+      system: candidatePrompt(kind, theme, area, route, customRequest, count, lang),
+      messages: [{ role: "user", text: "ルート候補を提案してください。" }],
+      maxTokens: 1600,
+    });
+    parsed = extractJson<{ candidates?: unknown }>(output);
+  } catch (error) {
+    console.error("route-candidates bedrock failure", error);
+    throw error;
+  }
   if (!Array.isArray(parsed?.candidates)) {
+    console.error("route-candidates malformed Bedrock payload", { kind, lang });
     throw new Error("Bedrock did not return route candidates.");
   }
 
@@ -152,9 +172,10 @@ async function generateCandidates(
       searchQuery: boundedText(raw.searchQuery ?? raw.title, "searchQuery", 140),
     };
   });
-  const usedIds = new Set(
-    route.map((stop) => typeof stop.placeId === "string" ? stop.placeId : "").filter(Boolean),
-  );
+  const routePlaceIds = route
+    .map((stop) => typeof stop.placeId === "string" ? stop.placeId : "")
+    .filter(Boolean);
+  const usedIds = new Set(routePlaceIds);
   const enriched = await Promise.all(rawCandidates.map(async (candidate) => {
     const place = await searchEhimePlace(candidate.searchQuery, lang, area).catch(() => null);
     if (
@@ -170,7 +191,19 @@ async function generateCandidates(
       place: { ...place, location: place.location },
     } satisfies RouteCandidate;
   }));
-  return enriched.filter((candidate): candidate is RouteCandidate => candidate != null);
+  const primary = enriched.filter((candidate): candidate is RouteCandidate => candidate != null);
+
+  // Primary candidates stay inside the base radius; only local fallbacks may
+  // step the radius outwards (Req 8.3).
+  return finalizeCandidates(primary, {
+    kind,
+    lang,
+    center: area.center,
+    baseRadiusMeters: area.radiusMeters,
+    usedPlaceIds: routePlaceIds,
+    maximumCount: CANDIDATE_MAXIMUM_COUNT,
+    minimumCount: kind === "sightseeing" ? CANDIDATE_MINIMUM_COUNT : undefined,
+  }, DEFAULT_FALLBACK_POOLS);
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -186,12 +219,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return;
     }
     const lang = typeof input.lang === "string" ? input.lang.slice(0, 16) : "ja";
-    const count = Math.min(8, Math.max(3, Number(input.count) || (input.kind === "cafe" ? 4 : 6)));
+    // sightseeing asks Bedrock for at least the swipe minimum (5-8); the other
+    // kinds keep the previous 3-8 range with cafe defaulting to 4 (Req 8.4).
+    const count = input.kind === "sightseeing"
+      ? clampCandidateCount(Number(input.count), 6, CANDIDATE_MINIMUM_COUNT)
+      : clampCandidateCount(Number(input.count), input.kind === "cafe" ? 4 : 6, 3);
     const key = JSON.stringify({ lang, kind: input.kind, theme: input.theme, area: input.area, route: input.route, customRequest: input.customRequest, count });
     const now = Date.now();
     const cached = cache.get(key);
     if (cached && cached.expiresAt > now) {
-      res.status(200).json({ candidates: cached.candidates });
+      res.status(200).json(cached.result);
       return;
     }
     let request = pending.get(key);
@@ -200,10 +237,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       pending.set(key, request);
     }
     try {
-      const candidates = await request;
-      if (candidates.length === 0) throw new Error("No Google-verified route candidates were found.");
-      cache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, candidates });
-      res.status(200).json({ candidates });
+      const result = await request;
+      // Even after the radius expansion an empty set is an error (Req 3.5).
+      if (result.candidates.length === 0) {
+        throw new Error("No route candidates were found, even after expanding the search radius.");
+      }
+      cache.set(key, { expiresAt: Date.now() + CACHE_TTL_MS, result });
+      res.status(200).json({
+        candidates: result.candidates,
+        appliedRadiusMeters: result.appliedRadiusMeters,
+        minimumCount: result.minimumCount,
+      });
     } finally {
       pending.delete(key);
     }

@@ -31,12 +31,14 @@ import type {
   RecommendedPlansInput,
   RouteCandidate,
   RouteCandidatesInput,
+  RouteCandidatesResult,
   Spot,
   TourismRoutePlan,
   TourismRoutePlanInput,
 } from "../../ports";
 import type { AwsEnv } from "../../config/env";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
+import { CANDIDATE_MINIMUM_COUNT } from "../../domain/candidateFallback";
 import { EHIME_SPOTS } from "../mock/spots";
 import { EHIME_TEMPLES } from "../mock/temples";
 import { AWS_NOT_CONFIGURED } from "./not-configured";
@@ -77,6 +79,22 @@ function chatErrorMessage(
     return "AIが混雑中です。少し待ってから再試行してください。";
   }
   return `AIバックエンドでエラーが発生しました（HTTP ${status}）。`;
+}
+
+interface RouteCandidatesApiResponse {
+  candidates?: RouteCandidate[];
+  appliedRadiusMeters?: unknown;
+  minimumCount?: unknown;
+}
+
+/**
+ * Accepts a finite positive number only; anything else (missing field, string,
+ * NaN, zero, negative) falls back to the caller-supplied value.
+ */
+function positiveNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : fallback;
 }
 
 interface PlanApiResponse {
@@ -268,7 +286,7 @@ export class AwsChatAdapter implements ChatPort {
 
   async generateRouteCandidates(
     input: RouteCandidatesInput,
-  ): Promise<RouteCandidate[]> {
+  ): Promise<RouteCandidatesResult> {
     const base = apiBase(this.env, "ChatPort.generateRouteCandidates");
     const res = await fetch(`${base}/route-candidates`, {
       method: "POST",
@@ -285,11 +303,21 @@ export class AwsChatAdapter implements ChatPort {
       throw new Error(chatErrorMessage(res.status, apiError.detail));
     }
 
-    const data = (await res.json()) as { candidates?: RouteCandidate[] };
+    const data = (await res.json()) as RouteCandidatesApiResponse;
     if (!Array.isArray(data.candidates) || data.candidates.length === 0) {
       throw new Error("ルート候補を取得できませんでした。");
     }
-    return data.candidates;
+    // Older deployments answer with `{ candidates }` only. Fill the settle
+    // metadata from the request so the route builder's distance check and
+    // shortage guard keep working (Req 4.1, Property 11).
+    return {
+      candidates: data.candidates,
+      appliedRadiusMeters: positiveNumber(
+        data.appliedRadiusMeters,
+        input.area.radiusMeters,
+      ),
+      minimumCount: positiveNumber(data.minimumCount, CANDIDATE_MINIMUM_COUNT),
+    };
   }
 
   async generateTourismRoutePlan(
