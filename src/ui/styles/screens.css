@@ -87,11 +87,15 @@
 .lang-tile {
   position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.15rem;
+  /* Name + reading sit side by side on one baseline so every tile is a single
+     line — keeps names aligned across the row regardless of a reading label. */
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  align-content: center;
+  gap: 0.15rem 0.45rem;
   width: 100%;
-  min-height: 4.25rem;
+  min-height: 3.25rem;
   padding: var(--space-3);
   text-align: start;
   background: var(--color-surface);
@@ -125,8 +129,6 @@
 
 .lang-tile--recommended {
   border-color: var(--color-mikan-300);
-  /* full-width row to give the recommended dialect prominence */
-  grid-column: 1 / -1;
   background:
     radial-gradient(
       130% 100% at 0% 0%,
@@ -150,15 +152,21 @@
 }
 
 .lang-tile__badge {
-  align-self: flex-start;
-  margin-bottom: 0.1rem;
-  padding: 0.25em 0.7em;
+  /* Float in the top corner so it doesn't add height — keeps the recommended
+     tile's name aligned with the neighbouring tiles (no vertical shift). */
+  position: absolute;
+  top: 0.4rem;
+  inset-inline-end: 0.4rem;
+  margin: 0;
+  padding: 0.2em 0.5em;
   border-radius: var(--radius-pill);
   background: var(--color-mikan-500);
   color: #fff;
-  font-size: var(--text-xs);
+  font-size: 0.65rem;
   font-weight: var(--weight-medium);
   line-height: 1;
+  white-space: nowrap;
+  box-shadow: var(--shadow-sm);
 }
 
 .lang-tile__name {
@@ -177,6 +185,28 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+/* Make the "other languages" toggle readable to non-Japanese speakers: a
+   globe icon (language-neutral), an English co-label and a count hint. */
+.lang-select__other-toggle {
+  flex-wrap: wrap;
+  gap: 0.15rem 0.4rem;
+}
+
+.lang-select__other-en {
+  color: var(--color-teal-700);
+  opacity: 0.85;
+}
+
+.lang-select__other-count {
+  margin-inline-start: 0.15rem;
+  padding: 0.05em 0.5em;
+  border-radius: var(--radius-pill);
+  background: var(--color-teal-700);
+  color: #fff;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
 }
 
 .lang-select__other-note {
@@ -3339,6 +3369,36 @@ textarea.nokyocho-field__control {
   display: flex;
   align-items: center;
   gap: var(--space-2);
+  /* Clickable row: tapping opens the spot as a card in the deck. */
+  width: 100%;
+  padding: var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    background var(--dur-base) var(--ease-soft),
+    border-color var(--dur-base) var(--ease-soft),
+    transform var(--dur-fast) var(--ease-soft);
+}
+.swipe__recommend-item:hover {
+  background: var(--color-teal-50);
+  border-color: var(--color-teal-300);
+}
+.swipe__recommend-item:active {
+  transform: scale(0.99);
+}
+.swipe__recommend-item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.swipe__recommend-chevron {
+  margin-inline-start: auto;
+  color: var(--color-teal-500);
+  font-size: var(--text-lg);
+  line-height: 1;
 }
 
 .swipe__recommend-thumb {
@@ -4610,6 +4670,15 @@ textarea.nokyocho-field__control {
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4) 0 0;
+  /* Fill the viewport so the primary CTA can sit near the bottom instead of
+     leaving a large gap now that fewer languages show by default. */
+  min-height: calc(100svh - 3rem);
+}
+
+/* Push the 次へ進む CTA to the bottom of the picker, keeping the note just
+   above it. The auto margin absorbs the leftover vertical space. */
+.lang-select__picker > .ek-btn--accent {
+  margin-top: auto;
 }
 
 .plan-review__topbar {

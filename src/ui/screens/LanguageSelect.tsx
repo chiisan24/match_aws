@@ -96,16 +96,26 @@ export interface LanguageSelectProps {
   onComplete?: (lang: LangCode) => void;
 }
 
+/** Languages shown directly in the grid vs. tucked under "その他の言語". */
+const PRIMARY_LANGUAGES = LANGUAGE_OPTIONS.filter((opt) => opt.primary);
+const OTHER_LANGUAGES = LANGUAGE_OPTIONS.filter((opt) => !opt.primary);
+const OTHER_CODES = new Set<LangCode>(OTHER_LANGUAGES.map((opt) => opt.code));
+
 export function LanguageSelect({
   onComplete,
 }: LanguageSelectProps): JSX.Element {
   const { lang, t, setLanguage } = useI18n();
   const [selected, setSelected] = useState<LangCode>(lang);
-  const [showOtherNote, setShowOtherNote] = useState(false);
+  // Expand the "other languages" list when the active choice lives there, so a
+  // restored/less-common language is always visible.
+  const [showOthers, setShowOthers] = useState(() => OTHER_CODES.has(lang));
   const [submitting, setSubmitting] = useState(false);
 
   // Rehydration may restore a saved language after the first render.
-  useEffect(() => setSelected(lang), [lang]);
+  useEffect(() => {
+    setSelected(lang);
+    if (OTHER_CODES.has(lang)) setShowOthers(true);
+  }, [lang]);
 
   const handleContinue = async (): Promise<void> => {
     setSubmitting(true);
@@ -127,7 +137,7 @@ export function LanguageSelect({
           <p className="lang-select__heading-sub">{t("lang.headingSub")}</p>
         </div>
         <ul className="lang-select__grid" role="list">
-          {LANGUAGE_OPTIONS.map((opt) => (
+          {PRIMARY_LANGUAGES.map((opt) => (
             <li key={opt.code}>
               <LanguageTile
                 option={opt}
@@ -140,17 +150,39 @@ export function LanguageSelect({
         </ul>
         <div className="lang-select__other">
           <Button
-            variant="ghost"
+            variant="soft"
             block
-            aria-expanded={showOtherNote}
-            onClick={() => setShowOtherNote((value) => !value)}
+            leading="🌐"
+            className="lang-select__other-toggle"
+            aria-expanded={showOthers}
+            aria-controls="lang-select-others"
+            onClick={() => setShowOthers((value) => !value)}
           >
-            {t("lang.other")}
+            <span className="lang-select__other-label">{t("lang.other")}</span>
+            {lang !== "en" && (
+              <span className="lang-select__other-en"> · Other languages</span>
+            )}
+            <span className="lang-select__other-count">
+              +{OTHER_LANGUAGES.length}
+            </span>
           </Button>
-          {showOtherNote && (
-            <p className="lang-select__other-note" role="status">
-              {t("lang.otherComingSoon")}
-            </p>
+          {showOthers && (
+            <ul
+              id="lang-select-others"
+              className="lang-select__grid"
+              role="list"
+            >
+              {OTHER_LANGUAGES.map((opt) => (
+                <li key={opt.code}>
+                  <LanguageTile
+                    option={opt}
+                    selected={selected === opt.code}
+                    recommendedLabel={t("lang.recommended")}
+                    onSelect={() => setSelected(opt.code)}
+                  />
+                </li>
+              ))}
+            </ul>
           )}
         </div>
         <p className="lang-select__note">{t("lang.note")}</p>

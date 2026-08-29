@@ -20,6 +20,14 @@ export interface LanguageOption {
   sublabel?: string;
   /** Highlight as a recommended choice (used for 伊予弁). */
   recommended?: boolean;
+  /**
+   * Shown directly in the primary grid on the language screen. Languages
+   * without this flag are still selectable, but tucked under the
+   * "その他の言語" (other languages) affordance to keep the first view compact.
+   * All languages remain in {@link LANGUAGE_OPTIONS}, so settings and label
+   * resolution are unaffected.
+   */
+  primary?: boolean;
   /** Right-to-left script — the shell sets `dir="rtl"` when active. */
   rtl?: boolean;
 }
@@ -35,11 +43,18 @@ export interface LanguageOption {
  * separately by the language-selection screen.)
  */
 export const LANGUAGE_OPTIONS: readonly LanguageOption[] = [
-  { code: "ja", nativeName: "日本語" },
-  { code: "en", nativeName: "English" },
-  { code: "zh-Hans", nativeName: "简体中文", sublabel: "簡体字" },
-  { code: "zh-Hant", nativeName: "繁體中文", sublabel: "繁体字" },
-  { code: "ko", nativeName: "한국어" },
+  { code: "ja", nativeName: "日本語", primary: true },
+  {
+    code: "iyo",
+    nativeName: "伊予弁",
+    sublabel: "いよべん",
+    recommended: true,
+    primary: true,
+  },
+  { code: "en", nativeName: "English", primary: true },
+  { code: "ko", nativeName: "한국어", primary: true },
+  { code: "zh-Hans", nativeName: "简体中文", sublabel: "簡体字", primary: true },
+  { code: "zh-Hant", nativeName: "繁體中文", sublabel: "繁体字", primary: true },
   { code: "th", nativeName: "ไทย" },
   { code: "fr", nativeName: "Français" },
   { code: "de", nativeName: "Deutsch" },
@@ -50,12 +65,6 @@ export const LANGUAGE_OPTIONS: readonly LanguageOption[] = [
   { code: "ar", nativeName: "العربية", rtl: true },
   { code: "ru", nativeName: "Русский" },
   { code: "hi", nativeName: "हिन्दी" },
-  {
-    code: "iyo",
-    nativeName: "伊予弁",
-    sublabel: "いよべん",
-    recommended: true,
-  },
 ];
 
 /** Language codes that should be rendered right-to-left. */

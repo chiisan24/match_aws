@@ -148,7 +148,7 @@ export const UI_LABELS: LangDict = {
     iyo: "ほかの言葉もぼちぼち増やしていくけんね。",
   },
   "lang.note": {
-    ja: "あとから設定画面でいつでも言語を変更できます",
+    ja: "言語は設定からいつでも変更できます",
     en: "You can change the language anytime from settings later.",
     "zh-Hans": "之后可随时在设置中更改语言。",
     "zh-Hant": "之後可隨時在設定中更改語言。",
@@ -2482,6 +2482,16 @@ UI_LABELS["swipe.recommend.empty"] = {
   en: "You've seen them all for now. New spots will appear soon.",
   iyo: "ひととおり見終わったね。新しいスポットが届くまで待っとってな。",
 };
+UI_LABELS["swipe.recommend.view"] = {
+  ja: "{name}をカードで見る",
+  en: "View {name} as a card",
+  "zh-Hans": "以卡片查看{name}",
+  "zh-Hant": "以卡片查看{name}",
+  ko: "{name} 카드로 보기",
+  fr: "Voir {name} en carte",
+  ar: "عرض {name} كبطاقة",
+  iyo: "{name}をカードで見るけん",
+};
 
 // 完了 / リスタート
 UI_LABELS["swipe.done.title"] = {
@@ -3060,7 +3070,7 @@ Object.assign(UI_LABELS, {
   "routeBuilder.shortageNotice": { ja: "この周辺で見つかった候補は{count}件です。範囲を広げて探しています。", en: "Only {count} candidates were found nearby, so the search area was widened.", iyo: "この辺で見つかったんは{count}件やけん、範囲を広げて探しとるよ。" },
   "routeBuilder.interested": { ja: "興味あり", en: "Interested", iyo: "行ってみたい" },
   "routeBuilder.notInterested": { ja: "興味なし", en: "Not interested", iyo: "今回はええかな" },
-  "routeBuilder.swipeHint": { ja: "右へスワイプで興味あり、左で興味なし。ボタンや矢印キーでも選べます。", en: "Swipe right if interested, left if not. Buttons and arrow keys also work.", iyo: "右なら行きたい、左なら今回はなし。ボタンでも選べるけん。" },
+  "routeBuilder.swipeHint": { ja: "右へスワイプ（♥）でルートに追加、左（✕）で見送り。矢印キーでも選べます。", en: "Swipe right (♥) to add to your route, left (✕) to skip. Arrow keys also work.", iyo: "右（♥）でルートに追加、左（✕）で見送り。矢印キーでもいけるけん。" },
   "routeBuilder.kind.sightseeing": { ja: "観光", en: "Sightseeing", iyo: "観光" },
   "routeBuilder.kind.food": { ja: "食事", en: "Food", iyo: "ごはん" },
   "routeBuilder.kind.cafe": { ja: "カフェ", en: "Café", iyo: "カフェ" },
