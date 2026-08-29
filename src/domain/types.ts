@@ -38,6 +38,12 @@ export interface GeoPoint {
   lng: number;
 }
 
+/** A circular geographic area used to constrain AI plans and map content. */
+export interface GeoArea {
+  center: GeoPoint;
+  radiusMeters: number;
+}
+
 // ---------------------------------------------------------------------------
 // Temples & spots
 // ---------------------------------------------------------------------------
@@ -280,9 +286,13 @@ export interface RecommendedPlace {
   photoAttributions?: PlacePhotoAttribution[];
 }
 
-/** A stop proposed by Bedrock and optionally verified by Google Places. */
+/** Kinds shared by AI itinerary stops and interactive route candidates. */
+export type RouteCandidateKind = "sightseeing" | "food" | "cafe" | "custom";
+
+/** A stop proposed by AI and optionally verified by Google Places. */
 export interface RecommendedPlanStop {
   time: string;
+  kind: RouteCandidateKind;
   title: string;
   description: string;
   searchQuery: string;
@@ -302,17 +312,36 @@ export interface RecommendedPlan {
   intensity: string;
   imageUrl?: string;
   imageAttributions?: PlacePhotoAttribution[];
+  /** Area used to generate this itinerary. Map content must stay inside it. */
+  area?: GeoArea;
   stops: RecommendedPlanStop[];
+}
+
+export interface RecommendationExclusion {
+  id: string;
+  title: string;
+  /** Representative Google Maps search query. */
+  place: string;
+  /** Stable Google Place identifier when enrichment succeeded. */
+  placeId?: string;
 }
 
 export interface RecommendedPlansInput {
   lang: LangCode;
   count?: number;
+  /** JST date included in the GET URL so CDN entries rotate daily. */
+  date?: string;
   /** Bypass browser/CDN/server caches and ask Bedrock for a new set. */
   refresh?: boolean;
+  /** Existing recommendations Bedrock must not repeat during refresh. */
+  exclude?: RecommendationExclusion[];
 }
 
-export type RouteCandidateKind = "sightseeing" | "food" | "cafe" | "custom";
+/**
+ * Origin of a route candidate. Primary candidates come from Bedrock proposals
+ * verified by Google Places; the others are local-data fallbacks.
+ */
+export type CandidateSource = "primary" | "temple" | "spot";
 
 /** A Google-verified candidate presented by the interactive route builder. */
 export interface RouteCandidate {
@@ -321,7 +350,18 @@ export interface RouteCandidate {
   title: string;
   description: string;
   searchQuery: string;
+  /** Omitted means primary (Google-verified). Fallbacks use "temple" / "spot". */
+  source?: CandidateSource;
   place: RecommendedPlace & { location: GeoPoint };
+}
+
+/** Route candidate set plus the radius and minimum count used to settle it. */
+export interface RouteCandidatesResult {
+  candidates: RouteCandidate[];
+  /** Radius (metres) actually applied when the candidate set was settled. */
+  appliedRadiusMeters: number;
+  /** Minimum candidate count the provider aimed for. */
+  minimumCount: number;
 }
 
 export interface RouteCandidateContextStop {
@@ -334,9 +374,39 @@ export interface RouteCandidatesInput {
   lang: LangCode;
   kind: RouteCandidateKind;
   theme: Pick<RecommendedPlan, "id" | "title" | "summary" | "reason">;
+  /** Hard boundary for every generated and Google-verified candidate. */
+  area: GeoArea;
   route: RouteCandidateContextStop[];
   customRequest?: string;
   count?: number;
+}
+
+/** A selected stop sent to AI for final tourism-route optimization. */
+export interface TourismRoutePlanCandidate {
+  candidateId: string;
+  kind: RouteCandidateKind;
+  title: string;
+  location: GeoPoint;
+}
+
+/** Inputs for ordering only the places selected by the user. */
+export interface TourismRoutePlanInput {
+  lang: LangCode;
+  theme: Pick<RecommendedPlan, "id" | "title" | "summary" | "reason" | "transport">;
+  selectedStops: TourismRoutePlanCandidate[];
+  /** Preferred first arrival time in 24-hour HH:MM format. */
+  startTime?: string;
+}
+
+/** One AI-scheduled selected stop. */
+export interface TourismRoutePlanStop {
+  candidateId: string;
+  time: string;
+}
+
+/** AI-optimized order and estimated arrival times for selected tourism stops. */
+export interface TourismRoutePlan {
+  stops: TourismRoutePlanStop[];
 }
 
 /** Inputs for an AI next-temple navigation estimate (目安/参考情報). */

@@ -25,9 +25,6 @@ export type { ProgressRingProps } from "./ProgressRing";
 export { BottomNav } from "./BottomNav";
 export type { BottomNavProps, BottomNavItem } from "./BottomNav";
 
-export { ModeToggle } from "./ModeToggle";
-export type { ModeToggleProps } from "./ModeToggle";
-
 export { AppHeader } from "./AppHeader";
 export type { AppHeaderProps } from "./AppHeader";
 

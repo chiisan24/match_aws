@@ -2906,16 +2906,18 @@ UI_LABELS["tlmap.add.noCurrent"] = { ja: "現在地が取得できません。",
 
 // ---- AI-first trip recommendations -----------------------------------------
 Object.assign(UI_LABELS, {
-  "planFirst.title": { ja: "今日の旅、どのテーマにしますか？", en: "Which theme fits today's trip?", iyo: "今日はどのテーマで旅する？" },
-  "planFirst.lead": { ja: "まずは大まかなテーマをひとつ選んでください。スポットとルートは次の画面で一緒に作ります。", en: "Choose a broad theme first. You'll pick the stops and build the route next.", iyo: "まず大まかなテーマを選んでや。場所とルートは次で一緒に作るけん。" },
-  "planFirst.promise": { ja: "テーマを選んだ後、観光・食事・カフェの順にあなた向けのルートを作ります", en: "After choosing a theme, build your route through sights, food, and optional cafés", iyo: "テーマのあと、観光・ごはん・カフェの順でルートを作るけん" },
-  "planFirst.today": { ja: "今日のおすすめ", en: "Today's picks", iyo: "今日のおすすめ" },
+  "planFirst.title": { ja: "今日の旅、どのプランにしますか？", en: "Which plan fits today's trip?", iyo: "今日はどのプランで旅する？" },
+  "planFirst.lead": { ja: "AIが立寄先と時刻まで考えた5つの旅から選んでください。選んだ旅程をもとに自由にカスタマイズできます。", en: "Choose from five AI-planned itineraries with stops and times, then customize the selected route.", iyo: "AIが場所と時刻まで考えた5つの旅から選んでや。選んだ旅程から好きに変えられるけん。" },
+  "planFirst.promise": { ja: "AI旅程の立寄先を引き継ぎ、観光・食事・カフェを追加・見直しできます", en: "Start with the AI itinerary, then add or review sights, food, and cafés", iyo: "AI旅程の場所を引き継いで、観光・ごはん・カフェを足したり見直したりできるけん" },
+  "planFirst.today": { ja: "AIのおすすめ", en: "AI picks", iyo: "AIのおすすめ" },
   "planFirst.count": { ja: "{count}つの旅", en: "{count} trips", iyo: "{count}つの旅" },
+  "planFirst.refresh": { ja: "別の5件を見る", en: "Show five different trips", iyo: "別の5件を見る" },
+  "planFirst.refreshing": { ja: "別の5件を生成中", en: "Finding five different trips", iyo: "別の5件を作りよる" },
   "planFirst.aiPick": { ja: "AIおすすめ", en: "AI pick", iyo: "AIおすすめ" },
-  "planFirst.open": { ja: "プランを開く", en: "Open plan", iyo: "プランを見る" },
-  "planFirst.viewDetail": { ja: "テーマを見る", en: "View this theme", iyo: "テーマを見る" },
-  "planFirst.footer": { ja: "テーマを決めた後に、行きたいスポットを一つずつ選べます。", en: "After choosing a theme, decide on each place one by one.", iyo: "テーマを決めたら、行きたい場所を一つずつ選べるけん。" },
-  "planFirst.back": { ja: "5つのテーマに戻る", en: "Back to the five themes", iyo: "5つのテーマに戻る" },
+  "planFirst.open": { ja: "AI旅程を開く", en: "Open AI itinerary", iyo: "AI旅程を見る" },
+  "planFirst.viewDetail": { ja: "AI旅程を見る", en: "View AI itinerary", iyo: "AI旅程を見る" },
+  "planFirst.footer": { ja: "AIが考えた立寄先を最初からルートに入れ、次の画面で候補を追加・見直しできます。", en: "Start with the AI-planned stops, then add or review suggestions on the next screen.", iyo: "AIが考えた場所を最初からルートに入れて、次で候補を足したり見直したりできるけん。" },
+  "planFirst.back": { ja: "5つのAI旅程に戻る", en: "Back to the five AI itineraries", iyo: "5つのAI旅程に戻る" },
   "planFirst.reasonTitle": { ja: "AIがこの旅をすすめる理由", en: "Why AI recommends this trip", iyo: "AIがこの旅をすすめる理由" },
   "planFirst.routeTitle": { ja: "旅の流れ", en: "Trip outline", iyo: "旅の流れ" },
   "planFirst.adjustTitle": { ja: "少しだけ、好みに近づける", en: "Make it a little more yours", iyo: "ちょっとだけ、好みに近づける" },
@@ -2925,8 +2927,8 @@ Object.assign(UI_LABELS, {
   "planFirst.adjust.moreFood": { ja: "グルメを増やす", en: "More local food", iyo: "うまいもんを増やす" },
   "planFirst.adjust.moreHidden": { ja: "穴場を増やす", en: "More hidden gems", iyo: "穴場を増やす" },
   "planFirst.adjustStatus": { ja: "{count}件の希望を反映して始めます", en: "We'll start with {count} adjustments", iyo: "{count}件の希望を入れて始めるけん" },
-  "planFirst.start": { ja: "このテーマでスポットを選ぶ", en: "Choose stops for this theme", iyo: "このテーマで場所を選ぶ" },
-  "planFirst.startNote": { ja: "観光スポットから始め、食事やカフェを順番に追加できます。", en: "Start with sights, then add food and optional cafés.", iyo: "観光から始めて、ごはんやカフェも順番に足せるけん。" },
+  "planFirst.start": { ja: "このAI旅程をもとにカスタマイズ", en: "Customize this AI itinerary", iyo: "このAI旅程をもとに変える" },
+  "planFirst.startNote": { ja: "AI旅程の立寄先と時刻を引き継ぎ、観光スポット・食事・カフェを追加・見直せます。", en: "Keep the AI itinerary's stops and times, then add or review sights, food, and cafés.", iyo: "AI旅程の場所と時刻を引き継いで、観光・ごはん・カフェを足したり見直したりできるけん。" },
   "planFirst.metaLabel": { ja: "所要時間、移動手段、体力", en: "Duration, transport and activity level", iyo: "時間、移動手段、体力" },
   "planFirst.meta.threeHours": { ja: "約3時間", en: "About 3 hours" },
   "planFirst.meta.fourHours": { ja: "約4時間", en: "About 4 hours" },
@@ -3027,9 +3029,9 @@ Object.assign(UI_LABELS, {
     iyo: "好みに合わせたよ",
   },
   "planFirst.loading": {
-    ja: "Bedrock AIが今日のおすすめを考えています…",
-    en: "Bedrock AI is preparing today's recommendations…",
-    iyo: "Bedrock AIが今日のおすすめを考えよるけん…",
+    ja: "考えています",
+    en: "Thinking",
+    iyo: "考えよるけん",
   },
   "planFirst.loadError": {
     ja: "おすすめを生成できませんでした。設定を確認して再試行してください。",
@@ -3057,10 +3059,15 @@ Object.assign(UI_LABELS, {
 
 // ---- Interactive tourism route builder ------------------------------------
 Object.assign(UI_LABELS, {
-  "planFirst.themeNextTitle": { ja: "次はスポットを選びます", en: "Next, choose your stops", iyo: "次はスポットを選ぶけん" },
-  "planFirst.themeNextLead": { ja: "このテーマに合う観光スポットをAIが提案します。興味あり・なしで仕分けながら、あなただけのルートを作ります。", en: "AI will suggest matching places. Sort them by interest to build your own route.", iyo: "このテーマに合う場所をAIが出すけん、行きたいかどうか選んでルートを作ろや。" },
+  "planFirst.themeNextTitle": { ja: "次はAI旅程をカスタマイズ", en: "Next, customize the AI itinerary", iyo: "次はAI旅程を変えるけん" },
+  "planFirst.themeNextLead": { ja: "選んだ旅程の立寄先と時刻を引き継ぎます。AIの追加候補を興味あり・なしで仕分けて、ルートを調整できます。", en: "Your selected stops and times carry over. Sort AI suggestions by interest to refine the route.", iyo: "選んだ旅程の場所と時刻を引き継ぐけん。AIの追加候補を選んでルートを整えられるよ。" },
   "routeBuilder.back": { ja: "テーマ選択に戻る", en: "Back to themes", iyo: "テーマ選びに戻る" },
   "routeBuilder.progress": { ja: "{current} / {total}件", en: "{current} of {total}", iyo: "{current} / {total}件" },
+  // {value} / {count} は描画時に String.replace で差し込む（routeBuilder.progress と同方式）。
+  "routeBuilder.templeTag": { ja: "お遍路札所", en: "Pilgrimage temple", iyo: "お遍路さんの札所" },
+  "routeBuilder.distanceMeters": { ja: "中心から約{value}m", en: "About {value} m from the centre", iyo: "中心から約{value}m" },
+  "routeBuilder.distanceKilometers": { ja: "中心から約{value}km", en: "About {value} km from the centre", iyo: "中心から約{value}km" },
+  "routeBuilder.shortageNotice": { ja: "この周辺で見つかった候補は{count}件です。範囲を広げて探しています。", en: "Only {count} candidates were found nearby, so the search area was widened.", iyo: "この辺で見つかったんは{count}件やけん、範囲を広げて探しとるよ。" },
   "routeBuilder.interested": { ja: "興味あり", en: "Interested", iyo: "行ってみたい" },
   "routeBuilder.notInterested": { ja: "興味なし", en: "Not interested", iyo: "今回はええかな" },
   "routeBuilder.swipeHint": { ja: "右へスワイプ（♥）でルートに追加、左（✕）で見送り。矢印キーでも選べます。", en: "Swipe right (♥) to add to your route, left (✕) to skip. Arrow keys also work.", iyo: "右（♥）でルートに追加、左（✕）で見送り。矢印キーでもいけるけん。" },
@@ -3099,10 +3106,15 @@ Object.assign(UI_LABELS, {
   "routeBuilder.customPlaceholder": { ja: "例：夕日がきれいな場所", en: "e.g. somewhere with a beautiful sunset", iyo: "例：夕日がきれいな場所" },
   "routeBuilder.findCustom": { ja: "候補を探す", en: "Find places", iyo: "候補を探す" },
   "routeBuilder.skip": { ja: "今回は追加しない", en: "Skip for now", iyo: "今回は足さん" },
-  "routeBuilder.finalTag": { ja: "完成前の調整", en: "Final adjustments", iyo: "最後の調整" },
-  "routeBuilder.finalTitle": { ja: "あなたのルートができました", en: "Your route is ready", iyo: "あんたのルートができたよ" },
-  "routeBuilder.finalLead": { ja: "順番の変更、削除、見送った候補の再追加ができます。", en: "Reorder, remove, or restore candidates before finishing.", iyo: "順番を変えたり、消したり、候補を戻したりできるけん。" },
-  "routeBuilder.editTitle": { ja: "立寄先と順番を調整", en: "Edit stops and order", iyo: "立寄先と順番を調整" },
+  "routeBuilder.finalTag": { ja: "AI最適プラン", en: "AI optimized plan", iyo: "AIおすすめプラン" },
+  "routeBuilder.finalTitle": { ja: "選んだ場所から最適プランを作りました", en: "We optimized your selected stops", iyo: "選んだ場所でええプランを作ったよ" },
+  "routeBuilder.finalLead": { ja: "AIが移動距離や食事時間を考慮して、訪問順と到着予定時刻を組みました。矢印や削除であとから自由に調整できます。", en: "AI arranged the order and estimated arrival times using your selected stops. You can customize it with the arrows or remove buttons.", iyo: "AIが移動やごはんの時間を考えて順番と時刻を組んだよ。矢印や削除で好きに直せるけん。" },
+  "routeBuilder.editTitle": { ja: "立寄先・時刻・順番を調整", en: "Edit stops, times, and order", iyo: "立寄先・時刻・順番を調整" },
+  "routeBuilder.planLoading": { ja: "選んだ立寄先からAIが最適プランを作成しています…", en: "AI is optimizing a plan from your selected stops…", iyo: "選んだ立寄先からAIがええプランを作りよるけん…" },
+  "routeBuilder.planError": { ja: "AIプランを作成できませんでした。", en: "The AI plan could not be generated.", iyo: "AIプランを作れんかったよ。" },
+  "routeBuilder.planFallback": { ja: "現在は概算時刻を表示しています。そのまま編集して旅を始めることもできます。", en: "Estimated fallback times are shown. You can still edit and start this route.", iyo: "今は目安の時刻を出しとるよ。このまま直して始めてもええけん。" },
+  "routeBuilder.planRetry": { ja: "AIでもう一度作る", en: "Try AI again", iyo: "AIでもう一回作る" },
+  "routeBuilder.reoptimize": { ja: "AIで再最適化", en: "Re-optimize with AI", iyo: "AIでもう一回整える" },
   "routeBuilder.moveUp": { ja: "ひとつ前へ", en: "Move earlier", iyo: "前へ" },
   "routeBuilder.moveDown": { ja: "ひとつ後へ", en: "Move later", iyo: "後へ" },
   "routeBuilder.remove": { ja: "ルートから削除", en: "Remove from route", iyo: "ルートから消す" },
@@ -3110,4 +3122,14 @@ Object.assign(UI_LABELS, {
   "routeBuilder.addCustom": { ja: "別の希望から候補を探す", en: "Find another kind of place", iyo: "別の希望で探す" },
   "routeBuilder.complete": { ja: "このルートで旅を始める", en: "Start this route", iyo: "このルートで旅を始める" },
   "routeBuilder.myRoute": { ja: "マイルート", en: "My route", iyo: "マイルート" },
+} satisfies LangDict);
+
+// ---- Debug-only shortcuts (VITE_DEBUG_SKIP_SWIPE) --------------------------
+// These labels only render while the debug flag is on, so they intentionally
+// stay short and untranslated beyond ja / en.
+Object.assign(UI_LABELS, {
+  "debug.label": { ja: "デバッグ", en: "Debug", iyo: "デバッグ" },
+  "debug.skipSwipe": { ja: "スワイプをスキップ", en: "Skip swiping", iyo: "スワイプを飛ばす" },
+  "debug.skipToFinal": { ja: "最終プランへジャンプ", en: "Jump to final plan", iyo: "最終プランへ飛ぶ" },
+  "debug.skipScreen": { ja: "この画面ごとスキップ", en: "Skip this screen", iyo: "この画面ごと飛ばす" },
 } satisfies LangDict);

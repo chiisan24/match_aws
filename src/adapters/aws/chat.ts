@@ -31,10 +31,14 @@ import type {
   RecommendedPlansInput,
   RouteCandidate,
   RouteCandidatesInput,
+  RouteCandidatesResult,
   Spot,
+  TourismRoutePlan,
+  TourismRoutePlanInput,
 } from "../../ports";
 import type { AwsEnv } from "../../config/env";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
+import { CANDIDATE_MINIMUM_COUNT } from "../../domain/candidateFallback";
 import { EHIME_SPOTS } from "../mock/spots";
 import { EHIME_TEMPLES } from "../mock/temples";
 import { AWS_NOT_CONFIGURED } from "./not-configured";
@@ -50,22 +54,54 @@ interface ApiErrorResponse {
   detail?: string;
 }
 
-function chatErrorMessage(status: number, detail = ""): string {
+function chatErrorMessage(
+  status: number,
+  detail = "",
+  apiError = "",
+  retryAfter = "",
+): string {
+  if (status === 429) {
+    const seconds = /^\d+$/.test(retryAfter) ? retryAfter : "60";
+    return `おすすめの再生成は${seconds}秒後にもう一度お試しください。`;
+  }
+  if (status === 400) {
+    return apiError || "おすすめの再生成条件が正しくありません。";
+  }
+  // 利用者向け文言では基盤サービス名を出さない。切り分けに必要な詳細は
+  // console.error 側で status / error / detail を出しているのでそちらを見る。
   if (/AccessDenied|Unauthorized|UnrecognizedClient|InvalidSignature|credential/i.test(detail)) {
-    return "Bedrockの認証に失敗しました。APIキーと適用環境を確認してください。";
+    return "AIの認証に失敗しました。APIキーと適用環境を確認してください。";
   }
   if (/ValidationException|ResourceNotFound|model|inference profile/i.test(detail)) {
-    return "Bedrockモデルを利用できません。モデルIDとリージョンを確認してください。";
+    return "AIモデルを利用できません。モデルIDとリージョンを確認してください。";
   }
   if (/Throttl|TooManyRequests|ServiceUnavailable|timeout/i.test(detail)) {
-    return "Bedrockが混雑中です。少し待ってから再試行してください。";
+    return "AIが混雑中です。少し待ってから再試行してください。";
   }
   return `AIバックエンドでエラーが発生しました（HTTP ${status}）。`;
+}
+
+interface RouteCandidatesApiResponse {
+  candidates?: RouteCandidate[];
+  appliedRadiusMeters?: unknown;
+  minimumCount?: unknown;
+}
+
+/**
+ * Accepts a finite positive number only; anything else (missing field, string,
+ * NaN, zero, negative) falls back to the caller-supplied value.
+ */
+function positiveNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0
+    ? value
+    : fallback;
 }
 
 interface PlanApiResponse {
   stops?: PlanStop[];
 }
+
+const RECOMMENDATION_SCHEMA = "itinerary-v1";
 
 interface RecommendationsApiResponse {
   plans?: RecommendedPlan[];
@@ -78,6 +114,38 @@ interface NavApiResponse {
   address?: string;
   highlights?: string[];
   note?: string;
+}
+
+function validateTourismRoutePlan(
+  input: TourismRoutePlanInput,
+  value: unknown,
+): TourismRoutePlan {
+  const rawStops = (value as { stops?: unknown } | null)?.stops;
+  if (!Array.isArray(rawStops) || rawStops.length !== input.selectedStops.length) {
+    throw new Error("AIルートの立寄先数が一致しません。");
+  }
+  const expectedIds = new Set(input.selectedStops.map((stop) => stop.candidateId));
+  const seen = new Set<string>();
+  let previousTime = "";
+  const stops = rawStops.map((value) => {
+    if (!value || typeof value !== "object") throw new Error("AIルートの形式が不正です。");
+    const raw = value as { candidateId?: unknown; time?: unknown };
+    if (
+      typeof raw.candidateId !== "string"
+      || !expectedIds.has(raw.candidateId)
+      || seen.has(raw.candidateId)
+      || typeof raw.time !== "string"
+      || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(raw.time)
+      || (previousTime && raw.time <= previousTime)
+    ) {
+      throw new Error("AIルートに未知の立寄先、重複、または不正な時刻があります。");
+    }
+    seen.add(raw.candidateId);
+    previousTime = raw.time;
+    return { candidateId: raw.candidateId, time: raw.time };
+  });
+  if (seen.size !== expectedIds.size) throw new Error("AIルートに未配置の立寄先があります。");
+  return { stops };
 }
 
 /**
@@ -162,12 +230,25 @@ export class AwsChatAdapter implements ChatPort {
   ): Promise<RecommendedPlan[]> {
     const base = apiBase(this.env, "ChatPort.generateRecommendedPlans");
     const count = input.count ?? 5;
-    const query = new URLSearchParams({ lang: input.lang, count: String(count) });
+    const date = input.date
+      ?? new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const query = new URLSearchParams({
+      lang: input.lang,
+      count: String(count),
+      schema: RECOMMENDATION_SCHEMA,
+      date,
+    });
     const res = await fetch(`${base}/recommendations?${query.toString()}`, input.refresh
       ? {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ lang: input.lang, count }),
+          body: JSON.stringify({
+            lang: input.lang,
+            count,
+            schema: RECOMMENDATION_SCHEMA,
+            date,
+            exclude: input.exclude ?? [],
+          }),
           cache: "no-store",
         }
       : { method: "GET" });
@@ -178,11 +259,26 @@ export class AwsChatAdapter implements ChatPort {
       } catch {
         // Platform-level failures may return non-JSON bodies.
       }
-      throw new Error(chatErrorMessage(res.status, apiError.detail));
+      // Without this the screen only shows "HTTP 502" and the real cause
+      // (throttling, model output, credentials) is lost.
+      console.error("Recommendations backend failed", {
+        status: res.status,
+        error: apiError.error,
+        detail: apiError.detail,
+      });
+      throw new Error(chatErrorMessage(
+        res.status,
+        apiError.detail,
+        apiError.error,
+        res.headers.get("Retry-After") ?? "",
+      ));
     }
 
     const data = (await res.json()) as RecommendationsApiResponse;
     if (!Array.isArray(data.plans) || data.plans.length !== 5) {
+      console.error("Recommendations backend returned an unexpected shape", {
+        plans: Array.isArray(data.plans) ? data.plans.length : null,
+      });
       throw new Error("おすすめプランを5件取得できませんでした。");
     }
     return data.plans;
@@ -190,7 +286,7 @@ export class AwsChatAdapter implements ChatPort {
 
   async generateRouteCandidates(
     input: RouteCandidatesInput,
-  ): Promise<RouteCandidate[]> {
+  ): Promise<RouteCandidatesResult> {
     const base = apiBase(this.env, "ChatPort.generateRouteCandidates");
     const res = await fetch(`${base}/route-candidates`, {
       method: "POST",
@@ -207,11 +303,42 @@ export class AwsChatAdapter implements ChatPort {
       throw new Error(chatErrorMessage(res.status, apiError.detail));
     }
 
-    const data = (await res.json()) as { candidates?: RouteCandidate[] };
+    const data = (await res.json()) as RouteCandidatesApiResponse;
     if (!Array.isArray(data.candidates) || data.candidates.length === 0) {
       throw new Error("ルート候補を取得できませんでした。");
     }
-    return data.candidates;
+    // Older deployments answer with `{ candidates }` only. Fill the settle
+    // metadata from the request so the route builder's distance check and
+    // shortage guard keep working (Req 4.1, Property 11).
+    return {
+      candidates: data.candidates,
+      appliedRadiusMeters: positiveNumber(
+        data.appliedRadiusMeters,
+        input.area.radiusMeters,
+      ),
+      minimumCount: positiveNumber(data.minimumCount, CANDIDATE_MINIMUM_COUNT),
+    };
+  }
+
+  async generateTourismRoutePlan(
+    input: TourismRoutePlanInput,
+  ): Promise<TourismRoutePlan> {
+    const base = apiBase(this.env, "ChatPort.generateTourismRoutePlan");
+    const res = await fetch(`${base}/tourism-route-plan`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    if (!res.ok) {
+      let apiError: ApiErrorResponse = {};
+      try {
+        apiError = (await res.json()) as ApiErrorResponse;
+      } catch {
+        // Platform-level failures may return non-JSON bodies.
+      }
+      throw new Error(chatErrorMessage(res.status, apiError.detail));
+    }
+    return validateTourismRoutePlan(input, await res.json());
   }
 
   async generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan> {

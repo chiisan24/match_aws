@@ -20,9 +20,22 @@ import type {
   RecommendedPlan,
   RecommendedPlansInput,
   RouteCandidate,
+  RouteCandidateKind,
   RouteCandidatesInput,
+  RouteCandidatesResult,
   Spot,
+  TourismRoutePlan,
+  TourismRoutePlanInput,
 } from "../../ports";
+import {
+  CANDIDATE_BASE_RADIUS_METERS,
+  CANDIDATE_MAXIMUM_COUNT,
+  CANDIDATE_MINIMUM_COUNT,
+  clampCandidateCount,
+  finalizeCandidates,
+} from "../../domain/candidateFallback";
+import { DEFAULT_FALLBACK_POOLS } from "../../data/fallbackPools";
+import { haversineDistanceMeters } from "../../domain/geofence";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
 import { EHIME_SPOTS } from "./spots";
 
@@ -126,17 +139,48 @@ function looksLikeDiscovery(message: string): boolean {
 
 function mockRecommendation(
   id: string,
-  mode: RecommendedPlan["mode"],
   icon: string,
   title: string,
   summary: string,
   imageUrl: string,
-  stopTitles: string[],
+  stopSpecs: Array<{ spotId: string; kind: RouteCandidateKind }>,
 ): RecommendedPlan {
-  const times = ["09:00", "11:30", "14:00"];
+  const times = ["09:00", "11:30", "14:00", "16:00"];
+  const seen = new Set<string>();
+  const stops = stopSpecs.map(({ spotId, kind }, index) => {
+    const spot = EHIME_SPOTS.find((candidate) => candidate.id === spotId);
+    if (!spot || seen.has(spot.id)) {
+      throw new Error(`Invalid mock recommendation spot: ${spotId}`);
+    }
+    seen.add(spot.id);
+    return {
+      time: times[index],
+      kind,
+      title: spot.name,
+      description: spot.localizedDescriptions.ja ?? `${spot.name}をゆっくり楽しみます。`,
+      searchQuery: `${spot.name} 愛媛県`,
+      place: {
+        id: spot.id,
+        name: spot.name,
+        formattedAddress: "愛媛県",
+        location: spot.location,
+        ...(spot.website ? { websiteUri: spot.website } : {}),
+        ...(spot.imageUrls[0] ? { photoUrl: spot.imageUrls[0] } : {}),
+      },
+    };
+  });
+  const center = stops[0]?.place.location;
+  if (
+    !center
+    || stops.length < 2
+    || stops.length > 4
+    || stops.some((stop) => haversineDistanceMeters(center, stop.place.location) > 5_000)
+  ) {
+    throw new Error(`Mock recommendation ${id} must contain two to four stops within 5km.`);
+  }
   return {
     id,
-    mode,
+    mode: "tourism",
     icon,
     title,
     summary,
@@ -145,26 +189,47 @@ function mockRecommendation(
     transport: "車＋徒歩",
     intensity: "ふつう",
     imageUrl,
-    stops: stopTitles.map((stopTitle, index) => ({
-      time: times[index] ?? `${9 + index * 2}:00`,
-      title: stopTitle,
-      description: `${stopTitle}をゆっくり楽しみます。`,
-      searchQuery: `${stopTitle} 愛媛県`,
-    })),
+    area: { center, radiusMeters: 5_000 },
+    stops,
   };
 }
 
 const MOCK_RECOMMENDATIONS: RecommendedPlan[] = [
-  mockRecommendation("matsuyama", "tourism", "🏯", "松山の王道を楽しむ旅", "松山城と道後温泉を巡る定番コース。", "/images/ehime/matsuyama-castle.jpg", ["松山城", "道後温泉", "大街道"]),
-  mockRecommendation("dogo", "tourism", "♨️", "道後でほどける温泉旅", "温泉街とカフェをのんびり楽しみます。", "/images/ehime/onsen-bath.jpg", ["道後温泉本館", "道後商店街", "道後公園"]),
-  mockRecommendation("uchiko", "tourism", "🏘️", "内子の町並みと手仕事", "歴史ある町並みを歩く静かな旅。", "/images/ehime/uchiko-townscape.jpg", ["内子町並保存地区", "内子座", "道の駅 内子フレッシュパークからり"]),
-  mockRecommendation("nanyo", "tourism", "🌿", "南予の城下町と里山", "宇和島の歴史と穏やかな風景に触れる旅。", "/images/ehime/uwajima-castle.jpg", ["宇和島城"]),
-  mockRecommendation("shimanami", "tourism", "🚲", "しまなみ海道の絶景旅", "橋と海を眺めながら島時間を楽しみます。", "/images/ehime/kurushima-bridge.jpg", ["来島海峡展望館", "亀老山展望公園", "大山祇神社"]),
+  mockRecommendation("matsuyama", "🏯", "松山の王道と郷土料理", "松山城と愛媛の味を巡る定番コース。", "/images/ehime/matsuyama-castle.jpg", [
+    { spotId: "osm-node-611661255", kind: "sightseeing" },
+    { spotId: "curated-food-gansui-matsuyama", kind: "food" },
+  ]),
+  mockRecommendation("dogo", "♨️", "道後でほどける温泉旅", "温泉街をのんびり楽しみます。", "/images/ehime/onsen-bath.jpg", [
+    { spotId: "osm-way-235751036", kind: "sightseeing" },
+    { spotId: "osm-node-5697638322", kind: "sightseeing" },
+  ]),
+  mockRecommendation("uwajima", "🏯", "宇和島の城下町と味", "宇和島の歴史と郷土料理に触れる旅。", "/images/ehime/uwajima-castle.jpg", [
+    { spotId: "osm-node-3698448508", kind: "sightseeing" },
+    { spotId: "osm-node-1423733742", kind: "sightseeing" },
+    { spotId: "curated-food-hozumitei-uwajima", kind: "food" },
+  ]),
+  mockRecommendation("imabari", "🍳", "今治のご当地グルメ旅", "今治名物を食べ比べる気軽な旅。", "/images/ehime/imabari-castle.jpg", [
+    { spotId: "curated-food-hakurakuten-imabari", kind: "food" },
+    { spotId: "curated-food-shigematsu-imabari", kind: "food" },
+  ]),
+  mockRecommendation("mitsuhama", "🌊", "三津浜のまち歩きと味", "港町で名物の三津浜焼きを楽しみます。", "/images/ehime/seaside-rails.jpg", [
+    { spotId: "curated-food-hinode-mitsuhama", kind: "food" },
+    { spotId: "curated-food-konaya-mitsuhama", kind: "food" },
+  ]),
 ];
 
-function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidate[] {
-  const used = new Set(input.route.map((stop) => stop.placeId));
-  let pool = EHIME_SPOTS.filter((spot) => !used.has(spot.id));
+/**
+ * Mock swipe candidates settled through the shared finalisation logic, so the
+ * mock adapter obeys the same count clamping, radius expansion and Fallback
+ * rules as `api/route-candidates.ts` (Req 6.1-6.4 / Property 13).
+ */
+function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidatesResult {
+  const usedPlaceIds = input.route.map((stop) => stop.placeId);
+  const used = new Set(usedPlaceIds);
+  let pool = EHIME_SPOTS.filter(
+    (spot) => !used.has(spot.id)
+      && haversineDistanceMeters(input.area.center, spot.location) <= input.area.radiusMeters,
+  );
   if (input.kind === "food" || input.kind === "cafe") {
     pool = pool.filter((spot) => spot.category === "food");
     if (input.kind === "cafe") {
@@ -175,7 +240,12 @@ function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidate[] {
     pool = pool.filter((spot) => spot.category !== "food");
   }
 
-  return pool.slice(0, input.count ?? 6).map((spot) => ({
+  const count = clampCandidateCount(
+    input.count,
+    input.kind === "cafe" ? 4 : 6,
+    input.kind === "sightseeing" ? CANDIDATE_MINIMUM_COUNT : 3,
+  );
+  const primary: RouteCandidate[] = pool.slice(0, count).map((spot) => ({
     id: `${input.kind}:${spot.id}`,
     kind: input.kind,
     title: spot.name,
@@ -193,6 +263,71 @@ function mockRouteCandidates(input: RouteCandidatesInput): RouteCandidate[] {
       ...(spot.imageUrls[0] ? { photoUrl: spot.imageUrls[0] } : {}),
     },
   }));
+
+  return finalizeCandidates(
+    primary,
+    {
+      kind: input.kind,
+      lang: input.lang,
+      center: input.area.center,
+      baseRadiusMeters: Math.min(CANDIDATE_BASE_RADIUS_METERS, input.area.radiusMeters),
+      usedPlaceIds,
+      maximumCount: CANDIDATE_MAXIMUM_COUNT,
+    },
+    DEFAULT_FALLBACK_POOLS,
+  );
+}
+
+function mockTourismRoutePlan(input: TourismRoutePlanInput): TourismRoutePlan {
+  if (input.selectedStops.length === 0) return { stops: [] };
+
+  const routeFrom = (startIndex: number): TourismRoutePlanInput["selectedStops"] => {
+    const remaining = [...input.selectedStops];
+    const ordered = [remaining.splice(startIndex, 1)[0]];
+    while (remaining.length > 0) {
+      const previous = ordered[ordered.length - 1];
+      let nearestIndex = 0;
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      remaining.forEach((candidate, index) => {
+        const distance = haversineDistanceMeters(previous.location, candidate.location);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestIndex = index;
+        }
+      });
+      ordered.push(remaining.splice(nearestIndex, 1)[0]);
+    }
+    return ordered;
+  };
+  const routeDistance = (stops: TourismRoutePlanInput["selectedStops"]): number => stops
+    .slice(1)
+    .reduce((total, stop, index) => total + haversineDistanceMeters(stops[index].location, stop.location), 0);
+
+  let ordered = input.selectedStops
+    .map((_, index) => routeFrom(index))
+    .reduce((best, candidate) => routeDistance(candidate) < routeDistance(best) ? candidate : best);
+
+  const mealIndex = ordered.findIndex((stop) => stop.kind === "food");
+  if (mealIndex >= 0 && ordered.length >= 3) {
+    const [meal] = ordered.splice(mealIndex, 1);
+    const lunchIndex = Math.min(ordered.length, Math.max(1, Math.round(ordered.length * 0.35)));
+    ordered.splice(lunchIndex, 0, meal);
+  }
+
+  const [startHours = "09", startMinutes = "00"] = (input.startTime ?? "09:00").split(":");
+  let cursor = Number(startHours) * 60 + Number(startMinutes);
+  const dwellMinutes = Math.max(35, Math.min(65, Math.floor(540 / ordered.length)));
+  return {
+    stops: ordered.map((stop, index) => {
+      const result = { candidateId: stop.candidateId, time: formatTime(cursor) };
+      const next = ordered[index + 1];
+      if (next) {
+        const travelMinutes = Math.max(10, Math.round(haversineDistanceMeters(stop.location, next.location) / 500));
+        cursor += dwellMinutes + travelMinutes;
+      }
+      return result;
+    }),
+  };
 }
 
 export class MockChatAdapter implements ChatPort {
@@ -233,8 +368,14 @@ export class MockChatAdapter implements ChatPort {
 
   async generateRouteCandidates(
     input: RouteCandidatesInput,
-  ): Promise<RouteCandidate[]> {
+  ): Promise<RouteCandidatesResult> {
     return mockRouteCandidates(input);
+  }
+
+  async generateTourismRoutePlan(
+    input: TourismRoutePlanInput,
+  ): Promise<TourismRoutePlan> {
+    return mockTourismRoutePlan(input);
   }
 
   async generatePilgrimagePlan(input: PlanInput): Promise<PilgrimagePlan> {

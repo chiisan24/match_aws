@@ -42,6 +42,7 @@ import {
 
 import { useTourism } from "../../app/TourismContext";
 import { useGeneratedImage } from "../../app/ImageContext";
+import { debugSkipSwipeEnabled } from "../../config/debug";
 import {
   classifySwipe,
   recommendSimilarSpots,
@@ -384,6 +385,26 @@ export function SwipeDeck({ onBackToChat }: SwipeDeckProps): JSX.Element {
       )}
 
       {!exhausted && <p className="swipe__hint">{t("swipe.hint")}</p>}
+
+      {/* Debug-only skip: jump to the done panel without recording swipes.
+          Removed from production builds by the flag. */}
+      {debugSkipSwipeEnabled && !exhausted && (
+        <div className="debug-skip" role="group" aria-label={t("debug.label")}>
+          <span className="debug-skip__tag">{t("debug.label")}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            leading="⏭"
+            onClick={() => {
+              setOffset(null);
+              dragStart.current = null;
+              setIndex(deck.length);
+            }}
+          >
+            {t("debug.skipSwipe")}
+          </Button>
+        </div>
+      )}
 
       {/* 「あなたへのおすすめ」 — appears once history exists (Req 4.6). */}
       {swipeHistory.length > 0 && (
