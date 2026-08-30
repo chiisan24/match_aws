@@ -1,0 +1,5 @@
+# Test files must not be uploaded: `functions` in vercel.json matches
+# `api/**/*.ts`, so a co-located `*.test.ts` would be turned into a Serverless
+# Function of its own. They are needed for `npm test`, never for a deployment.
+api/**/*.test.ts
+api/**/*.spec.ts
