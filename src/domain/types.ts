@@ -349,10 +349,16 @@ export interface RecommendedPlansInput {
 }
 
 /**
- * Origin of a route candidate. Primary candidates come from Bedrock proposals
- * verified by Google Places; the others are local-data fallbacks.
+ * Origin of a route candidate.
+ *
+ * - `primary` … Bedrock proposal verified by Google Places.
+ * - `temple` / `spot` … local-data fallbacks that top a short proposal up.
+ * - `rest` … Google Places nearby search for somewhere to take a break
+ *   (公園 / 公民館 / 道の駅 など). Used only when a kind yields nothing at all,
+ *   e.g. asking for a café in a mountain valley. Shown as a clearly labelled
+ *   substitute so it is never mistaken for the kind that was requested.
  */
-export type CandidateSource = "primary" | "temple" | "spot";
+export type CandidateSource = "primary" | "temple" | "spot" | "rest";
 
 /** A Google-verified candidate presented by the interactive route builder. */
 export interface RouteCandidate {
@@ -361,7 +367,10 @@ export interface RouteCandidate {
   title: string;
   description: string;
   searchQuery: string;
-  /** Omitted means primary (Google-verified). Fallbacks use "temple" / "spot". */
+  /**
+   * Omitted means primary (Google-verified). Fallbacks use "temple" / "spot",
+   * and "rest" marks a break spot standing in for an empty result.
+   */
   source?: CandidateSource;
   place: RecommendedPlace & { location: GeoPoint };
 }

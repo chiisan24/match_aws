@@ -5246,6 +5246,20 @@ textarea.nokyocho-field__control {
   font-size: var(--text-sm);
 }
 
+/* 休憩スポットへの差し替え通知。障害ではないので危険色は使わず、みかん色の枠で
+   「いつもと違う状態」だけを示す。 */
+.route-builder__notice {
+  border-color: var(--color-mikan-300);
+  background: var(--color-mikan-100);
+  color: var(--color-mikan-700);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.route-builder__notice p {
+  margin: 0;
+}
+
 .route-builder__question-icon {
   display: block;
   font-size: 3rem;

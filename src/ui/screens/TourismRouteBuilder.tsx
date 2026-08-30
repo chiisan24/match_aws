@@ -339,6 +339,12 @@ function BinarySwipeDeck({
               <Tag tone={current.kind === "food" || current.kind === "cafe" ? "accent" : "teal"}>
                 {t(`routeBuilder.kind.${current.kind}`)}
               </Tag>
+              {/* 休憩スポットは要求された種別の代わりに出しているので、種別タグの
+                  隣に明示する。カフェを頼んだのに公民館が出ている、という取り違えを
+                  カード単位でも防ぐ。 */}
+              {current.source === "rest" ? (
+                <Tag tone="outline" leading="🌿">{t("routeBuilder.restTag")}</Tag>
+              ) : null}
               {current.source === "temple" ? (
                 <Tag tone="moss" leading="🛕">{t("routeBuilder.templeTag")}</Tag>
               ) : null}
@@ -696,6 +702,11 @@ export function TourismRouteBuilder({
   };
 
   const exhausted = candidateStage && status === "ready" && index >= candidates.length;
+  // 要求された種別が周辺に無く、サーバーが休憩スポットに差し替えた状態。応答に
+  // 専用フラグは持たせず `source` から導出しているので、ポートの契約を広げずに
+  // 判定できる。全件が rest のときだけ「見つからなかった」と言い切れる。
+  const restFallback = candidates.length > 0
+    && candidates.every((candidate) => candidate.source === "rest");
   const nextAfterDeck = (): void => {
     if (stage === "sightseeing") setStage("food-question");
     else if (stage === "food") setStage("cafe-question");
@@ -776,6 +787,16 @@ export function TourismRouteBuilder({
             <h2>{t(`routeBuilder.heading.${stage}`)}</h2>
             <p>{t(`routeBuilder.lead.${stage}`)}</p>
           </div>
+          {/* 差し替えが起きたことを、スワイプを始める前に必ず伝える。「カフェを
+              探した結果カフェが出ている」と誤解したまま選ばせない。 */}
+          {restFallback ? (
+            <Card className="route-builder__notice" raised>
+              <p role="status">
+                {t("routeBuilder.restFallbackNotice")
+                  .replace("{kind}", t(`routeBuilder.kind.${stage}`))}
+              </p>
+            </Card>
+          ) : null}
           <BinarySwipeDeck
             candidates={candidates}
             index={index}

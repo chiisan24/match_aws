@@ -2761,6 +2761,14 @@ Object.assign(UI_LABELS, {
   "routeBuilder.loading.custom": { ja: "リクエストに合う場所を探しています…", en: "Finding places matching your request…", iyo: "希望に合うところを探しよるけん…" },
   "routeBuilder.loadError": { ja: "候補を取得できませんでした。もう一度お試しください。", en: "Candidates could not be loaded. Please try again.", iyo: "候補を取れんかったけん、もう一回試してや。" },
   "routeBuilder.retry": { ja: "もう一度探す", en: "Try again", iyo: "もう一回探す" },
+  // 要求された種別が周辺に無く、休憩スポットで代替したときの通知。差し替えたことを
+  // 先に言い切ってから代替を見せる。`{kind}` は routeBuilder.kind.* が入る。
+  "routeBuilder.restFallbackNotice": {
+    ja: "この周辺に{kind}は見つかりませんでした。代わりに、ひと休みできる場所（公園・公民館・道の駅など）を表示しています。",
+    en: "No {kind} was found nearby. Showing places to take a break instead — parks, community centres and roadside stations.",
+    iyo: "この辺に{kind}は無かったけん。代わりに、ひと休みできる場所（公園・公民館・道の駅など）を出しとるよ。",
+  },
+  "routeBuilder.restTag": { ja: "休憩スポット", en: "Break spot", iyo: "休憩スポット" },
   // 候補 0 件は「この周辺に実在しない」ことが理由の場合があり、再試行では解決
   // しない。任意の工程（食事 / カフェ / リクエスト）では先へ進める旨を添える。
   "routeBuilder.loadErrorSkipHint": {

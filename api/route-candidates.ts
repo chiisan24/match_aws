@@ -1,7 +1,11 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { errorDetail } from "./_aws.js";
 import { extractJson, invokeClaude } from "./_bedrock.js";
-import { searchEhimePlace, type EnrichedPlace } from "./_google-places.js";
+import {
+  searchEhimePlace,
+  searchEhimeRestStops,
+  type EnrichedPlace,
+} from "./_google-places.js";
 import {
   CANDIDATE_MAXIMUM_COUNT,
   CANDIDATE_MINIMUM_COUNT,
@@ -124,6 +128,66 @@ function isKind(value: unknown): value is CandidateKind {
   return value === "sightseeing" || value === "food" || value === "cafe" || value === "custom";
 }
 
+/**
+ * Radius used to look for a break spot, and the description put on one.
+ *
+ * The radius is widened to at least 10km because the whole point is a rural area
+ * where the requested kind does not exist; a 5km circle around a mountain valley
+ * usually holds nothing either. Showing something 15km away is fine here because
+ * every card displays its distance from the centre, so the trade-off is visible
+ * to the user rather than hidden.
+ */
+const REST_STOP_RADIUS_FLOOR_METERS = 10_000;
+const REST_STOP_RADIUS_CEILING_METERS = 20_000;
+
+/** ja / en descriptions. `api/` has no access to the client label dictionary. */
+const REST_STOP_DESCRIPTION: Record<string, string> = {
+  ja: "ひと休みできる場所です。",
+  en: "Somewhere to take a break.",
+};
+
+/**
+ * Break spots standing in for an empty result.
+ *
+ * Marked `source: "rest"` so the route builder can say "no café was found here"
+ * instead of passing a 公民館 off as a café.
+ */
+async function restStopCandidates(
+  kind: CandidateKind,
+  lang: string,
+  area: CandidateArea,
+  appliedRadiusMeters: number,
+  usedPlaceIds: readonly string[],
+  limit: number,
+): Promise<{ candidates: RouteCandidate[]; appliedRadiusMeters: number }> {
+  const radiusMeters = Math.min(
+    REST_STOP_RADIUS_CEILING_METERS,
+    Math.max(appliedRadiusMeters, REST_STOP_RADIUS_FLOOR_METERS),
+  );
+  const places = await searchEhimeRestStops(
+    { center: area.center, radiusMeters },
+    lang,
+    limit,
+  );
+  const used = new Set(usedPlaceIds);
+  const description = REST_STOP_DESCRIPTION[lang] ?? REST_STOP_DESCRIPTION.ja;
+  const candidates: RouteCandidate[] = [];
+  for (const place of places) {
+    if (!place.location || used.has(place.id)) continue;
+    used.add(place.id);
+    candidates.push({
+      id: `${kind}:rest:${place.id}`,
+      kind,
+      title: place.name,
+      description,
+      searchQuery: place.name,
+      source: "rest",
+      place: { ...place, location: place.location },
+    });
+  }
+  return { candidates, appliedRadiusMeters: radiusMeters };
+}
+
 async function generateCandidates(
   input: CandidateInput,
   kind: CandidateKind,
@@ -195,7 +259,7 @@ async function generateCandidates(
 
   // Primary candidates stay inside the base radius; only local fallbacks may
   // step the radius outwards (Req 8.3).
-  return finalizeCandidates(primary, {
+  const settled = finalizeCandidates(primary, {
     kind,
     lang,
     center: area.center,
@@ -204,6 +268,33 @@ async function generateCandidates(
     maximumCount: CANDIDATE_MAXIMUM_COUNT,
     minimumCount: kind === "sightseeing" ? CANDIDATE_MINIMUM_COUNT : undefined,
   }, DEFAULT_FALLBACK_POOLS);
+  if (settled.candidates.length > 0) return settled;
+
+  // Nothing of the requested kind exists around here — asking for a café near
+  // 面河渓 is the real case. The local pools cannot help: they only carry
+  // 観光 / 温泉 / みやげ / 飲食, and `finalizeCandidates` tops up `sightseeing`
+  // only. Rather than answering 502 and leaving the screen with a retry button
+  // that can never succeed, offer somewhere to take a break instead, clearly
+  // marked as a substitute.
+  const rest = await restStopCandidates(
+    kind,
+    lang,
+    area,
+    settled.appliedRadiusMeters,
+    routePlaceIds,
+    CANDIDATE_MAXIMUM_COUNT,
+  );
+  if (rest.candidates.length === 0) return settled;
+  console.info("route-candidates rest fallback", {
+    kind,
+    count: rest.candidates.length,
+    radiusMeters: rest.appliedRadiusMeters,
+  });
+  return {
+    candidates: rest.candidates,
+    appliedRadiusMeters: rest.appliedRadiusMeters,
+    minimumCount: settled.minimumCount,
+  };
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {

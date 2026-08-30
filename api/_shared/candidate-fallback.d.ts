@@ -18,7 +18,7 @@
  */
 
 /** Origin of a route candidate. Mirrors `CandidateSource` in src/domain/types.ts. */
-export type CandidateSource = "primary" | "temple" | "spot";
+export type CandidateSource = "primary" | "temple" | "spot" | "rest";
 
 /** Mirrors `RouteCandidateKind` in src/domain/types.ts. */
 export type RouteCandidateKind = "sightseeing" | "food" | "cafe" | "custom";
@@ -55,7 +55,10 @@ export interface RouteCandidate {
   title: string;
   description: string;
   searchQuery: string;
-  /** Omitted means primary (Google-verified). Fallbacks use "temple" / "spot". */
+  /**
+   * Omitted means primary (Google-verified). Fallbacks use "temple" / "spot",
+   * and "rest" marks a break spot standing in for an empty result.
+   */
   source?: CandidateSource;
   place: CandidatePlace & { location: GeoPoint };
 }
