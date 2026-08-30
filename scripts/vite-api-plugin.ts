@@ -6,7 +6,6 @@ type ApiModule = {
 };
 
 const ROUTES: Record<string, () => Promise<ApiModule>> = {
-  "/api/chat": () => import("../api/chat.ts"),
   "/api/plan": () => import("../api/plan.ts"),
   "/api/recommendations": () => import("../api/recommendations.ts"),
   "/api/route-candidates": () => import("../api/route-candidates.ts"),

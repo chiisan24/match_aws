@@ -215,7 +215,7 @@ function FavoriteRow({
         <span className="fav-row__meta">
           <span className="fav-row__name">{spot.name}</span>
           <span className="fav-row__tags">
-            <Tag tone="accent">{t(`swipe.category.${spot.category}`)}</Tag>
+            <Tag tone="accent">{t(`spot.category.${spot.category}`)}</Tag>
             {kind === "shiori" && <Tag tone="teal">{t("fav.tab.shiori")}</Tag>}
           </span>
           <span className="fav-row__desc">
@@ -275,7 +275,7 @@ function FavoriteDetail({
         <h2 id="fav-detail-heading" className="fav-detail__name">
           {spot.name}
         </h2>
-        <Tag tone="accent">{t(`swipe.category.${spot.category}`)}</Tag>
+        <Tag tone="accent">{t(`spot.category.${spot.category}`)}</Tag>
       </div>
 
       <p className="fav-detail__desc">{localizedDescription(spot, lang)}</p>
@@ -287,7 +287,7 @@ function FavoriteDetail({
             {"☆".repeat(Math.max(0, 5 - Math.round(avgRating)))}
           </span>
           <span className="fav-detail__reviews-count">
-            {t("swipe.reviewCount").replace(
+            {t("spot.reviewCount").replace(
               "{count}",
               String(spot.reviews.length),
             )}
@@ -323,7 +323,7 @@ function FavoriteDetail({
                   <span className="fav-detail__related-meta">
                     <span className="fav-detail__related-name">{rel.name}</span>
                     <span className="fav-detail__related-cat">
-                      {t(`swipe.category.${rel.category}`)}
+                      {t(`spot.category.${rel.category}`)}
                     </span>
                   </span>
                 </button>

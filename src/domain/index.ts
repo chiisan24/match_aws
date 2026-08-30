@@ -14,18 +14,12 @@ export type * from "./types";
 // remaining/total accounting, today/this-month tallies (task 3.1, Req 9).
 export * from "./progress";
 
-// Swipe discovery domain logic (task 4.1).
+// Route-builder candidate -> spot conversion and collection merge (Req 1, 4).
 export {
-  classifySwipe,
-  generateRecommendations,
-  buildSuggestionPayload,
-} from "./swipe";
-export type {
-  SwipeDir,
-  SwipeClassification,
-  SwipeRecord,
-  Identifiable,
-} from "./swipe";
+  spotFromRouteCandidate,
+  spotsFromRouteCandidates,
+  appendUniqueById,
+} from "./routeCandidate";
 
 // Task 4.5 — shiori reorder, temple filter, geofence, layer filter, label resolution.
 export { reorder } from "./reorder";

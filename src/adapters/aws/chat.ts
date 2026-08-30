@@ -1,17 +1,13 @@
 /**
- * AWS ChatPort adapter — real AI travel advisor & plan generation.
+ * AWS ChatPort adapter — real AI plan generation.
  *
  * The browser must never hold AWS credentials, so this adapter calls the app's
  * serverless API (Vercel Functions), which in turn invokes **Amazon Bedrock**
  * (an Anthropic Claude model) server-side:
  *
- *   - `sendMessage`            → POST `{apiEndpoint}/chat`
  *   - `generatePilgrimagePlan` → POST `{apiEndpoint}/plan`
  *
- * For destination-discovery moments the chat backend may return a list of
- * `recommendedSpotIds`; we map those back onto the curated {@link EHIME_SPOTS}
- * catalogue so the swipe deck receives full {@link Spot} objects (Req 3.2). The
- * temple/spot catalogues are sent along with the request so the model can pick
+ * The temple catalogue is sent along with the request so the model can pick
  * from real data rather than inventing places.
  *
  * On any failure the methods throw, which the UI surfaces as an error + retry
@@ -20,8 +16,6 @@
 
 import type {
   ChatPort,
-  ChatReply,
-  ChatSession,
   NextTempleNavEstimate,
   NextTempleNavInput,
   PilgrimagePlan,
@@ -33,7 +27,6 @@ import type {
   RouteCandidate,
   RouteCandidatesInput,
   RouteCandidatesResult,
-  Spot,
   TourismRoutePlan,
   TourismRoutePlanInput,
 } from "../../ports";
@@ -41,15 +34,8 @@ import type { AwsEnv } from "../../config/env";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
 import { CANDIDATE_MINIMUM_COUNT } from "../../domain/candidateFallback";
 import { isTourismRecommendations } from "../../domain/itineraryContract";
-import { EHIME_SPOTS } from "../mock/spots";
 import { EHIME_TEMPLES } from "../mock/temples";
 import { AWS_NOT_CONFIGURED } from "./not-configured";
-
-interface ChatApiResponse {
-  reply?: string;
-  message?: string;
-  recommendedSpotIds?: string[];
-}
 
 interface ApiErrorResponse {
   error?: string;
@@ -166,68 +152,6 @@ function apiBase(env: AwsEnv, operation: string): string {
 
 export class AwsChatAdapter implements ChatPort {
   constructor(private readonly env: AwsEnv) {}
-
-  async sendMessage(
-    session: ChatSession,
-    message: string,
-  ): Promise<ChatReply> {
-    const base = apiBase(this.env, "ChatPort.sendMessage");
-
-    // Full turn history + the new user message, plus a compact catalogue the
-    // model can recommend from.
-    const messages = [
-      ...session.messages.map((m) => ({ role: m.role, text: m.text })),
-      { role: "user" as const, text: message },
-    ];
-    const catalog = EHIME_SPOTS.map((s) => ({
-      id: s.id,
-      name: s.name,
-      category: s.category,
-      description: s.localizedDescriptions.ja ?? "",
-    }));
-
-    const res = await fetch(`${base}/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        lang: session.lang,
-        messages,
-        preferences: session.preferences ?? null,
-        catalog,
-      }),
-    });
-    if (!res.ok) {
-      let apiError: ApiErrorResponse = {};
-      try {
-        apiError = (await res.json()) as ApiErrorResponse;
-      } catch {
-        // Some platform-level failures return HTML rather than JSON.
-      }
-      console.error("Chat backend failed", {
-        status: res.status,
-        error: apiError.error,
-        detail: apiError.detail,
-      });
-      throw new Error(chatErrorMessage(res.status, apiError.detail));
-    }
-
-    const data = (await res.json()) as ChatApiResponse;
-    const replyText = data.reply ?? data.message;
-    if (!replyText) {
-      throw new Error("Chat backend returned no message.");
-    }
-
-    const reply: ChatReply = { message: replyText };
-    const ids = data.recommendedSpotIds;
-    if (ids && ids.length > 0) {
-      const byId = new Map(EHIME_SPOTS.map((s) => [s.id, s] as const));
-      const candidates = ids
-        .map((id) => byId.get(id))
-        .filter((s): s is Spot => s != null);
-      if (candidates.length > 0) reply.spotCandidates = candidates;
-    }
-    return reply;
-  }
 
   async generateRecommendedPlans(
     input: RecommendedPlansInput,

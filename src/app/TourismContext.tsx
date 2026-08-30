@@ -1,26 +1,27 @@
 /**
  * Tourism React wiring: the {@link TourismProvider} context and {@link useTourism}
- * hook — the shared state seam for 通常観光モード (Req 3).
+ * hook — the shared state seam for 通常観光モード.
  *
- * This store is the hand-off point between the tourism screens that tasks
- * 8.1 / 8.3 / 8.5 / 8.8 build:
+ * This store owns the three pieces of state the tourism screens read and write:
  *
- *  - **Chat session** (Req 3.1, 3.5): the running conversation with the AI
- *    advisor, sent/received through the injected {@link ChatPort}. Friendly,
- *    non-robotic copy comes from the adapter (mock by default — Req 3.6).
- *  - **Swipe candidate hand-off** (Req 3.2): when a chat reply carries
- *    `spotCandidates` (a destination-discovery moment), they are stored here so
- *    the swipe screen (task 8.3) can consume them via {@link useTourism}.
- *  - **Swipe history → preferences** (Req 3.3): the swipe screen records each
- *    swipe with {@link TourismContextValue.recordSwipe}; the accumulated history
- *    is folded into `session.preferences` with `buildSuggestionPayload`, so the
- *    next suggestion request reflects what the user liked / skipped.
- *  - **Error + retry** (Req 3.4): a failed `sendMessage` surfaces an error and
- *    {@link TourismContextValue.retry} re-runs the exact same request.
+ *  - **お気に入り** (`favorites`): the spots the user marked 「興味あり」 while
+ *    building a route. Added de-duplicated by id, removed by id, and surfaced by
+ *    the favorites screen and the map's お気に入り layer.
+ *  - **しおり** (`shiori`): the single ordered itinerary list. It is appended to,
+ *    removed from and reordered through the pure {@link reorder} helper, and is
+ *    the one list the しおり editor, the favorites しおり tab and the map all read.
+ *  - **{@link TourismContextValue.activePlan}**: the recommendation picked during
+ *    onboarding, which the map uses to draw the guided route.
  *
- * The {@link ChatPort} is injected as a prop so the provider stays fully
- * injectable/testable — tests pass a fake port, the app passes `gateway.chat`
- * (the mock adapter when AWS is not configured, Req 3.6 / 16.2).
+ * **Persistence** is delegated to the optional {@link StoragePort} prop. Both
+ * the しおり (`"shiori"` key) and お気に入り (`"favorites"` key) are rehydrated
+ * once on mount and re-saved on every change. Each list gets its own hydration
+ * guard and its own pair of effects, so the two keys are persisted
+ * independently and a failure on one never blocks the other (Req 3.8). The
+ * guard keeps the empty initial value from overwriting saved data before the
+ * load resolves, and both directions swallow failures so the in-memory lists
+ * stay authoritative and the UI keeps working. With no port injected the state
+ * simply lives in memory.
  */
 
 import {
@@ -35,19 +36,9 @@ import {
 } from "react";
 
 import { reorder } from "../domain/reorder";
-import { buildSuggestionPayload, type SwipeRecord } from "../domain/swipe";
-import type {
-  ChatMessage,
-  ChatSession,
-  LangCode,
-  RecommendedPlan,
-  Spot,
-  StorageKey,
-} from "../domain/types";
-import type { ChatPort, StoragePort } from "../ports";
-
-/** Status of the chat request lifecycle, used to drive the UI. */
-export type ChatStatus = "idle" | "sending" | "error";
+import { appendUniqueById } from "../domain/routeCandidate";
+import type { RecommendedPlan, Spot, StorageKey } from "../domain/types";
+import type { StoragePort } from "../ports";
 
 /**
  * A saved travel plan surfaced under the favorites 「プラン」 tab (Req 5.2).
@@ -135,24 +126,6 @@ export interface TourismContextValue {
   activePlan: RecommendedPlan | null;
   /** Select the itinerary that the tourism map should guide. */
   selectPlan: (plan: RecommendedPlan) => void;
-  /** The running chat session (messages + accumulated preferences). */
-  session: ChatSession;
-  /** Convenience accessor for the conversation turns. */
-  messages: ChatMessage[];
-  /** Current chat request status (idle / sending / error). */
-  chatStatus: ChatStatus;
-  /** Safe diagnostic message for the most recent chat failure. */
-  chatError: string | null;
-  /** True while a request is in flight. */
-  isSending: boolean;
-  /** True when the last request failed and a retry is available (Req 3.4). */
-  hasError: boolean;
-  /** Spot candidates handed off from chat for the swipe deck (Req 3.2). */
-  swipeCandidates: Spot[];
-  /** True when there are candidates waiting to be swiped. */
-  hasCandidates: boolean;
-  /** The accumulated swipe history (drives preferences, Req 3.3). */
-  swipeHistory: SwipeRecord[];
   /**
    * Spots swiped right — 「行きたい」/ お気に入り (Req 4.2). The home that the
    * favorites screen (task 8.5) consumes.
@@ -163,22 +136,18 @@ export interface TourismContextValue {
    * screen (task 8.8) consumes.
    */
   shiori: Spot[];
-  /** Spots swiped down — saved to the 「後で見る」 list (Req 4.5). */
-  later: Spot[];
-  /** Send a user message to the AI advisor (Req 3.1). */
-  sendMessage: (text: string) => Promise<void>;
-  /** Re-run the most recent (failed) request unchanged (Req 3.4). */
-  retry: () => Promise<void>;
-  /** Record a swipe so it feeds back into suggestion preferences (Req 3.3). */
-  recordSwipe: (record: SwipeRecord) => void;
-  /** Clear the pending swipe candidates once the deck has consumed them. */
-  clearCandidates: () => void;
   /** Add a spot to お気に入り — 右スワイプ (Req 4.2). De-duplicated by id. */
   addFavorite: (spot: Spot) => void;
   /** Remove a spot from お気に入り by id — leaves the favorites list (Req 5.3). */
   removeFavorite: (spotId: string) => void;
   /** Add a spot to the しおり — 上スワイプ (Req 4.4). De-duplicated by id. */
   addToShiori: (spot: Spot) => void;
+  /**
+   * Add every spot in `spots` to the しおり in one update, skipping ids already
+   * present (Req 4.1-4.4). Used by the route builder when the user starts the
+   * trip; an empty list is a no-op (Req 4.9).
+   */
+  addSpotsToShiori: (spots: Spot[]) => void;
   /** Remove a spot from the しおり by id — leaves the しおり (Req 6.3). */
   removeFromShiori: (spotId: string) => void;
   /**
@@ -187,97 +156,50 @@ export interface TourismContextValue {
    * (Property 11). Accessible up/down controls in the editor drive this.
    */
   reorderShiori: (from: number, to: number) => void;
-  /** Add a spot to 「後で見る」 — 下スワイプ (Req 4.5). De-duplicated by id. */
-  addToLater: (spot: Spot) => void;
 }
 
 const TourismContext = createContext<TourismContextValue | null>(null);
 
 /** Storage key the しおり is persisted under (Req 6.4). */
 const SHIORI_KEY: StorageKey = "shiori";
+/** Storage key お気に入り is persisted under (Req 3.1, 3.2). */
+const FAVORITES_KEY: StorageKey = "favorites";
 
 /** Internal store shape held in a single state object. */
 interface TourismState {
   activePlan: RecommendedPlan | null;
-  session: ChatSession;
-  chatStatus: ChatStatus;
-  chatError: string | null;
-  swipeCandidates: Spot[];
-  swipeHistory: SwipeRecord[];
   /** お気に入り (右スワイプ, Req 4.2). */
   favorites: Spot[];
-  /** しおり (上スワイプ, Req 4.4). */
+  /** しおり (Req 4.4). */
   shiori: Spot[];
-  /** 後で見る (下スワイプ, Req 4.5). */
-  later: Spot[];
 }
 
 export interface TourismProviderProps {
-  /** Chat backend; inject `gateway.chat` in the app, a fake in tests. */
-  chat: ChatPort;
   /**
    * Persistence backend; inject `gateway.storage` in the app, omit in tests.
    * When present the しおり is persisted (and rehydrated) under the `"shiori"`
-   * key (Req 6.4 / Property 12). Resilient — a failed load/save never throws and
-   * the in-memory しおり stays authoritative, so the UI keeps working.
+   * key (Req 6.4 / Property 12) and お気に入り under the `"favorites"` key
+   * (Req 3.1, 3.2) — independently of each other (Req 3.8). Resilient — a failed
+   * load/save never throws and the in-memory lists stay authoritative, so the UI
+   * keeps working. Omitting the port keeps both lists in memory only (Req 3.6).
    */
   storage?: StoragePort;
-  /** Display language stamped on the session. Defaults to Japanese. */
-  lang?: LangCode;
   children: ReactNode;
 }
 
-/** Best-effort unique id for a chat session (no external dependency). */
-function newSessionId(): string {
-  const globalCrypto = (
-    globalThis as { crypto?: { randomUUID?: () => string } }
-  ).crypto;
-  if (globalCrypto?.randomUUID) return globalCrypto.randomUUID();
-  return `chat-${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}`;
-}
-
-function createInitialState(lang: LangCode): TourismState {
+function createInitialState(): TourismState {
   return {
     activePlan: null,
-    session: {
-      id: newSessionId(),
-      lang,
-      messages: [],
-      preferences: { liked: [], disliked: [] },
-    },
-    chatStatus: "idle",
-    chatError: null,
-    swipeCandidates: [],
-    swipeHistory: [],
     favorites: [],
     shiori: [],
-    later: [],
   };
 }
 
 export function TourismProvider({
-  chat,
   storage,
-  lang = "ja",
   children,
 }: TourismProviderProps): JSX.Element {
-  const [state, setState] = useState<TourismState>(() =>
-    createInitialState(lang),
-  );
-
-  // Keep the chat session's language in sync with the active UI language so
-  // the AI backend (which replies in `session.lang`) answers in the language
-  // the user selected (Req 1.x / 19.x). Only rewrites when it actually changes
-  // to avoid needless renders.
-  useEffect(() => {
-    setState((s) =>
-      s.session.lang === lang
-        ? s
-        : { ...s, session: { ...s.session, lang } },
-    );
-  }, [lang]);
+  const [state, setState] = useState<TourismState>(createInitialState);
 
   // Guards saving until after the initial rehydration so a slow load never
   // clobbers persisted しおり with the empty initial value (Req 6.4).
@@ -317,125 +239,55 @@ export function TourismProvider({
     });
   }, [storage, state.shiori]);
 
-  // The most recent request, kept so retry can re-run it verbatim (Req 3.4).
-  // We remember the session *before* the user turn plus the user text, so a
-  // retry never duplicates the user message already shown in the transcript.
-  const lastRequest = useRef<{ baseSession: ChatSession; text: string } | null>(
-    null,
-  );
+  // Guards saving until after the initial rehydration so a slow load never
+  // clobbers persisted お気に入り with the empty initial value (Req 3.3). Kept
+  // separate from shioriHydratedRef so the two keys hydrate independently.
+  const favoritesHydratedRef = useRef(false);
 
-  /**
-   * Performs the actual ChatPort call. `baseSession` is the session before the
-   * user turn; `userMessage` is the turn being sent. On success the assistant
-   * reply (and any spot candidates) is folded into the live session; on failure
-   * the status flips to "error" while the transcript is preserved (Req 3.4).
-   */
-  const runRequest = useCallback(
-    async (baseSession: ChatSession, userMessage: ChatMessage): Promise<void> => {
+  // Rehydrate お気に入り (key "favorites") once on mount. Resilient: a throw or a
+  // non-array value leaves the in-memory list in place (Req 3.4).
+  useEffect(() => {
+    if (!storage) {
+      // No StoragePort injected — お気に入り stays in memory only (Req 3.6).
+      favoritesHydratedRef.current = true;
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
       try {
-        const reply = await chat.sendMessage(baseSession, userMessage.text);
-        setState((s) => ({
-          ...s,
-          session: {
-            ...s.session,
-            messages: [
-              ...s.session.messages,
-              { role: "assistant", text: reply.message },
-            ],
-          },
-          // Hand any discovery candidates to the swipe deck (Req 3.2).
-          swipeCandidates: reply.spotCandidates ?? s.swipeCandidates,
-          chatStatus: "idle",
-          chatError: null,
-        }));
-      } catch (err) {
-        // Surface a safe diagnostic; keep the transcript for retry (Req 3.4).
-        const message =
-          err instanceof Error
-            ? err.message
-            : "AIバックエンドで不明なエラーが発生しました。";
-        setState((s) => ({
-          ...s,
-          chatStatus: "error",
-          chatError: message,
-        }));
+        const saved = await storage.load<Spot[]>(FAVORITES_KEY);
+        if (!cancelled && Array.isArray(saved)) {
+          setState((s) => ({ ...s, favorites: saved }));
+        }
+      } catch {
+        // Ignore — keep the in-memory お気に入り.
       }
-    },
-    [chat],
-  );
+      if (!cancelled) favoritesHydratedRef.current = true;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [storage]);
 
-  const sendMessage = useCallback(
-    async (text: string): Promise<void> => {
-      const trimmed = text.trim();
-      if (trimmed.length === 0) return;
-
-      const userMessage: ChatMessage = { role: "user", text: trimmed };
-
-      // Snapshot the pre-turn session for an exact retry, then optimistically
-      // show the user's message and the sending state.
-      let baseSession!: ChatSession;
-      setState((s) => {
-        baseSession = s.session;
-        return {
-          ...s,
-          session: {
-            ...s.session,
-            messages: [...s.session.messages, userMessage],
-          },
-          chatStatus: "sending",
-          chatError: null,
-        };
-      });
-
-      lastRequest.current = { baseSession, text: trimmed };
-      await runRequest(baseSession, userMessage);
-    },
-    [runRequest],
-  );
-
-  const retry = useCallback(async (): Promise<void> => {
-    const pending = lastRequest.current;
-    if (!pending) return;
-    setState((s) => ({
-      ...s,
-      chatStatus: "sending",
-      chatError: null,
-    }));
-    await runRequest(pending.baseSession, {
-      role: "user",
-      text: pending.text,
+  // Persist お気に入り under "favorites" whenever it changes (after hydration).
+  // Independent of the しおり effect, so a failure on one key never blocks the
+  // other (Req 3.8). A failed save is swallowed and the in-memory list stays
+  // authoritative (Req 3.5).
+  useEffect(() => {
+    if (!storage || !favoritesHydratedRef.current) return;
+    void storage.save<Spot[]>(FAVORITES_KEY, state.favorites).catch(() => {
+      // Persistence failed — in-memory お気に入り remains authoritative.
     });
-  }, [runRequest]);
+  }, [storage, state.favorites]);
 
-  const recordSwipe = useCallback((record: SwipeRecord): void => {
-    setState((s) => {
-      const swipeHistory = [...s.swipeHistory, record];
-      // Reflect accumulated likes/dislikes in the next suggestion request
-      // by carrying them on the session preferences (Req 3.3).
-      const preferences = buildSuggestionPayload(swipeHistory);
-      return {
-        ...s,
-        swipeHistory,
-        session: { ...s.session, preferences },
-      };
-    });
-  }, []);
-
-  const clearCandidates = useCallback((): void => {
-    setState((s) =>
-      s.swipeCandidates.length === 0 ? s : { ...s, swipeCandidates: [] },
-    );
-  }, []);
-
-  // Add a spot to one of the swipe-driven collections, de-duplicated by id so
-  // re-swiping the same spot never creates duplicate entries. Returns the same
+  // Add a spot to one of the route-driven collections, de-duplicated by id so
+  // re-deciding the same place never creates duplicate entries. Returns the same
   // state reference when the spot is already present (cheap no-op).
   const addToCollection = useCallback(
-    (key: "favorites" | "shiori" | "later", spot: Spot): void => {
+    (key: "favorites" | "shiori", spot: Spot): void => {
       setState((s) => {
-        const collection = s[key];
-        if (collection.some((existing) => existing.id === spot.id)) return s;
-        return { ...s, [key]: [...collection, spot] };
+        const next = appendUniqueById(s[key], [spot]);
+        return next === s[key] ? s : { ...s, [key]: next };
       });
     },
     [],
@@ -463,6 +315,17 @@ export function TourismProvider({
     [addToCollection],
   );
 
+  // Append a whole confirmed route to the しおり in one update (Req 4.1-4.4):
+  // existing entries and their order are kept, new spots land at the tail in
+  // route order, and ids already present are skipped. Returns the same state
+  // reference when nothing is new — so an empty route is a no-op (Req 4.9).
+  const addSpotsToShiori = useCallback((spots: Spot[]): void => {
+    setState((s) => {
+      const next = appendUniqueById(s.shiori, spots);
+      return next === s.shiori ? s : { ...s, shiori: next };
+    });
+  }, []);
+
   // Remove a spot from the しおり (Req 6.3, Property 10). De-duplication on add
   // means at most one entry exists; filtering by id leaves the list without it.
   // Returns the same state reference when absent (cheap no-op).
@@ -485,11 +348,6 @@ export function TourismProvider({
     });
   }, []);
 
-  const addToLater = useCallback(
-    (spot: Spot): void => addToCollection("later", spot),
-    [addToCollection],
-  );
-
   const selectPlan = useCallback((plan: RecommendedPlan): void => {
     setState((s) => ({ ...s, activePlan: plan }));
   }, []);
@@ -498,42 +356,24 @@ export function TourismProvider({
     () => ({
       activePlan: state.activePlan,
       selectPlan,
-      session: state.session,
-      messages: state.session.messages,
-      chatStatus: state.chatStatus,
-      chatError: state.chatError,
-      isSending: state.chatStatus === "sending",
-      hasError: state.chatStatus === "error",
-      swipeCandidates: state.swipeCandidates,
-      hasCandidates: state.swipeCandidates.length > 0,
-      swipeHistory: state.swipeHistory,
       favorites: state.favorites,
       shiori: state.shiori,
-      later: state.later,
-      sendMessage,
-      retry,
-      recordSwipe,
-      clearCandidates,
       addFavorite,
       removeFavorite,
       addToShiori,
+      addSpotsToShiori,
       removeFromShiori,
       reorderShiori,
-      addToLater,
     }),
     [
       state,
       selectPlan,
-      sendMessage,
-      retry,
-      recordSwipe,
-      clearCandidates,
       addFavorite,
       removeFavorite,
       addToShiori,
+      addSpotsToShiori,
       removeFromShiori,
       reorderShiori,
-      addToLater,
     ],
   );
 

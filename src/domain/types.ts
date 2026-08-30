@@ -206,10 +206,9 @@ export type LayerKind =
   | "onsen"
   // 施設
   | "parking"
-  // スワイプ連動のユーザーレイヤー（お気に入り / しおり / 後で見る）
+  // ルート結果連動のユーザーレイヤー（お気に入り / しおり）
   | "favorite"
-  | "shiori"
-  | "later";
+  | "shiori";
 
 /** A single feature placed on a map layer. */
 export interface MapFeature {
@@ -483,42 +482,6 @@ export interface OfflineEntry {
   kind: "arrival";
   templeId: string;
   at: string;
-}
-
-// ---------------------------------------------------------------------------
-// Chat (AI 旅行相談 / プラン生成)
-// ---------------------------------------------------------------------------
-
-/** A single turn in a chat conversation. */
-export interface ChatMessage {
-  role: "user" | "assistant";
-  text: string;
-}
-
-/**
- * A chat session carried between turns. `preferences` accumulates swipe history
- * so it can be reflected in subsequent suggestion generation (Req 3.3).
- */
-export interface ChatSession {
-  id: string;
-  lang: LangCode;
-  messages: ChatMessage[];
-  preferences?: SwipePreferences;
-}
-
-/** Accumulated swipe-derived preferences fed into AI suggestion generation (Req 3.3). */
-export interface SwipePreferences {
-  liked: string[]; // itemIds swiped right / up
-  disliked: string[]; // itemIds swiped left (興味なし)
-}
-
-/**
- * An AI reply. When the conversation reaches a destination-discovery moment,
- * `spotCandidates` carries the candidate set handed to Swipe_Discovery (Req 3.2).
- */
-export interface ChatReply {
-  message: string;
-  spotCandidates?: Spot[];
 }
 
 // ---------------------------------------------------------------------------

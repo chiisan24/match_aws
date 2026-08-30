@@ -1,0 +1,557 @@
+{
+  "pbtResults": {
+    "1.2 `spotFromRouteCandidate` の必須フィールド写しをプロパティテストで固定する": {
+      "status": "passed",
+      "lastRunTimestamp": 1788058789096
+    },
+    "1.3 任意フィールドの有無が入力に一致することをプロパティテストで固定する": {
+      "status": "passed",
+      "lastRunTimestamp": 1788059187327
+    },
+    "1.4 変換が決定的で入力を変更しないことをプロパティテストで固定する": {
+      "status": "passed",
+      "lastRunTimestamp": 1788059516396
+    },
+    "1.5 `appendUniqueById` が既存の接頭辞と追加順序を保つことをプロパティテストで固定する": {
+      "status": "passed",
+      "lastRunTimestamp": 1788060081615
+    },
+    "1.6 `appendUniqueById` が id で冪等であることをプロパティテストで固定する": {
+      "status": "passed",
+      "lastRunTimestamp": 1788060341680
+    },
+    "3.5 永続化の往復をプロパティテストで固定する": {
+      "status": "passed",
+      "lastRunTimestamp": 1788061991104
+    },
+    "3.6 永続化の失敗がメモリ上のリストを壊さないことをプロパティテストで固定する": {
+      "status": "passed",
+      "lastRunTimestamp": 1788062835342
+    }
+  },
+  "executionHistory": {
+    "1.1 `src/domain/routeCandidate.ts` を新規作成し `src/domain/index.ts` から再エクスポートする": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058061987
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058077532
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058485891
+      }
+    ],
+    "1.2 `spotFromRouteCandidate` の必須フィールド写しをプロパティテストで固定する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062058
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058495355
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058855161
+      }
+    ],
+    "1.3 任意フィールドの有無が入力に一致することをプロパティテストで固定する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062134
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058861893
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788059279285
+      }
+    ],
+    "1.4 変換が決定的で入力を変更しないことをプロパティテストで固定する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062245
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788059285298
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788059689979
+      }
+    ],
+    "1.5 `appendUniqueById` が既存の接頭辞と追加順序を保つことをプロパティテストで固定する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062312
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788059709026
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788060129700
+      }
+    ],
+    "1.6 `appendUniqueById` が id で冪等であることをプロパティテストで固定する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062380
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788060140058
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788060516549
+      }
+    ],
+    "1.7 ルート順の保持と `openingHours` の区切り文字を例ベースで固定する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062450
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788060526557
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788060999018
+      }
+    ],
+    "2.1 `src/domain/types.ts` から Chat セクションと `LayerKind` の `later` を削除する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062523
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058078413
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058486068
+      }
+    ],
+    "2.2 `src/ports/index.ts` から `ChatPort.sendMessage` を削除する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062597
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058495496
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058855933
+      }
+    ],
+    "2.3 `src/adapters/mock/chat.ts` から `sendMessage` と専用ヘルパーを削除する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062673
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058862834
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788059279380
+      }
+    ],
+    "2.4 `src/adapters/aws/chat.ts` から `sendMessage` と `ChatApiResponse` を削除する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062736
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788059286336
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788059690799
+      }
+    ],
+    "2.5 `api/chat.ts` を削除し `/api/chat` のルート登録を外す": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062803
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788059709806
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788060130814
+      }
+    ],
+    "3.1 `src/app/TourismContext.tsx` からチャット・スワイプ状態と props を撤去する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062877
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788060139445
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788060517762
+      }
+    ],
+    "3.2 `appendUniqueById` を共有し `addSpotsToShiori` を追加する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058062974
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788060527227
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788060999811
+      }
+    ],
+    "3.3 `favorites` を `Favorites_Storage_Key` で永続化する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058063069
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788061006082
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788061630660
+      }
+    ],
+    "3.4 `src/app/App.tsx` の `LocalizedTourismProvider` を撤去する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058063202
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788061006844
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788061631425
+      }
+    ],
+    "3.5 永続化の往復をプロパティテストで固定する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058063291
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788061641393
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788062069356
+      }
+    ],
+    "3.6 永続化の失敗がメモリ上のリストを壊さないことをプロパティテストで固定する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058063387
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788062076581
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063089415
+      }
+    ],
+    "3.7 復元・保存ガード・未注入・空追加を例ベースで固定する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058063478
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063097037
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063587480
+      }
+    ],
+    "4. チェックポイント — 変換モジュールとストアを確認する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058063579
+      }
+    ],
+    "5.1 `ChatAdvisor.tsx` / `SwipeDeck.tsx` / `domain/swipe.ts` を削除し参照3ファイルを更新する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058063675
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788061640342
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788062070353
+      }
+    ],
+    "5.2 `src/app/modeManager.ts` の `TOURISM_TABS` を3件に縮める": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058063761
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788062077557
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063090417
+      }
+    ],
+    "5.3 `src/app/modeManager.test.ts` を更新する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058063863
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063097786
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063588219
+      }
+    ],
+    "5.4 `src/ui/screens/ModeShell.tsx` の `TOURISM_TAB_META` を3件に振り直す": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058063957
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063595419
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063944677
+      }
+    ],
+    "5.5 `tourismTabs.tsx` を全タブ網羅にし `ModeShell.tsx` の placeholder 分岐を撤去する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058064041
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063952781
+      }
+    ],
+    "5.6 お遍路側に残る `SwipeDeck` への JSDoc 参照を書き替える": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058064131
+      }
+    ],
+    "6.1 `src/ui/screens/TourismRouteBuilder.tsx` から `favorites` / `shiori` へ書き込む": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058064203
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063596310
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063945792
+      }
+    ],
+    "6.2 お気に入り側の配線を例ベーステストで固定する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058064273
+      },
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063953416
+      }
+    ],
+    "6.3 しおり統合を例ベーステストで固定する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058064349
+      }
+    ],
+    "7.1 `tourismLayers.ts` と `TourismLayeredMap.tsx` から `later` を落とす": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058064454
+      }
+    ],
+    "8.1 `spot.*` へのキー改称と `FavoritesView.tsx` の参照更新を同時に行う": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058064531
+      }
+    ],
+    "8.2 `src/i18n/labels.ts` からチャット・スワイプ・後で見るのキーを削除し、しおりの案内文を新しい流入経路に合わせる": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058064605
+      }
+    ],
+    "8.3 `src/ui/styles/screens.css` から `.chat*` の規則を削除する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058064679
+      }
+    ],
+    "9.1 4つの検証コマンドを実行し、失敗を修正する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058064752
+      }
+    ],
+    "9.2 型検査で捕まらない削除漏れを grep で確認する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058064816
+      }
+    ],
+    "10. 最終チェックポイント": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788058064874
+      }
+    ],
+    "2. 型・ポート・アダプタ・API からチャットを撤去する": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788060131098
+      }
+    ],
+    "1. 変換モジュール（Candidate_Converter）の追加": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788060999141
+      }
+    ],
+    "3. Tourism_Store の再構成（状態撤去・しおり統合・お気に入り永続化）": [
+      {
+        "executionId": "53074451-890e-4dc9-a44e-5bffe664a101",
+        "chatSessionId": "sess_c44aba72-34f1-402b-9831-a5658cfc1a6f",
+        "timestamp": 1788063587569
+      }
+    ]
+  }
+}

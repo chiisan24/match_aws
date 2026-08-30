@@ -4,7 +4,7 @@
  * Mirrors the お遍路 {@link LayeredMap} but for sightseeing: it overlays spot
  * categories (観光 / グルメ / 温泉 / おみやげ) and facilities (トイレ / 駐車場 /
  * 休憩所) on one map, plus — the key idea — a set of **swipe-driven user layers**
- * built from the {@link useTourism} store: お気に入り♥ / しおり🔖 / 後で見る🕓.
+ * built from the {@link useTourism} store: お気に入り♥ / しおり🔖.
  * Swiping a spot in the deck adds it to those collections, and because this
  * screen subscribes to the same store, the pins appear on the map immediately.
  *
@@ -79,7 +79,6 @@ const FACILITY_LAYERS: LayerMeta[] = [
 const USER_LAYERS: LayerMeta[] = [
   { key: "favorite", labelKey: "tlmap.layer.favorite", emoji: "♥" },
   { key: "shiori", labelKey: "tlmap.layer.shiori", emoji: "🔖" },
-  { key: "later", labelKey: "tlmap.layer.later", emoji: "🕓" },
 ];
 
 const ALL_LAYERS: LayerMeta[] = [...SPOT_LAYERS, ...FACILITY_LAYERS, ...USER_LAYERS];
@@ -173,7 +172,7 @@ function buildTouringCandidates(
 
 export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element {
   const { t, lang } = useI18n();
-  const { activePlan, favorites, shiori, later } = useTourism();
+  const { activePlan, favorites, shiori } = useTourism();
   const { spots, addSpot } = useSpots();
 
   const [current, setCurrent] = useState<GeoPoint | null>(null);
@@ -242,8 +241,8 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
 
   // All features across every layer — spots + facilities + swipe-driven lists.
   const allFeatures = useMemo<TourismMapFeature[]>(
-    () => buildTourismLayerFeatures(spots, { favorites, shiori, later }),
-    [spots, favorites, shiori, later],
+    () => buildTourismLayerFeatures(spots, { favorites, shiori }),
+    [spots, favorites, shiori],
   );
 
   const planArea = useMemo<GeoArea | null>(() => {

@@ -8,15 +8,25 @@ import {
   setTab,
   switchMode,
   toggleMode,
+  TOURISM_TABS,
 } from "./modeManager";
 
 describe("modeManager", () => {
   it("starts in 通常観光モード on each mode's first tab by default", () => {
     const s = createInitialModeState();
     expect(s.current).toBe("tourism");
-    expect(s.tabByMode.tourism).toBe("chat");
+    expect(s.tabByMode.tourism).toBe("map");
     expect(s.tabByMode.pilgrimage).toBe("home");
-    expect(activeTab(s)).toBe("chat");
+    expect(activeTab(s)).toBe("map");
+  });
+
+  // Regression guard for AC 6.2 / 7.2: the removed chat / swipe screens must not
+  // creep back into the 通常観光モード bottom nav. TOURISM_TABS[0] also fixes the
+  // mode's landing tab as `map` (AC 7.3).
+  it("exposes exactly マップ / お気に入り / しおり as the 通常観光モード tabs", () => {
+    expect(TOURISM_TABS).toEqual(["map", "favorites", "shiori"]);
+    expect(TOURISM_TABS).not.toContain("chat");
+    expect(TOURISM_TABS).not.toContain("swipe");
   });
 
   it("honours an explicit starting mode", () => {
