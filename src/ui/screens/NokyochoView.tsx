@@ -37,10 +37,10 @@ export function NokyochoView({ map }: NokyochoViewProps): JSX.Element {
   const [loading, setLoading] = useState(true);
 
   // Fetch the お遍路 (temple) data for the 行った/行ってない deck through the map
-  // port (mock/AWS by default — Req 8.5). Mirrors the 通常観光モード SwipeDeck,
-  // which seeds from fetched candidates and falls back to the curated
-  // catalogue: when the port yields nothing (e.g. an area with no live dataset
-  // yet) we fall back to the curated EHIME_TEMPLES so the deck is never empty.
+  // port (mock/AWS by default — Req 8.5). The deck seeds from what the port
+  // returns and falls back to the curated catalogue: when the port yields
+  // nothing (e.g. an area with no live dataset yet) we fall back to the curated
+  // EHIME_TEMPLES so the deck is never empty.
   useEffect(() => {
     let cancelled = false;
     setLoading(true);

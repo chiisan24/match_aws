@@ -6,7 +6,8 @@
   "description": "愛媛観光支援 Web アプリ (通常観光モード / お遍路モード)。Vercel デプロイ、AWS 依存はモック抽象化。",
   "scripts": {
     "dev": "vite --port 3000",
-    "build": "tsc --noEmit && vite build",
+    "build": "node scripts/build-api-shared.mjs && tsc --noEmit && vite build",
+    "build:api-shared": "node scripts/build-api-shared.mjs",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "optimize:images": "node scripts/optimize-images.mjs",

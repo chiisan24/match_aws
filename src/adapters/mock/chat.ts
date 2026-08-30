@@ -1,29 +1,24 @@
 /**
  * Mock ChatPort adapter.
  *
- * Produces friendly, non-robotic chat replies (Req 3.5 / 18.3) and a mock
- * same-day pilgrimage plan whose timeline stops are in ascending time order
- * (Req 12.2 / Property 22). At destination-discovery moments it hands back
- * swipe candidates (Req 3.2). Pure stub — no network (Req 3.6 / 16.2).
+ * Produces a mock same-day pilgrimage plan whose timeline stops are in
+ * ascending time order (Req 12.2 / Property 22), plus mock route candidates and
+ * route orderings. Pure stub — no network (Req 3.6 / 16.2).
  */
 
 import type {
   ChatPort,
-  ChatReply,
-  ChatSession,
   LangCode,
   NextTempleNavEstimate,
   NextTempleNavInput,
   PilgrimagePlan,
   PlanInput,
   PlanStop,
-  RecommendedPlan,
   RecommendedPlansInput,
+  RecommendedPlansResult,
   RouteCandidate,
-  RouteCandidateKind,
   RouteCandidatesInput,
   RouteCandidatesResult,
-  Spot,
   TourismRoutePlan,
   TourismRoutePlanInput,
 } from "../../ports";
@@ -35,188 +30,16 @@ import {
   finalizeCandidates,
 } from "../../domain/candidateFallback";
 import { DEFAULT_FALLBACK_POOLS } from "../../data/fallbackPools";
+import { RECOMMENDATION_FALLBACK_PLANS } from "../../data/recommendationFallbackPlans";
+import { ITINERARY_PLAN_COUNT } from "../../domain/itineraryContract";
 import { haversineDistanceMeters } from "../../domain/geofence";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
 import { EHIME_SPOTS } from "./spots";
-
-/**
- * Warm, varied opener lines per language so replies never feel templated and,
- * crucially, match the language the user selected (Req 1.x / 19.x). Languages
- * without an entry fall back to English, then Japanese.
- */
-const FRIENDLY_OPENERS: Partial<Record<LangCode, string[]>> = {
-  ja: ["いいですね、", "なるほど〜。", "わかります！", "うんうん、", "そうこなくっちゃ。"],
-  iyo: ["ええですねぇ、", "なるほどなぁ。", "わかるわぁ！", "うんうん、", "そうこんかいや。"],
-  en: ["Nice! ", "Got it — ", "Ooh, I like that. ", "Sounds lovely. ", "Great choice! "],
-  "zh-Hans": ["不错！", "明白了，", "哦，我喜欢。", "听起来很棒。", "好主意！"],
-  "zh-Hant": ["不錯！", "明白了，", "喔，我喜歡。", "聽起來很棒。", "好主意！"],
-  ko: ["좋아요! ", "알겠어요, ", "오, 마음에 들어요. ", "멋지네요. ", "좋은 선택이에요! "],
-  th: ["ดีเลย! ", "เข้าใจแล้วค่ะ ", "โอ้ ชอบจัง ", "ฟังดูดีมาก ", "ตัวเลือกเยี่ยม! "],
-  fr: ["Super ! ", "D'accord, ", "Oh, j'aime bien. ", "Ça a l'air charmant. ", "Excellent choix ! "],
-  de: ["Schön! ", "Verstanden, ", "Oh, das gefällt mir. ", "Klingt wunderbar. ", "Gute Wahl! "],
-  es: ["¡Genial! ", "Entendido, ", "Oh, me gusta. ", "Suena encantador. ", "¡Buena elección! "],
-  pt: ["Ótimo! ", "Entendi, ", "Ah, adorei. ", "Parece encantador. ", "Boa escolha! "],
-  vi: ["Tuyệt! ", "Hiểu rồi, ", "Ồ, tôi thích đấy. ", "Nghe hay quá. ", "Lựa chọn tuyệt vời! "],
-  id: ["Bagus! ", "Baik, ", "Oh, saya suka. ", "Kedengarannya indah. ", "Pilihan yang bagus! "],
-  ar: ["رائع! ", "فهمت، ", "أوه، يعجبني ذلك. ", "يبدو جميلاً. ", "اختيار موفّق! "],
-  ru: ["Отлично! ", "Понятно, ", "О, мне нравится. ", "Звучит чудесно. ", "Прекрасный выбор! "],
-  hi: ["बढ़िया! ", "समझ गया, ", "ओह, मुझे पसंद आया। ", "बहुत अच्छा लगता है। ", "अच्छा चुनाव! "],
-};
-
-/** "I picked some spots for you, swipe the ones you like" per language. */
-const DISCOVERY_REPLY: Partial<Record<LangCode, string>> = {
-  ja: "愛媛でおすすめのスポットをいくつか選んでみました。気になるものを右にスワイプしてみてくださいね。",
-  iyo: "愛媛でおすすめのスポットをいくつか選んでみたけん。気になるとこを右にスワイプしてみてや。",
-  en: "I picked a few spots I think you'll love in Ehime. Swipe right on the ones that catch your eye.",
-  "zh-Hans": "我为你挑选了几个爱媛的推荐景点。喜欢的就向右滑动吧。",
-  "zh-Hant": "我為你挑選了幾個愛媛的推薦景點。喜歡的就向右滑動吧。",
-  ko: "에히메에서 마음에 드실 만한 스팟을 몇 곳 골라봤어요. 마음에 드는 곳은 오른쪽으로 스와이프해 주세요.",
-  th: "ฉันเลือกสถานที่น่าสนใจในเอฮิเมะมาให้สองสามแห่ง ปัดขวาที่ที่คุณชอบได้เลยนะ",
-  fr: "J'ai sélectionné quelques lieux qui devraient vous plaire à Ehime. Balayez vers la droite ceux qui vous attirent.",
-  de: "Ich habe ein paar Orte in Ehime ausgewählt, die dir gefallen könnten. Wische die interessanten nach rechts.",
-  es: "Elegí algunos lugares que creo que te encantarán en Ehime. Desliza a la derecha los que te llamen la atención.",
-  pt: "Escolhi alguns lugares que acho que você vai adorar em Ehime. Deslize para a direita os que chamarem sua atenção.",
-  vi: "Tôi đã chọn vài địa điểm bạn có thể thích ở Ehime. Hãy vuốt sang phải những nơi bạn thấy hấp dẫn.",
-  id: "Saya memilih beberapa tempat menarik di Ehime untuk Anda. Geser ke kanan yang Anda suka.",
-  ar: "اخترت لك بعض الأماكن الرائعة في إيهيمي. مرّر لليمين على ما يعجبك.",
-  ru: "Я подобрал несколько мест в Эхиме, которые вам понравятся. Свайпните вправо те, что приглянулись.",
-  hi: "मैंने एहिमे में आपके लिए कुछ बेहतरीन जगहें चुनी हैं। जो पसंद आएं उन्हें दाईं ओर स्वाइप करें।",
-};
-
-/** "Tell me more — what kind of trip do you want?" template per language. */
-const FOLLOWUP_REPLY: Partial<Record<LangCode, (topic: string) => string>> = {
-  ja: (t) => `「${t}」、もっと聞かせてください。どんな雰囲気の旅にしたいですか？`,
-  iyo: (t) => `「${t}」、もっと聞かせてや。どんな雰囲気の旅にしたいん？`,
-  en: (t) => `"${t}" — tell me more! What kind of mood are you after for this trip?`,
-  "zh-Hans": (t) => `“${t}”，多和我说说吧。你想要什么样氛围的旅行呢？`,
-  "zh-Hant": (t) => `「${t}」，多和我說說吧。你想要什麼樣氛圍的旅行呢？`,
-  ko: (t) => `"${t}", 더 들려주세요! 어떤 분위기의 여행을 원하세요?`,
-  th: (t) => `"${t}" เล่าให้ฟังอีกหน่อยสิ อยากได้ทริปแบบบรรยากาศไหนดีล่ะ?`,
-  fr: (t) => `« ${t} » — dites-m'en plus ! Quelle ambiance recherchez-vous pour ce voyage ?`,
-  de: (t) => `„${t}“ — erzähl mir mehr! Welche Stimmung wünschst du dir für diese Reise?`,
-  es: (t) => `«${t}» — ¡cuéntame más! ¿Qué ambiente buscas para este viaje?`,
-  pt: (t) => `"${t}" — conte-me mais! Que clima você procura para esta viagem?`,
-  vi: (t) => `"${t}" — kể thêm cho tôi nghe nào! Bạn muốn chuyến đi này có không khí thế nào?`,
-  id: (t) => `"${t}" — ceritakan lebih banyak! Suasana perjalanan seperti apa yang Anda inginkan?`,
-  ar: (t) => `«${t}» — أخبرني المزيد! ما الأجواء التي تبحث عنها في هذه الرحلة؟`,
-  ru: (t) => `«${t}» — расскажите подробнее! Какого настроения вы хотите от этой поездки?`,
-  hi: (t) => `"${t}" — और बताइए! आप इस यात्रा के लिए कैसा माहौल चाहते हैं?`,
-};
 
 /** Resolve a per-language value with English then Japanese fallback. */
 function forLang<T>(map: Partial<Record<LangCode, T>>, lang: LangCode): T {
   return (map[lang] ?? map.en ?? map.ja) as T;
 }
-
-/**
- * Keywords that signal the conversation has reached a "where should I go"
- * moment, at which point we hand swipe candidates to Swipe_Discovery (Req 3.2).
- */
-const DISCOVERY_HINTS = [
-  "おすすめ",
-  "どこ",
-  "行きたい",
-  "観光",
-  "スポット",
-  "ごはん",
-  "食べ",
-  "巡り",
-  "recommend",
-  "where",
-  "spot",
-  "visit",
-  "eat",
-];
-
-function pick<T>(items: T[], seed: number): T {
-  return items[Math.abs(seed) % items.length];
-}
-
-function looksLikeDiscovery(message: string): boolean {
-  const lower = message.toLowerCase();
-  return DISCOVERY_HINTS.some((hint) => lower.includes(hint.toLowerCase()));
-}
-
-function mockRecommendation(
-  id: string,
-  icon: string,
-  title: string,
-  summary: string,
-  imageUrl: string,
-  stopSpecs: Array<{ spotId: string; kind: RouteCandidateKind }>,
-): RecommendedPlan {
-  const times = ["09:00", "11:30", "14:00", "16:00"];
-  const seen = new Set<string>();
-  const stops = stopSpecs.map(({ spotId, kind }, index) => {
-    const spot = EHIME_SPOTS.find((candidate) => candidate.id === spotId);
-    if (!spot || seen.has(spot.id)) {
-      throw new Error(`Invalid mock recommendation spot: ${spotId}`);
-    }
-    seen.add(spot.id);
-    return {
-      time: times[index],
-      kind,
-      title: spot.name,
-      description: spot.localizedDescriptions.ja ?? `${spot.name}をゆっくり楽しみます。`,
-      searchQuery: `${spot.name} 愛媛県`,
-      place: {
-        id: spot.id,
-        name: spot.name,
-        formattedAddress: "愛媛県",
-        location: spot.location,
-        ...(spot.website ? { websiteUri: spot.website } : {}),
-        ...(spot.imageUrls[0] ? { photoUrl: spot.imageUrls[0] } : {}),
-      },
-    };
-  });
-  const center = stops[0]?.place.location;
-  if (
-    !center
-    || stops.length < 2
-    || stops.length > 4
-    || stops.some((stop) => haversineDistanceMeters(center, stop.place.location) > 5_000)
-  ) {
-    throw new Error(`Mock recommendation ${id} must contain two to four stops within 5km.`);
-  }
-  return {
-    id,
-    mode: "tourism",
-    icon,
-    title,
-    summary,
-    reason: "愛媛らしい景色と文化を無理のない流れで楽しめる組み合わせです。",
-    duration: "約4時間",
-    transport: "車＋徒歩",
-    intensity: "ふつう",
-    imageUrl,
-    area: { center, radiusMeters: 5_000 },
-    stops,
-  };
-}
-
-const MOCK_RECOMMENDATIONS: RecommendedPlan[] = [
-  mockRecommendation("matsuyama", "🏯", "松山の王道と郷土料理", "松山城と愛媛の味を巡る定番コース。", "/images/ehime/matsuyama-castle.jpg", [
-    { spotId: "osm-node-611661255", kind: "sightseeing" },
-    { spotId: "curated-food-gansui-matsuyama", kind: "food" },
-  ]),
-  mockRecommendation("dogo", "♨️", "道後でほどける温泉旅", "温泉街をのんびり楽しみます。", "/images/ehime/onsen-bath.jpg", [
-    { spotId: "osm-way-235751036", kind: "sightseeing" },
-    { spotId: "osm-node-5697638322", kind: "sightseeing" },
-  ]),
-  mockRecommendation("uwajima", "🏯", "宇和島の城下町と味", "宇和島の歴史と郷土料理に触れる旅。", "/images/ehime/uwajima-castle.jpg", [
-    { spotId: "osm-node-3698448508", kind: "sightseeing" },
-    { spotId: "osm-node-1423733742", kind: "sightseeing" },
-    { spotId: "curated-food-hozumitei-uwajima", kind: "food" },
-  ]),
-  mockRecommendation("imabari", "🍳", "今治のご当地グルメ旅", "今治名物を食べ比べる気軽な旅。", "/images/ehime/imabari-castle.jpg", [
-    { spotId: "curated-food-hakurakuten-imabari", kind: "food" },
-    { spotId: "curated-food-shigematsu-imabari", kind: "food" },
-  ]),
-  mockRecommendation("mitsuhama", "🌊", "三津浜のまち歩きと味", "港町で名物の三津浜焼きを楽しみます。", "/images/ehime/seaside-rails.jpg", [
-    { spotId: "curated-food-hinode-mitsuhama", kind: "food" },
-    { spotId: "curated-food-konaya-mitsuhama", kind: "food" },
-  ]),
-];
 
 /**
  * Mock swipe candidates settled through the shared finalisation logic, so the
@@ -331,39 +154,22 @@ function mockTourismRoutePlan(input: TourismRoutePlanInput): TourismRoutePlan {
 }
 
 export class MockChatAdapter implements ChatPort {
-  async sendMessage(
-    session: ChatSession,
-    message: string,
-  ): Promise<ChatReply> {
-    const lang = session.lang;
-    const openers = forLang(FRIENDLY_OPENERS, lang);
-    const opener = pick(openers, session.messages.length);
-    const trimmed = message.trim();
-
-    if (looksLikeDiscovery(trimmed)) {
-      // Reflect accumulated likes so suggestions feel personal (Req 3.3),
-      // then surface candidates for the swipe deck (Req 3.2).
-      const liked = session.preferences?.liked ?? [];
-      const candidates = orderCandidates(EHIME_SPOTS, liked);
-      return {
-        message: `${opener}${forLang(DISCOVERY_REPLY, lang)}`,
-        spotCandidates: candidates,
-      };
-    }
-
-    const topic = trimmed || (lang === "ja" || lang === "iyo" ? "そのお話" : "that");
-    return {
-      message: `${opener}${forLang(FOLLOWUP_REPLY, lang)(topic)}`,
-    };
-  }
-
+  /**
+   * The mock stands in for AI generation, so it never reports a degraded
+   * response and hands back the first {@link ITINERARY_PLAN_COUNT} plans of the
+   * shared Fallback_Plan_Pool (Req 1.5). Plans and stops are shallow-copied so
+   * callers cannot mutate the pool.
+   */
   async generateRecommendedPlans(
     _input: RecommendedPlansInput,
-  ): Promise<RecommendedPlan[]> {
-    return MOCK_RECOMMENDATIONS.map((plan) => ({
-      ...plan,
-      stops: plan.stops.map((stop) => ({ ...stop })),
-    }));
+  ): Promise<RecommendedPlansResult> {
+    return {
+      plans: RECOMMENDATION_FALLBACK_PLANS.map((plan) => ({
+        ...plan,
+        stops: plan.stops.map((stop) => ({ ...stop })),
+      })).slice(0, ITINERARY_PLAN_COUNT),
+      degraded: false,
+    };
   }
 
   async generateRouteCandidates(
@@ -447,15 +253,6 @@ const PLAN_LABELS: Partial<
   ru: { temple: (id) => `Посещение храма: ${id}`, meal: "Обед", spot: "Достопримечательность рядом" },
   hi: { temple: (id) => `मंदिर दर्शन: ${id}`, meal: "दोपहर का भोजन", spot: "पास का पर्यटन स्थल" },
 };
-
-/** Sorts liked spots to the front while keeping every candidate available. */
-function orderCandidates(spots: Spot[], liked: string[]): Spot[] {
-  if (liked.length === 0) return [...spots];
-  const likedSet = new Set(liked);
-  const preferred = spots.filter((s) => likedSet.has(s.id));
-  const rest = spots.filter((s) => !likedSet.has(s.id));
-  return [...preferred, ...rest];
-}
 
 /**
  * Builds a timeline guaranteed to be in ascending time order. Starts at 09:00

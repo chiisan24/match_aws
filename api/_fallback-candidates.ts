@@ -1,15 +1,23 @@
 /**
- * Bridge module: the single point where `api/` reaches into `src/`.
+ * Candidate settling logic, resolved for the Vercel function.
  *
- * The candidate settling algorithm (Fallback top-up, stepwise radius
- * expansion, dedupe, count clamping) lives once in
- * `src/domain/candidateFallback.ts` so the Vercel function, the mock adapter
- * and the client-side final guard all share it.
+ * This module used to re-export `src/domain/candidateFallback.ts` and
+ * `src/data/fallbackPools.ts` directly. That works locally, where the vite dev
+ * plugin bundles the handler together with its whole import graph, but not on
+ * Vercel: the function build compiles `api/*.ts` to `.js` and emits nothing for
+ * `src/`, so the `../src/**.js` specifiers could not be resolved at load time.
+ * The failure happened while loading the module, before `api/route-candidates.ts`
+ * ran a single line, so its catch (which answers 502) never saw it and every
+ * `/api/route-candidates` request returned HTTP 500 in production.
  *
- * Every `src` import is confined to this file (following the `_aws.ts` /
- * `_google-places.ts` underscore-prefix convention) so that if Vercel's
- * function bundling ever fails to resolve outside `api/`, only this module
- * needs a fallback — the algorithm itself stays shared.
+ * So `api/` reads a generated bundle instead. `scripts/build-api-shared.mjs`
+ * inlines the shared modules into `api/_shared/candidate-fallback.js` with no
+ * import left in it, which keeps `src/` the single source of truth: the
+ * algorithm and the pools are still defined exactly once, and the mock adapter
+ * plus the client-side final guard keep importing them from `src/`.
+ * `api/_fallback-candidates.test.ts` fails if the committed bundle drifts from
+ * `src/`, if an import reappears in it, or if this file reaches into `../src/`
+ * again.
  *
  * The shared modules must stay free of DOM, React, `import.meta` and
  * environment variables.
@@ -22,7 +30,8 @@ export {
   CANDIDATE_RADII_METERS,
   clampCandidateCount,
   finalizeCandidates,
-} from "../src/domain/candidateFallback.js";
+  DEFAULT_FALLBACK_POOLS,
+} from "./_shared/candidate-fallback.js";
 
 export type {
   CandidateSource,
@@ -30,6 +39,4 @@ export type {
   FallbackPools,
   FinalizeContext,
   FinalizeResult,
-} from "../src/domain/candidateFallback.js";
-
-export { DEFAULT_FALLBACK_POOLS } from "../src/data/fallbackPools.js";
+} from "./_shared/candidate-fallback.js";

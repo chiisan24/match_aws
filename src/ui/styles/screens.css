@@ -37,14 +37,6 @@
   object-fit: cover;
 }
 
-.lang-select__kicker {
-  margin: 0;
-  color: var(--color-mikan-500);
-  letter-spacing: 0.3em;
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-}
-
 .lang-select__welcome-title {
   margin: var(--space-1) 0 var(--space-2);
   color: var(--color-teal-700);
@@ -610,181 +602,6 @@
   font-weight: var(--weight-medium);
   color: var(--color-teal-800);
   word-break: break-all;
-}
-
-/* =========================================================================
- * AI チャット相談 screen (Req 3.1, 3.2, 3.4, 3.5)
- *
- * A warm, conversational surface: rounded "talk bubble" turns, a mikan-tinted
- * assistant avatar and a soft compose bar. Deliberately hand-crafted and
- * un-corporate to match the non-robotic tone (Req 18.3).
- * ====================================================================== */
-.chat {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  flex: 1;
-  min-height: 0;
-}
-
-.chat__header {
-  text-align: start;
-}
-
-.chat__title {
-  margin: 0;
-  font-size: var(--text-xl);
-  color: var(--color-teal-800);
-}
-
-.chat__lead {
-  margin: var(--space-1) 0 0;
-  font-size: var(--text-sm);
-  color: var(--color-ink-soft);
-}
-
-/* ---- Transcript ---- */
-.chat__transcript {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--space-2);
-  border-radius: var(--radius-lg);
-  background:
-    radial-gradient(
-      120% 80% at 100% 0%,
-      var(--color-teal-50),
-      transparent 60%
-    ),
-    var(--color-surface);
-  border: 1px solid var(--color-line);
-}
-
-.chat__bubble {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2);
-  max-width: 86%;
-}
-
-.chat__bubble--assistant {
-  align-self: flex-start;
-}
-
-.chat__bubble--user {
-  align-self: flex-end;
-  flex-direction: row-reverse;
-}
-
-.chat__avatar {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: var(--radius-pill);
-  background: var(--color-mikan-100);
-  font-size: var(--text-md);
-  box-shadow: inset 0 0 0 1px var(--color-mikan-300);
-}
-
-.chat__text {
-  margin: 0;
-  padding: 0.6em 0.9em;
-  border-radius: var(--radius-lg);
-  font-size: var(--text-md);
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.chat__bubble--assistant .chat__text {
-  background: var(--color-teal-50);
-  color: var(--color-ink);
-  border-bottom-left-radius: var(--radius-xs);
-}
-
-.chat__bubble--user .chat__text {
-  background: var(--color-teal-600);
-  color: #fff;
-  border-bottom-right-radius: var(--radius-xs);
-}
-
-.chat__bubble--typing .chat__text {
-  color: var(--color-ink-faint);
-  font-style: italic;
-}
-
-/* ---- Candidate hand-off to swipe (Req 3.2) ---- */
-.chat__handoff {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background:
-    radial-gradient(
-      130% 100% at 0% 0%,
-      var(--color-mikan-100),
-      transparent 60%
-    ),
-    var(--color-surface);
-  border: 1px solid var(--color-mikan-300);
-}
-
-.chat__handoff-text {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-ink);
-}
-
-/* ---- Error + retry (Req 3.4) ---- */
-.chat__error {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: rgba(192, 73, 47, 0.1);
-  border: 1px solid rgba(192, 73, 47, 0.4);
-}
-
-.chat__error-text {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-danger);
-}
-
-/* ---- Compose bar ---- */
-.chat__compose {
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-}
-
-.chat__input {
-  flex: 1;
-  min-width: 0;
-  padding: 0.7em 0.9em;
-  border-radius: var(--radius-pill);
-  border: 1.5px solid var(--color-line);
-  background: var(--color-surface);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-}
-
-.chat__input::placeholder {
-  color: var(--color-ink-faint);
-}
-
-.chat__input:focus-visible {
-  border-color: var(--color-teal-500);
-  box-shadow: var(--focus-ring);
 }
 
 /* =========================================================================
@@ -4179,6 +3996,9 @@ textarea.nokyocho-field__control {
   flex-direction: column;
   align-items: center;
   text-align: center;
+  /* 見出しの字サイズをこのヘッダーの内寸から決めたいので、コンテナーにする
+     （下の `cqw` 指定がこの幅を基準にする）。 */
+  container-type: inline-size;
 }
 
 .plan-first__kicker {
@@ -4189,10 +4009,19 @@ textarea.nokyocho-field__control {
   letter-spacing: 0.2em;
 }
 
+/* 「今日の旅、どのプランにしますか？」を1行で見せる。
+ *
+ * 字サイズをビューポートではなくヘッダーの内寸 (cqw) から決めている。和文16文字 =
+ * 16em なので、16 × 6cqw = 96% でヘッダー幅にちょうど収まる。ビューポート基準
+ * (vw) だと列幅が 28rem で止まる画面幅以上で字だけ大きくなり、「…しますか／？」の
+ * ように末尾がこぼれる。
+ *
+ * 下限 1.25rem は可読性の床。これを下回る幅（およそ 352px 未満）では1行をあきらめて
+ * 折り返す。読めない小ささにするより折り返すほうがましという判断。 */
 .plan-first__title {
   margin: var(--space-1) 0 var(--space-2);
   color: var(--color-teal-800);
-  font-size: clamp(var(--text-xl), 7vw, var(--text-2xl));
+  font-size: clamp(1.25rem, 6cqw, var(--text-2xl));
   line-height: 1.35;
 }
 
@@ -4215,6 +4044,19 @@ textarea.nokyocho-field__control {
   color: var(--color-mikan-700);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
+}
+
+.plan-first__degraded {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-teal-100);
+  border-radius: var(--radius-md);
+  background: var(--color-teal-50);
+  color: var(--color-teal-800);
+  font-size: var(--text-xs);
 }
 
 .plan-first__count {
@@ -4559,19 +4401,73 @@ textarea.nokyocho-field__control {
 }
 
 
-/* Reference-image refinement: image-led onboarding, reaction card, timeline. */
+/* =========================================================================
+ * スタート画面のトンマナ（旅行メディア基準）
+ *
+ * 目指す印象は「旅のわくわく感・開放感」。守るルールは3つだけ。
+ *   1. 自然な写真を画面いっぱいに見せ、文字は下 1/3 にまとめる
+ *   2. 見出しは明朝 (--font-serif)、本文は角ゴ。字間・行間を広くとる
+ *   3. 置く要素は「写真カード + 見出し + リード + CTA 2つ」まで。余白を残す
+ *
+ * 色は瀬戸内の海 (--color-sea-700) を写真が無いときの下地に、みかんオレンジ
+ * (--color-mikan-500) は主 CTA 1箇所だけに使う。
+ * ====================================================================== */
 .lang-select {
   gap: var(--space-3);
   padding-bottom: var(--space-4);
 }
 
+/* スタート画面のシェル。生成りの地の上に写真カードが1枚浮く構図。
+ *
+ * ヒーローを持つスタート画面だけに効かせたいので `__hero` で絞り込む（言語選択
+ * 画面には掛からない）。`:has()` 未対応ブラウザーではアプリ既定の余白と背景に
+ * なるだけで、崩れはしない。
+ *
+ * 余白はノッチ / ホームインジケーターを避ける安全域を含める。カード内側では
+ * 安全域を足していないので、二重に空くことはない。 */
+.app-shell:has(.lang-select__hero) {
+  background: var(--color-linen);
+  /* シェルの既定は `min-height: 100%`。モバイルでは 100% がアドレスバーを含む
+     高さに解決される場合があり、カード（svh 基準）との差分だけ無駄にスクロール
+     できてしまう。ここは svh で明示して、ページ全体を1画面に閉じる。 */
+  min-height: 100svh;
+  padding: var(--space-3);
+  padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+  padding-left: max(var(--space-3), env(safe-area-inset-left, 0px));
+  padding-right: max(var(--space-3), env(safe-area-inset-right, 0px));
+}
+
+/* 1画面で完結する画面なので、カードの下に余白を残さない（スクロールを作らない）。 */
+.lang-select:has(.lang-select__hero) {
+  padding-bottom: 0;
+}
+
 .lang-select__hero {
   position: relative;
-  min-height: clamp(42rem, calc(100svh - var(--space-5)), 46rem);
+  /* 見出しの字サイズをこのカードの内寸から決めたいので、コンテナーにする
+     （下の `cqw` 指定がこの幅を基準にする）。 */
+  container-type: inline-size;
+  /* 縦向きスマホ基準の高さ。`svh` はブラウザーUIを除いた実表示領域なので、
+     アドレスバーの出入りで高さが跳ねない。上下の余白と安全域を引いて1画面に
+     ちょうど収め、46rem はタブレット以上でカードが縦に伸びすぎないための上限。 */
+  height: min(
+    calc(100svh - var(--space-3) * 2 - env(safe-area-inset-bottom, 0px)),
+    46rem
+  );
+  /* 縦向き前提の設計だが、横向きに回されても CTA を切らないための下限。カード内の
+     コピーは絶対配置なので、表示領域が足りないと `overflow: hidden` に隠れて
+     ボタンが押せなくなる。下限を置くとカードが画面より高くなってページ側が
+     スクロールするので、切るのではなく届く形で破綻させられる。
+     28rem は縦向きの最小構成（約22rem）より高く、縦向きのカード高より低いので、
+     縦向きでは一切効かない。 */
+  min-height: 28rem;
   margin: 0;
   border: 0;
-  border-radius: var(--radius-lg);
-  background: var(--color-teal-900);
+  border-radius: var(--radius-xl);
+  /* 写真が届く前 / 読み込み失敗時の下地。海から島の緑へ流すことで、
+     真っ平らな板ではなく風景の途中として見えるようにする。 */
+  background: linear-gradient(160deg, var(--color-sea-700), var(--color-sage-600));
+  box-shadow: 0 24px 60px rgba(23, 58, 88, 0.22);
   isolation: isolate;
 }
 
@@ -4590,13 +4486,19 @@ textarea.nokyocho-field__control {
   object-fit: cover;
 }
 
+/* 上 1/3 はほぼ素の写真を見せ、下に向かってだけ沈める。空や海の色を殺さない
+   ように、黒ではなく紺（瀬戸内の夜の海）で暗くする。 */
 .lang-select__scrim {
   position: absolute;
   inset: 0;
   z-index: -1;
-  background:
-    linear-gradient(180deg, rgba(8, 46, 55, 0.18) 0%, rgba(8, 38, 42, 0.05) 35%, rgba(8, 38, 42, 0.88) 100%),
-    linear-gradient(90deg, rgba(8, 46, 55, 0.2), transparent 60%);
+  background: linear-gradient(
+    180deg,
+    rgba(16, 44, 68, 0.24) 0%,
+    rgba(16, 44, 68, 0) 30%,
+    rgba(13, 35, 54, 0.5) 62%,
+    rgba(10, 27, 42, 0.9) 100%
+  );
 }
 
 .lang-select__welcome {
@@ -4604,66 +4506,99 @@ textarea.nokyocho-field__control {
   inset: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: var(--space-4);
-  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  padding: var(--space-5) var(--space-4) var(--space-4);
   text-align: start;
   color: #fff;
+  /* 既定のティールのリングは暗い写真の上で沈むので、淡い空色に差し替える。
+     変数を上書きするだけで global.css の :focus-visible がそのまま拾う。 */
+  --focus-ring: 0 0 0 3px rgba(166, 200, 224, 0.9);
 }
 
+/* ブランド表記は明朝の細い一行。写真の邪魔をしない存在感に留める。 */
 .lang-select__brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: #fff;
-  font-size: var(--text-lg);
-  font-weight: var(--weight-bold);
-  line-height: 1.05;
-  letter-spacing: 0.02em;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.32);
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  letter-spacing: 0.22em;
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 12px rgba(10, 27, 42, 0.5);
 }
 
-
+/* ブランドは上端、コピーと CTA は下端へ。`margin-top: auto` に余った高さを全部
+   吸わせているので、縦に短い端末でも決め打ちの余白が要素を押し出さない。 */
 .lang-select__copy {
   margin-top: auto;
-  padding-top: clamp(6rem, 20vh, 10rem);
 }
 
-.lang-select__kicker {
-  color: var(--color-mikan-300);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-}
-
+/* 見出しは明朝・広い字間。
+ *
+ * 「次の旅は、愛媛へ。」を必ず1行で見せたいので、字サイズをビューポートではなく
+ * ヒーローの内寸 (cqw) から決めている。和文9文字 × (1em + 字間0.05em) = 約9.45em
+ * が「カード幅 − 左右パディング3rem」に収まる 8.5cqw を上限に置いているため、
+ * 画面幅が変わっても1行組みが崩れない。
+ *
+ * `white-space: nowrap` は意図的に使っていない。英語やドイツ語のように訳文が
+ * 長い言語では1行に収まらないので、その場合は自然に折り返させる（はみ出させない）。 */
 .lang-select__welcome-title {
-  max-width: 19rem;
-  margin: var(--space-1) 0 var(--space-2);
+  margin: 0 0 var(--space-3);
   color: #fff;
-  font-size: clamp(var(--text-xl), 8vw, var(--text-3xl));
-  line-height: 1.35;
-  text-wrap: balance;
-  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-serif);
+  font-size: clamp(1.5rem, 8.5cqw, 2.6rem);
+  font-weight: var(--weight-medium);
+  line-height: 1.5;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 22px rgba(10, 27, 42, 0.55);
 }
 
+/* リードは角ゴ。行間 2 で「語りかける」トーンにする。
+ *
+ * `pre-line` は訳文に入れた改行をそのまま行送りとして使うための指定。和文は
+ * 貪欲な折り返しに任せると「まだ知ら／ない景色を」のように語の途中で切れるので、
+ * 意味の切れ目を翻訳側（labels.ts）で決められるようにしている。改行を持たない
+ * 言語はそのまま自然に折り返すだけで、この指定の影響を受けない。 */
 .lang-select__lead {
-  max-width: 20rem;
-  color: rgba(255, 255, 255, 0.88);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  max-width: 20em;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: var(--text-md);
+  line-height: 2;
+  letter-spacing: 0.04em;
+  white-space: pre-line;
+  text-shadow: 0 2px 12px rgba(10, 27, 42, 0.5);
 }
 
 .lang-select__actions {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  margin-top: var(--space-4);
+  margin-top: var(--space-5);
 }
 
+/* 指で押す前提の最小サイズ。48px あれば片手操作でも外しにくい。 */
+.lang-select__actions > .ek-btn {
+  min-height: 3rem;
+}
+
+/* 主 CTA: 唯一の彩度の高い面。背も高くして最初に目が行くようにする。 */
+.lang-select__actions > .ek-btn--accent {
+  padding-block: 1.05em;
+  font-size: var(--text-md);
+  letter-spacing: 0.12em;
+  box-shadow: 0 14px 32px rgba(242, 140, 40, 0.36);
+}
+
+/* 副 CTA: 白の輪郭のみ。写真の上でも読めるよう、ごく薄い面と blur を敷く。 */
 .lang-select__language-button,
 .lang-select__language-button:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.75);
-  background: rgba(8, 38, 42, 0.32);
+  border-color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.08);
   color: #fff;
-  backdrop-filter: blur(8px);
+  letter-spacing: 0.08em;
+  backdrop-filter: blur(10px);
 }
+
+
 
 .lang-select__picker {
   display: flex;
@@ -5441,8 +5376,18 @@ textarea.nokyocho-field__control {
 }
 
 .route-builder-preview__list { display: grid; gap: var(--space-2); padding-inline-start: 1.5rem; }
-.route-builder-preview__list li { display: grid; grid-template-columns: 4.5rem 1fr; align-items: baseline; gap: var(--space-2); }
-.route-builder-preview__list time { color: var(--color-vermilion-500); font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; }
+
+/* 1行 = 「時刻（任意）+ 立寄先名」。
+ *
+ * grid で `4.5rem 1fr` の2列に固定すると、時刻が無い行では名前が1列目（4.5rem =
+ * 約4文字）に入ってしまい、「宇和島市／立闘牛場」のように寸断される。時刻は
+ * `times[index]` があるときだけ描画されるので、列を予約する作りにはできない。
+ *
+ * flex にすると、時刻があれば 4.5rem 固定 + 残り全部が名前、無ければ名前が
+ * 行幅いっぱいを使う。時刻列の幅は固定なので行をまたいだ桁揃えも保たれる。 */
+.route-builder-preview__list li { display: flex; align-items: baseline; gap: var(--space-2); }
+.route-builder-preview__list li > span { flex: 1 1 auto; min-width: 0; }
+.route-builder-preview__list time { flex: 0 0 4.5rem; color: var(--color-vermilion-500); font-weight: var(--weight-bold); font-variant-numeric: tabular-nums; }
 .route-builder-preview__selected { color: var(--color-vermilion-500); font-weight: var(--weight-bold); }
 
 .route-builder__custom-form { display: flex; gap: var(--space-2); margin: var(--space-3) 0; }

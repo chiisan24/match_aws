@@ -10,12 +10,6 @@ export type { AIPlanFirstProps } from "./AIPlanFirst";
 
 export { TourismRouteBuilder } from "./TourismRouteBuilder";
 
-export { ChatAdvisor } from "./ChatAdvisor";
-export type { ChatAdvisorProps } from "./ChatAdvisor";
-
-export { SwipeDeck } from "./SwipeDeck";
-export type { SwipeDeckProps } from "./SwipeDeck";
-
 export { FavoritesView } from "./FavoritesView";
 
 export { ShioriEditor } from "./ShioriEditor";

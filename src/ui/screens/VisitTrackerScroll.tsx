@@ -1,9 +1,8 @@
 /**
  * VisitTrackerScroll — the お遍路マッチ 行った/行ってない screen (Req 11.1–11.4),
- * built as a マッチングアプリ風 swipe deck that mirrors the 通常観光モード
- * {@link SwipeDeck}: one 札所 card at a time, decided by a **left/right swipe**
- * (drag), by two clearly-labelled buttons, or by the ← / → arrow keys — so it
- * reads at a glance and stays fully accessible.
+ * built as a マッチングアプリ風 swipe deck: one 札所 card at a time, decided by a
+ * **left/right swipe** (drag), by two clearly-labelled buttons, or by the
+ * ← / → arrow keys — so it reads at a glance and stays fully accessible.
  *
  *   右スワイプ / → → ○行った (visited)
  *   左スワイプ / ← → ×行ってない (not visited)
@@ -345,8 +344,8 @@ export function VisitTrackerScroll({
  * A temple photo. Priority: a curated local photo → a **name-searched** photo
  * from Wikipedia (Req: 名前で調べて画像表示) → an AI-generated royalty-free
  * photo (mock SVG by default, Amazon Bedrock when AWS is configured) → the
- * on-brand placeholder. Mirrors the 通常観光モード SwipeDeck's SpotPhoto so
- * お遍路マッチ cards look just as rich (Req 4.7).
+ * on-brand placeholder. The layered fallback keeps お遍路マッチ cards as rich as
+ * the 通常観光モード spot cards (Req 4.7).
  */
 function TemplePhoto({ temple }: { temple: Temple }): JSX.Element {
   const { t } = useI18n();

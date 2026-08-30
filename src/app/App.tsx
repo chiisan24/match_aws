@@ -1,8 +1,8 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 
 import type { LangCode, RecommendedPlan } from "../domain/types";
-import type { ChatPort, MapLocationPort, StoragePort } from "../ports";
-import { I18nProvider, useI18n } from "../i18n";
+import type { ChatPort, MapLocationPort } from "../ports";
+import { I18nProvider } from "../i18n";
 import {
   AIPlanFirst,
   LanguageSelect,
@@ -31,33 +31,15 @@ export function App(): JSX.Element {
       <ModeProvider storage={gateway.storage} rehydrate={false}>
         <ImageProvider image={gateway.image}>
           <SpotProvider spots={gateway.spots}>
-            <LocalizedTourismProvider chat={gateway.chat} storage={gateway.storage}>
+            <TourismProvider storage={gateway.storage}>
               <main className="app-shell">
                 <AppFlow map={gateway.map} chat={gateway.chat} />
               </main>
-            </LocalizedTourismProvider>
+            </TourismProvider>
           </SpotProvider>
         </ImageProvider>
       </ModeProvider>
     </I18nProvider>
-  );
-}
-
-/** Keeps the tourism chat session aligned with the selected UI language. */
-function LocalizedTourismProvider({
-  chat,
-  storage,
-  children,
-}: {
-  chat: ChatPort;
-  storage: StoragePort;
-  children: ReactNode;
-}): JSX.Element {
-  const { lang } = useI18n();
-  return (
-    <TourismProvider chat={chat} storage={storage} lang={lang}>
-      {children}
-    </TourismProvider>
   );
 }
 

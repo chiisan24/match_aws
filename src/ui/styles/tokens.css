@@ -29,9 +29,17 @@
 
   /* ---- Mikan accent (warm, used sparingly) ---- */
   --color-mikan-700: #c96a14;
-  --color-mikan-500: #f08a24; /* primary accent */
+  --color-mikan-500: #f28c28; /* primary accent */
   --color-mikan-300: #f8b56b;
   --color-mikan-100: #fde7cf;
+
+  /* ---- Journey palette: travel-media tone for the start screen ----
+   * 旅のわくわく感・開放感を出すための、瀬戸内の海と島に寄せた配色。
+   * 写真の上に重ねる前提なので、彩度は落ち着かせている。 */
+  --color-sea-700: #2e6da4; /* 瀬戸内の深い海 */
+  --color-sea-200: #a6c8e0; /* 遠景の空と海のかすみ */
+  --color-sage-600: #5b8e7d; /* 島の常緑 */
+  --color-linen: #f6f2ec; /* 余白のためのやわらかい生成り */
 
   /* ---- Shrine / temple vermilion (rare, ceremonial) ---- */
   --color-vermilion-500: #b5462f;
@@ -60,6 +68,10 @@
     "Yu Gothic", "Noto Sans JP", "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-display: "Hiragino Maru Gothic ProN", "Hiragino Kaku Gothic ProN",
     "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+  /* 明朝系。旅行メディアの見出しトーン（游明朝 / ヒラギノ明朝 / Noto Serif JP）。
+   * OS 標準に含まれる書体だけで組んでいるので Web フォントの追加読み込みは不要。 */
+  --font-serif: "Noto Serif JP", "Hiragino Mincho ProN", "Hiragino Mincho Pro",
+    "Yu Mincho", "YuMincho", "Source Han Serif JP", "Songti SC", serif;
 
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -90,6 +102,7 @@
   --radius-sm: 10px;
   --radius-md: 16px;
   --radius-lg: 22px;
+  --radius-xl: 28px; /* 写真を大きく見せるカード（スタート画面のヒーロー） */
   --radius-pill: 999px;
   /* Asymmetric "lozenge" radius used on cards / buttons for a crafted look */
   --radius-blob: 18px 20px 16px 22px;

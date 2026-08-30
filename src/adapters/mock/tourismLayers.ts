@@ -5,9 +5,9 @@
  *  - スポット系レイヤー … 観光スポット / グルメ / 温泉 / おみやげ を、実データの
  *    {@link EHIME_SPOTS} の `category` からそのままレイヤー化。
  *  - 施設レイヤー … トイレ / 駐車場 / 休憩所（愛媛周辺のモック点）。
- *  - ★あなたのレイヤー … スワイプ結果（お気に入り / しおり / 後で見る）を、その
- *    スポットの座標でピン化。`TourismContext` のコレクションを渡すだけで、
- *    スワイプ登録がそのまま地図に重なる。
+ *  - ★あなたのレイヤー … スワイプ結果（お気に入り / しおり）を、そのスポットの
+ *    座標でピン化。`TourismContext` のコレクションを渡すだけで、スワイプ登録が
+ *    そのまま地図に重なる。
  *
  * 座標はモック用の概算。ラベルはモックである旨を明記。純粋関数（副作用なし）。
  */
@@ -58,10 +58,8 @@ function pointsToFeatures(points: MockPoint[], layer: MapFeature["layer"]): MapF
 export interface TourismCollections {
   /** お気に入り (右スワイプ). */
   favorites: Spot[];
-  /** しおり (上スワイプ). */
+  /** しおり (確定ルート). */
   shiori: Spot[];
-  /** 後で見る (下スワイプ). */
-  later: Spot[];
 }
 
 /** Turn a spot collection into pins on a single user layer. */
@@ -113,7 +111,6 @@ export function buildTourismLayerFeatures(
   // ★あなたのレイヤー（スワイプ連動）。
   features.push(...collectionToFeatures(collections.favorites, "favorite", "fav"));
   features.push(...collectionToFeatures(collections.shiori, "shiori", "shiori"));
-  features.push(...collectionToFeatures(collections.later, "later", "later"));
 
   return features;
 }
