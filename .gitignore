@@ -17,6 +17,15 @@ dist-ssr/
 # Test / coverage
 coverage/
 
+# 検証・調査で吐く一時ファイル。`*.log` だけでは拾えず、実際に probe.txt や
+# devlog.txt が誤ってコミットされたので明示的に除外する。
+tmp-*
+*.vitest.json
+boot.txt
+devlog.txt
+probe.txt
+lookup.txt
+
 # Editor / OS
 .DS_Store
 *.log
