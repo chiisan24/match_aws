@@ -56,11 +56,9 @@ export function WelcomeScreen({
         <WelcomeHero />
         <div className="lang-select__scrim" aria-hidden="true" />
         <div className="lang-select__welcome">
-          <div className="lang-select__brand" aria-label="Ehime Journey">
-            <span>Ehime<br />Journey</span>
-          </div>
+          {/* 写真を主役にするため、ブランド表記は明朝の細い一行だけに絞る。 */}
+          <p className="lang-select__brand">Ehime Journey</p>
           <div className="lang-select__copy">
-            <p className="lang-select__kicker">{t("welcome.kicker")}</p>
             <h1 id="welcome-title" className="lang-select__welcome-title">
               {t("welcome.tagline")}
             </h1>
@@ -76,13 +74,16 @@ export function WelcomeScreen({
             >
               {t("welcome.start")}
             </Button>
+            {/* 地球アイコンは装飾。`leading` 経由なので aria-hidden が付き、
+                読み上げは「言語を変更」だけになる。 */}
             <Button
               variant="ghost"
               block
+              leading="🌐"
               className="lang-select__language-button"
               onClick={onChangeLanguage}
             >
-              🌐 {t("welcome.changeLanguage")}
+              {t("welcome.changeLanguage")}
             </Button>
           </div>
         </div>
@@ -288,7 +289,10 @@ function WelcomeHero(): JSX.Element {
         width={900}
         height={1200}
         style={{ aspectRatio: "3 / 4", width: "100%", objectFit: "cover" }}
-        loading="lazy"
+        /* この写真がスタート画面のデザインそのものなので、遅延させずに最優先で
+           取りに行く（遅延すると最初に無地の下地だけが見える）。 */
+        loading="eager"
+        fetchPriority="high"
         decoding="async"
         onError={() => setErrored(true)}
       />

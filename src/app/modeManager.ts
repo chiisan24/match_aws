@@ -27,17 +27,10 @@ export interface ModeState {
 }
 
 /**
- * Bottom-nav tabs for 通常観光モード (Req 2.2): チャット / スワイプ / お気に入り /
- * しおり. The real screens arrive in tasks 8/10/11; for now each tab mounts a
- * labelled placeholder panel.
+ * Bottom-nav tabs for 通常観光モード (Req 2.2): マップ / お気に入り / しおり.
+ * The first entry doubles as the mode's landing tab via {@link DEFAULT_TAB}.
  */
-export const TOURISM_TABS = [
-  "chat",
-  "swipe",
-  "map",
-  "favorites",
-  "shiori",
-] as const;
+export const TOURISM_TABS = ["map", "favorites", "shiori"] as const;
 export type TourismTab = (typeof TOURISM_TABS)[number];
 
 /**

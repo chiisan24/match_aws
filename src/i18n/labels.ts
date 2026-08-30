@@ -52,23 +52,29 @@ export const UI_LABELS: LangDict = {
     hi: "एहिमे में",
     iyo: "愛媛へ",
   },
+  // スタート画面のリード文。旅行メディア寄りの「語りかけるトーン」に合わせ、
+  // 海・島・街の3語で愛媛の広がりを示してから行動を促す (トンマナ参考画像)。
+  //
+  // 和文の `\n` は意図的な行送り。CSS 側が `white-space: pre-line` なのでここで
+  // 入れた改行がそのまま反映される。和文を貪欲に折り返させると語の途中で切れる
+  // ため、意味の切れ目はこの辞書で決める。改行が不要な言語は入れなくてよい。
   "welcome.lead": {
-    ja: "海と山とみかんの愛媛を、ゆっくり巡りましょう。",
-    en: "Take your time exploring Ehime — its sea, mountains and mikan.",
-    "zh-Hans": "慢慢游览爱媛的海、山与蜜柑。",
-    "zh-Hant": "慢慢遊覽愛媛的海、山與蜜柑。",
-    ko: "바다와 산과 밀감의 에히메를 천천히 둘러보세요.",
-    th: "ค่อย ๆ สำรวจเอฮิเมะ ทั้งทะเล ภูเขา และส้มมิคัง",
-    fr: "Prenez le temps de découvrir Ehime — sa mer, ses montagnes et ses mikan.",
-    de: "Erkunde Ehime in Ruhe — Meer, Berge und Mikan.",
-    es: "Explora Ehime con calma: su mar, sus montañas y sus mikan.",
-    pt: "Explore Ehime com calma — seu mar, montanhas e mikan.",
-    vi: "Hãy thong thả khám phá Ehime — biển, núi và quýt mikan.",
-    id: "Nikmati waktu Anda menjelajahi Ehime — laut, gunung, dan mikan-nya.",
-    ar: "استمتع باستكشاف إيهيمي على مهل — بحرها وجبالها وبرتقال الميكان.",
-    ru: "Не спеша исследуйте Эхиме — море, горы и мандарины микан.",
-    hi: "एहिमे के समुद्र, पहाड़ों और मिकान को इत्मीनान से देखें।",
-    iyo: "海と山とみかんの愛媛を、のんびり巡ろうや。",
+    ja: "海も、島も、街も。\nまだ知らない景色を探しに。",
+    en: "Sea, islands, streets — go find the views you haven't seen yet.",
+    "zh-Hans": "有海，有岛，有街。去寻找你还不知道的风景。",
+    "zh-Hant": "有海，有島，有街。去尋找你還不知道的風景。",
+    ko: "바다도, 섬도, 거리도. 아직 모르는 풍경을 찾아서.",
+    th: "ทะเล เกาะ และเมือง ออกไปค้นหาทิวทัศน์ที่คุณยังไม่รู้จัก",
+    fr: "La mer, les îles, les ruelles. Partez chercher les paysages que vous ne connaissez pas encore.",
+    de: "Meer, Inseln, Gassen. Auf der Suche nach Ausblicken, die du noch nicht kennst.",
+    es: "El mar, las islas, las calles. Ve a buscar los paisajes que aún no conoces.",
+    pt: "O mar, as ilhas, as ruas. Vá procurar as paisagens que você ainda não conhece.",
+    vi: "Biển, đảo và những con phố. Đi tìm khung cảnh bạn còn chưa biết.",
+    id: "Laut, pulau, dan jalanan. Temukan pemandangan yang belum Anda kenal.",
+    ar: "البحر والجزر والأزقة. اذهب لتكتشف المشاهد التي لم ترها بعد.",
+    ru: "Море, острова, улицы. За пейзажами, которых вы ещё не видели.",
+    hi: "समुद्र, द्वीप और गलियाँ। वे नज़ारे खोजने निकलिए जो आपने अभी देखे नहीं।",
+    iyo: "海も、島も、街も。\nまだ知らん景色を探しに行こや。",
   },
   "lang.heading": {
     ja: "言語を選択してください",
@@ -460,24 +466,7 @@ export const UI_LABELS: LangDict = {
   },
 
   // ---- Tourism mode bottom-nav tabs (Req 2.2, 18.4) -----------------------
-  "nav.tourism.chat": {
-    ja: "チャット",
-    en: "Chat",
-    "zh-Hans": "聊天",
-    ko: "채팅",
-    fr: "Chat",
-    ar: "دردشة",
-    iyo: "チャット",
-  },
-  "nav.tourism.swipe": {
-    ja: "スワイプ",
-    en: "Swipe",
-    "zh-Hans": "滑动",
-    ko: "스와이프",
-    fr: "Swipe",
-    ar: "تمرير",
-    iyo: "スワイプ",
-  },
+  // `nav.tourism.map` is assigned further down, next to the layered-map labels.
   "nav.tourism.favorites": {
     ja: "お気に入り",
     en: "Favorites",
@@ -535,17 +524,7 @@ export const UI_LABELS: LangDict = {
     iyo: "マイページ",
   },
 
-  // ---- Per-tab placeholder panels (real screens land in tasks 8/10/11) ----
-  "panel.tourism.chat.title": {
-    ja: "AIチャット相談",
-    en: "AI travel chat",
-    iyo: "AIに相談",
-  },
-  "panel.tourism.swipe.title": {
-    ja: "スワイプで発見",
-    en: "Discover by swiping",
-    iyo: "スワイプで見つける",
-  },
+  // ---- Per-tab panel headings --------------------------------------------
   "panel.tourism.favorites.title": {
     ja: "お気に入り",
     en: "Favorites",
@@ -760,154 +739,6 @@ export const UI_LABELS: LangDict = {
     ja: "お遍路モードでログインすると記録と進捗を保持できます。",
     en: "Sign in from pilgrimage mode to keep your records and progress.",
     iyo: "お遍路モードでログインしたら記録が残せるけんね。",
-  },
-
-  // ---- AI チャット相談 (Req 3.1, 3.2, 3.4, 3.5) ----------------------------
-  "chat.title": {
-    ja: "AIに相談",
-    en: "Chat with AI",
-    "zh-Hans": "向 AI 咨询",
-    "zh-Hant": "向 AI 諮詢",
-    ko: "AI에게 상담",
-    fr: "Discuter avec l'IA",
-    ar: "استشر الذكاء الاصطناعي",
-    iyo: "AIに相談するけん",
-  },
-  "chat.lead": {
-    ja: "行きたい雰囲気やしたいことを、気軽に話しかけてみてください。",
-    en: "Tell me the kind of trip you're after — no need to be formal.",
-    "zh-Hans": "随意告诉我你想要的旅行氛围或想做的事吧。",
-    "zh-Hant": "隨意告訴我你想要的旅行氛圍或想做的事吧。",
-    ko: "원하는 여행 분위기나 하고 싶은 일을 편하게 말씀해 주세요.",
-    th: "บอกฉันได้เลยว่าอยากได้ทริปแบบไหนหรืออยากทำอะไร ไม่ต้องเกรงใจ",
-    fr: "Dites-moi l'ambiance de voyage que vous cherchez — sans façon.",
-    de: "Erzähl mir einfach, welche Art Reise du dir wünschst.",
-    es: "Cuéntame el tipo de viaje que buscas, sin formalidades.",
-    pt: "Conte-me o tipo de viagem que procura — sem formalidades.",
-    vi: "Cứ thoải mái cho tôi biết bạn muốn chuyến đi kiểu gì nhé.",
-    id: "Ceritakan saja suasana perjalanan yang Anda inginkan.",
-    ar: "أخبرني ببساطة عن نوع الرحلة التي تريدها.",
-    ru: "Просто расскажите, какое путешествие вам по душе.",
-    hi: "बेझिझक बताइए कि आप कैसी यात्रा चाहते हैं।",
-    iyo: "行きたい雰囲気やしたいこと、気楽に話しかけてや。",
-  },
-  "chat.greeting": {
-    ja: "こんにちは！愛媛の旅、一緒に考えましょ。海沿いでのんびり？それとも食べ歩き？どんな気分ですか？",
-    en: "Hi there! Let's plan your Ehime trip together. Seaside and slow, or hopping between bites? What's the mood?",
-    "zh-Hans": "你好！一起来规划爱媛之旅吧。想在海边慢慢逛，还是边走边吃？你现在是什么心情呢？",
-    "zh-Hant": "你好！一起來規劃愛媛之旅吧。想在海邊慢慢逛，還是邊走邊吃？你現在是什麼心情呢？",
-    ko: "안녕하세요! 에히메 여행을 함께 계획해 봐요. 해변에서 느긋하게? 아니면 맛집 투어? 어떤 기분이세요?",
-    th: "สวัสดีค่ะ! มาวางแผนเที่ยวเอฮิเมะด้วยกันเถอะ อยากชิลริมทะเล หรือเดินชิมของอร่อยดี? อารมณ์ไหนดีล่ะ?",
-    fr: "Bonjour ! Planifions ensemble votre voyage à Ehime. Détente en bord de mer ou balade gourmande ? Quelle est l'envie ?",
-    de: "Hallo! Planen wir gemeinsam deine Ehime-Reise. Entspannt am Meer oder von Snack zu Snack? Worauf hast du Lust?",
-    es: "¡Hola! Planeemos juntos tu viaje a Ehime. ¿Costa y calma o de bocado en bocado? ¿Qué te apetece?",
-    pt: "Olá! Vamos planejar juntos sua viagem a Ehime. Beira-mar tranquila ou de petisco em petisco? Qual é o clima?",
-    vi: "Xin chào! Cùng lên kế hoạch chuyến đi Ehime nhé. Thư giãn bên biển hay dạo quanh nếm đồ ăn? Bạn đang muốn gì nào?",
-    id: "Halo! Yuk rencanakan perjalanan Ehime bersama. Santai di tepi laut atau berkeliling kuliner? Sedang ingin yang seperti apa?",
-    ar: "مرحبًا! لنخطط لرحلتك إلى إيهيمي معًا. استرخاء على الشاطئ أم تجوّل بين المأكولات؟ ما مزاجك؟",
-    ru: "Привет! Давайте вместе спланируем поездку в Эхиме. Тихо у моря или гастрономическая прогулка? Какое настроение?",
-    hi: "नमस्ते! आइए मिलकर एहिमे की यात्रा की योजना बनाएं। समुद्र किनारे आराम या खाने-पीने की सैर? आपका मूड कैसा है?",
-    iyo: "こんにちは！愛媛の旅、一緒に考えよや。海でのんびりもええし、食べ歩きもええよ。どんな気分ぞ？",
-  },
-  "chat.placeholder": {
-    ja: "メッセージを入力…",
-    en: "Type a message…",
-    "zh-Hans": "输入消息…",
-    ko: "메시지 입력…",
-    fr: "Écrire un message…",
-    ar: "اكتب رسالة…",
-    iyo: "メッセージを入れてや…",
-  },
-  "chat.send": {
-    ja: "送信",
-    en: "Send",
-    "zh-Hans": "发送",
-    ko: "보내기",
-    fr: "Envoyer",
-    ar: "إرسال",
-    iyo: "送るけん",
-  },
-  "chat.sending": {
-    ja: "送信中…",
-    en: "Sending…",
-    "zh-Hans": "发送中…",
-    "zh-Hant": "傳送中…",
-    ko: "보내는 중…",
-    th: "กำลังส่ง…",
-    fr: "Envoi…",
-    de: "Senden…",
-    es: "Enviando…",
-    pt: "Enviando…",
-    vi: "Đang gửi…",
-    id: "Mengirim…",
-    ar: "جارٍ الإرسال…",
-    ru: "Отправка…",
-    hi: "भेजा जा रहा है…",
-    iyo: "送りよるけん…",
-  },
-  "chat.thinking": {
-    ja: "うんうん、考えてます…",
-    en: "Hmm, thinking it over…",
-    "zh-Hans": "嗯，让我想想…",
-    "zh-Hant": "嗯，讓我想想…",
-    ko: "음, 생각 중이에요…",
-    th: "อืม กำลังคิดอยู่…",
-    fr: "Hmm, je réfléchis…",
-    de: "Hmm, ich überlege…",
-    es: "Mmm, lo estoy pensando…",
-    pt: "Hmm, estou pensando…",
-    vi: "Ừm, để tôi nghĩ đã…",
-    id: "Hmm, sedang berpikir…",
-    ar: "همم، أفكّر في الأمر…",
-    ru: "Хм, обдумываю…",
-    hi: "हम्म, सोच रहा हूँ…",
-    iyo: "うんうん、考えよるけん…",
-  },
-  "chat.candidatesReady": {
-    // {count} is replaced at render time with the number of candidates.
-    ja: "ぴったりなスポットを{count}件選んでみました。スワイプで気になるものを選んでみてくださいね。",
-    en: "I picked {count} spots for you. Swipe through to mark the ones you like.",
-    "zh-Hans": "我为你挑选了 {count} 个合适的景点。滑动挑选你感兴趣的吧。",
-    "zh-Hant": "我為你挑選了 {count} 個合適的景點。滑動挑選你感興趣的吧。",
-    ko: "딱 맞는 스팟 {count}곳을 골랐어요. 스와이프하며 마음에 드는 곳을 골라 보세요.",
-    th: "ฉันเลือกสถานที่ที่เหมาะมา {count} แห่ง ปัดเพื่อเลือกที่คุณสนใจได้เลย",
-    fr: "J'ai sélectionné {count} lieux pour vous. Balayez pour marquer ceux qui vous plaisent.",
-    de: "Ich habe {count} Orte für dich ausgewählt. Wische durch und markiere, was dir gefällt.",
-    es: "Elegí {count} lugares para ti. Desliza para marcar los que te gusten.",
-    pt: "Escolhi {count} lugares para você. Deslize para marcar os que gostar.",
-    vi: "Tôi đã chọn {count} địa điểm cho bạn. Vuốt để đánh dấu nơi bạn thích.",
-    id: "Saya memilih {count} tempat untuk Anda. Geser untuk menandai yang Anda suka.",
-    ar: "اخترت لك {count} أماكن. مرّر لتحديد ما يعجبك.",
-    ru: "Я подобрал для вас {count} мест. Свайпайте и отмечайте понравившиеся.",
-    hi: "मैंने आपके लिए {count} जगहें चुनी हैं। स्वाइप करके पसंदीदा चुनें।",
-    iyo: "ええスポットを{count}件選んでみたけん。スワイプで気になるの選んでや。",
-  },
-  "chat.toSwipe": {
-    ja: "スワイプで見る",
-    en: "View as swipes",
-    "zh-Hans": "滑动查看",
-    ko: "스와이프로 보기",
-    fr: "Voir en swipe",
-    ar: "عرض كبطاقات",
-    iyo: "スワイプで見るけん",
-  },
-  "chat.error": {
-    ja: "うまく応答を受け取れませんでした。もう一度お試しください。",
-    en: "I couldn't get a reply just now. Please try again.",
-    "zh-Hans": "暂时无法获取回复，请重试。",
-    ko: "응답을 받지 못했어요. 다시 시도해 주세요.",
-    fr: "Je n'ai pas pu obtenir de réponse. Veuillez réessayer.",
-    ar: "تعذّر الحصول على رد. حاول مرة أخرى.",
-    iyo: "うまく返事がもらえんかったわ。もういっぺん試してや。",
-  },
-  "chat.retry": {
-    ja: "再試行",
-    en: "Retry",
-    "zh-Hans": "重试",
-    ko: "다시 시도",
-    fr: "Réessayer",
-    ar: "إعادة المحاولة",
-    iyo: "もういっぺん",
   },
 
   // ---- 札所マップ / Temple map (Req 8.1–8.5) ------------------------------
@@ -2299,120 +2130,10 @@ UI_LABELS["lmap.candidates.lead"] = {
   iyo: "選んどるレイヤーから、近くで組み合わせられるスポットをまとめたよ。",
 };
 
-// ---- スワイプ発見 / Swipe discovery (Req 4.1–4.7) -------------------------
-UI_LABELS["swipe.title"] = {
-  ja: "スワイプで発見",
-  en: "Discover by swiping",
-  "zh-Hans": "滑动发现",
-  "zh-Hant": "滑動發現",
-  ko: "스와이프로 발견",
-  fr: "Découvrir en swipant",
-  ar: "اكتشف بالتمرير",
-  iyo: "スワイプで見つける",
-};
-UI_LABELS["swipe.lead"] = {
-  ja: "気になるスポットは右へ、ピンとこなければ左へ。上でしおり、下で後で見るに。",
-  en: "Swipe right if it catches your eye, left if not. Up saves to your itinerary, down for later.",
-  iyo: "ええなと思うたら右、ピンとこんかったら左へ。上でしおり、下で後で見るに入るけん。",
-};
-UI_LABELS["swipe.progress"] = {
-  // {current} / {total} replaced at render time.
-  ja: "{current} / {total} 枚目",
-  en: "Card {current} of {total}",
-  iyo: "{current} / {total} 枚目",
-};
-UI_LABELS["swipe.cardRole"] = {
-  ja: "スワイプカード",
-  en: "swipe card",
-  iyo: "スワイプカード",
-};
-UI_LABELS["swipe.controls"] = {
-  ja: "スワイプ操作",
-  en: "Swipe actions",
-  iyo: "スワイプ操作",
-};
-UI_LABELS["swipe.hint"] = {
-  ja: "カードはドラッグでも、ボタンでも、矢印キーでも操作できます。",
-  en: "Drag the card, tap a button, or use the arrow keys.",
-  iyo: "カードはドラッグでも、ボタンでも、矢印キーでも動かせるけん。",
-};
-
-// 4方向アクション (Req 4.2–4.5)
-UI_LABELS["swipe.action.favorite"] = {
-  ja: "行きたい",
-  en: "Want to go",
-  "zh-Hans": "想去",
-  "zh-Hant": "想去",
-  ko: "가고 싶어요",
-  fr: "Envie d'y aller",
-  ar: "أريد الذهاب",
-  iyo: "行きたい",
-};
-UI_LABELS["swipe.action.skip"] = {
-  ja: "興味なし",
-  en: "Not for me",
-  "zh-Hans": "不感兴趣",
-  "zh-Hant": "沒興趣",
-  ko: "관심 없어요",
-  fr: "Pas pour moi",
-  ar: "لا يهمني",
-  iyo: "興味なし",
-};
-UI_LABELS["swipe.action.shiori"] = {
-  ja: "しおりに追加",
-  en: "Add to itinerary",
-  "zh-Hans": "加入行程",
-  "zh-Hant": "加入行程",
-  ko: "일정에 추가",
-  fr: "Ajouter à l'itinéraire",
-  ar: "أضف إلى الرحلة",
-  iyo: "しおりに入れる",
-};
-UI_LABELS["swipe.action.later"] = {
-  ja: "後で見る",
-  en: "See later",
-  "zh-Hans": "稍后再看",
-  "zh-Hant": "稍後再看",
-  ko: "나중에 보기",
-  fr: "Voir plus tard",
-  ar: "شاهد لاحقًا",
-  iyo: "後で見る",
-};
-
-// アクセシブルなボタンの aria-label (方向つき)
-UI_LABELS["swipe.aria.right"] = {
-  ja: "右にスワイプ：行きたいに追加",
-  en: "Swipe right: add to want-to-go",
-  iyo: "右にスワイプ：行きたいに入れる",
-};
-UI_LABELS["swipe.aria.left"] = {
-  ja: "左にスワイプ：興味なしで次へ",
-  en: "Swipe left: skip to next",
-  iyo: "左にスワイプ：興味なしで次へ",
-};
-UI_LABELS["swipe.aria.up"] = {
-  ja: "上にスワイプ：しおりに追加",
-  en: "Swipe up: add to itinerary",
-  iyo: "上にスワイプ：しおりに入れる",
-};
-UI_LABELS["swipe.aria.down"] = {
-  ja: "下にスワイプ：後で見るに追加",
-  en: "Swipe down: save for later",
-  iyo: "下にスワイプ：後で見るに入れる",
-};
-
-// カード上の情報 (Req 4.1)
-UI_LABELS["swipe.rank"] = {
-  // {rank} replaced at render time.
-  ja: "人気 {rank}位",
-  en: "Popularity #{rank}",
-  "zh-Hans": "人气第 {rank} 名",
-  ko: "인기 {rank}위",
-  fr: "Popularité n°{rank}",
-  ar: "الأكثر رواجًا #{rank}",
-  iyo: "人気 {rank}位",
-};
-UI_LABELS["swipe.reviewCount"] = {
+// ---- スポット表示の共通ラベル / Shared spot labels -----------------------
+// お気に入り一覧（FavoritesView）の行と詳細が、スポットのカテゴリと口コミ件数の
+// 表示に使う。
+UI_LABELS["spot.reviewCount"] = {
   // {count} replaced at render time.
   ja: "口コミ {count}件",
   en: "{count} reviews",
@@ -2422,14 +2143,9 @@ UI_LABELS["swipe.reviewCount"] = {
   ar: "{count} مراجعة",
   iyo: "口コミ {count}件",
 };
-UI_LABELS["swipe.noReviews"] = {
-  ja: "口コミは準備中です。",
-  en: "Reviews coming soon.",
-  iyo: "口コミはもうちょっと待ってな。",
-};
 
-// スポットのカテゴリ
-UI_LABELS["swipe.category.sightseeing"] = {
+// スポットのカテゴリ（`Spot.category` の4値に1対1で対応する）
+UI_LABELS["spot.category.sightseeing"] = {
   ja: "観光",
   en: "Sightseeing",
   "zh-Hans": "观光",
@@ -2438,7 +2154,7 @@ UI_LABELS["swipe.category.sightseeing"] = {
   ar: "معالم",
   iyo: "観光",
 };
-UI_LABELS["swipe.category.food"] = {
+UI_LABELS["spot.category.food"] = {
   ja: "グルメ",
   en: "Food",
   "zh-Hans": "美食",
@@ -2447,7 +2163,7 @@ UI_LABELS["swipe.category.food"] = {
   ar: "طعام",
   iyo: "グルメ",
 };
-UI_LABELS["swipe.category.souvenir"] = {
+UI_LABELS["spot.category.souvenir"] = {
   ja: "おみやげ",
   en: "Souvenirs",
   "zh-Hans": "伴手礼",
@@ -2456,7 +2172,7 @@ UI_LABELS["swipe.category.souvenir"] = {
   ar: "هدايا",
   iyo: "おみやげ",
 };
-UI_LABELS["swipe.category.onsen"] = {
+UI_LABELS["spot.category.onsen"] = {
   ja: "温泉",
   en: "Hot spring",
   "zh-Hans": "温泉",
@@ -2464,59 +2180,6 @@ UI_LABELS["swipe.category.onsen"] = {
   fr: "Onsen",
   ar: "ينابيع ساخنة",
   iyo: "温泉",
-};
-
-// あなたへのおすすめ (Req 4.6)
-UI_LABELS["swipe.recommend.title"] = {
-  ja: "あなたへのおすすめ",
-  en: "Recommended for you",
-  "zh-Hans": "为你推荐",
-  "zh-Hant": "為你推薦",
-  ko: "당신을 위한 추천",
-  fr: "Recommandé pour vous",
-  ar: "موصى به لك",
-  iyo: "あなたへのおすすめ",
-};
-UI_LABELS["swipe.recommend.empty"] = {
-  ja: "ひととおり見終わりました。新しいスポットが届くまでお待ちください。",
-  en: "You've seen them all for now. New spots will appear soon.",
-  iyo: "ひととおり見終わったね。新しいスポットが届くまで待っとってな。",
-};
-UI_LABELS["swipe.recommend.view"] = {
-  ja: "{name}をカードで見る",
-  en: "View {name} as a card",
-  "zh-Hans": "以卡片查看{name}",
-  "zh-Hant": "以卡片查看{name}",
-  ko: "{name} 카드로 보기",
-  fr: "Voir {name} en carte",
-  ar: "عرض {name} كبطاقة",
-  iyo: "{name}をカードで見るけん",
-};
-
-// 完了 / リスタート
-UI_LABELS["swipe.done.title"] = {
-  ja: "ぜんぶ見終わりました",
-  en: "That's everyone",
-  "zh-Hans": "全部看完啦",
-  ko: "모두 살펴봤어요",
-  fr: "Vous avez tout vu",
-  ar: "انتهيت من الجميع",
-  iyo: "ぜんぶ見終わったよ",
-};
-UI_LABELS["swipe.done.lead"] = {
-  ja: "下のおすすめもチェックしてみてくださいね。",
-  en: "Check out your recommendations below.",
-  iyo: "下のおすすめも見てみてや。",
-};
-UI_LABELS["swipe.restart"] = {
-  ja: "もう一度見る",
-  en: "Review again",
-  iyo: "もういっぺん見る",
-};
-UI_LABELS["swipe.backToChat"] = {
-  ja: "チャットに戻る",
-  en: "Back to chat",
-  iyo: "チャットに戻るけん",
 };
 
 // ---- お気に入り / Favorites (Req 5.1–5.4) ---------------------------------
@@ -2647,10 +2310,12 @@ UI_LABELS["shiori.title"] = {
   ar: "خط رحلتك",
   iyo: "しおり（旅程）",
 };
+// しおりへの流入経路はルート作成の最終画面「このルートで旅を始める」
+// （routeBuilder.complete）だけなので、案内文もそこを指す。
 UI_LABELS["shiori.lead"] = {
-  ja: "スワイプで上にした行きたい場所が並びます。順番を入れ替えて、当日の行程を整えましょう。",
-  en: "Spots you swiped up gather here. Reorder them to shape your day.",
-  iyo: "スワイプで上にした行きたいとこが並ぶけん。順番を入れ替えて行程を整えよや。",
+  ja: "「このルートで旅を始める」で確定した立寄先が並びます。順番を入れ替えて、当日の行程を整えましょう。",
+  en: "The stops you confirmed with “Start this route” gather here. Reorder them to shape your day.",
+  iyo: "「このルートで旅を始める」で決めた立寄先が並ぶけん。順番を入れ替えて行程を整えよや。",
 };
 UI_LABELS["shiori.empty.title"] = {
   ja: "しおりはまだ空っぽです",
@@ -2658,9 +2323,9 @@ UI_LABELS["shiori.empty.title"] = {
   iyo: "しおりはまだ空っぽやよ",
 };
 UI_LABELS["shiori.empty.lead"] = {
-  ja: "スワイプ画面で気になる場所を上にスワイプすると、ここに追加されます。",
-  en: "Swipe a spot up on the swipe screen to add it here.",
-  iyo: "スワイプ画面で気になるとこを上にスワイプしたら、ここに入るけん。",
+  ja: "ルートを組んで「このルートで旅を始める」を押すと、その立寄先がここに追加されます。",
+  en: "Build a route and press “Start this route” to gather its stops here.",
+  iyo: "ルートを組んで「このルートで旅を始める」を押したら、その立寄先がここに入るけん。",
 };
 UI_LABELS["shiori.moveControls"] = {
   // {name} replaced at render time.
@@ -2822,7 +2487,6 @@ UI_LABELS["tlmap.layer.parking"] = { ja: "駐車場", en: "Parking", iyo: "駐�
 UI_LABELS["tlmap.layer.rest_area"] = { ja: "休憩所・道の駅", en: "Rest areas", iyo: "休憩所・道の駅" };
 UI_LABELS["tlmap.layer.favorite"] = { ja: "お気に入り", en: "Favorites", iyo: "お気に入り" };
 UI_LABELS["tlmap.layer.shiori"] = { ja: "しおり", en: "Itinerary", iyo: "しおり" };
-UI_LABELS["tlmap.layer.later"] = { ja: "後で見る", en: "Later", iyo: "後で見る" };
 
 UI_LABELS["tlmap.purpose.label"] = { ja: "目的から重ねる", en: "Overlay by purpose", iyo: "目的から重ねる" };
 UI_LABELS["tlmap.purpose.standard"] = { ja: "定番観光", en: "Classic tour", iyo: "定番観光" };
@@ -2980,15 +2644,17 @@ Object.assign(UI_LABELS, {
 
 // ---- Image-led onboarding and plan reactions -------------------------------
 Object.assign(UI_LABELS, {
+  // 見出しは明朝で組む前提の短い言い切り。「旅に出たくなるきっかけ」を
+  // 一行で置き、地名で締める (トンマナ参考画像)。
   "welcome.tagline": {
-    ja: "愛媛の「まだ知らない魅力」に出会う旅へ",
-    en: "A journey into the Ehime you haven't met yet",
-    iyo: "愛媛の、まだ知らん魅力に会いに行こや",
+    ja: "次の旅は、愛媛へ。",
+    en: "Your next journey: Ehime.",
+    iyo: "次の旅は、愛媛へ。",
   },
   "welcome.start": {
-    ja: "はじめる",
-    en: "Start exploring",
-    iyo: "はじめよや",
+    ja: "旅をはじめる",
+    en: "Start the journey",
+    iyo: "旅をはじめよや",
   },
   "welcome.changeLanguage": {
     ja: "言語を変更",

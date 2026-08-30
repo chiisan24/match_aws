@@ -16,6 +16,7 @@ import type {
   RouteCandidate,
   RouteCandidateKind,
 } from "../../ports";
+import { useTourism } from "../../app/TourismContext";
 import { debugSkipSwipeEnabled } from "../../config/debug";
 import {
   CANDIDATE_MAXIMUM_COUNT,
@@ -24,6 +25,10 @@ import {
   finalizeCandidates,
 } from "../../domain/candidateFallback";
 import { haversineDistanceMeters } from "../../domain/geofence";
+import {
+  spotFromRouteCandidate,
+  spotsFromRouteCandidates,
+} from "../../domain/routeCandidate";
 import { DEFAULT_FALLBACK_POOLS } from "../../data/fallbackPools";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
@@ -335,6 +340,10 @@ export function TourismRouteBuilder({
   onComplete,
 }: TourismRouteBuilderProps): JSX.Element {
   const { t, lang } = useI18n();
+  // ストアへの書き込みは props のコールバックではなくコンテキスト経由で行う。
+  // 「興味あり」の瞬間 (`decide`) にお気に入りへ入れる必要があり (Req 2.1)、
+  // `onComplete` まで待つ経路では間に合わない。
+  const { addFavorite, addSpotsToShiori } = useTourism();
   const initialSelection = useMemo(() => initialRouteFromTheme(theme), [theme]);
   const [stage, setStage] = useState<BuilderStage>("sightseeing");
   const [status, setStatus] = useState<LoadStatus>("idle");
@@ -448,18 +457,22 @@ export function TourismRouteBuilder({
     const candidate = candidates[index];
     if (!candidate) return;
     if (interested) {
+      // 「興味あり」はその場でお気に入りへ (Req 2.1)。ルート挿入は従来どおり
+      // 維持する (Req 2.2)。ルートから外してもお気に入りは残る (Req 2.5)。
+      addFavorite(spotFromRouteCandidate(candidate, lang));
       setRoute((current) => current.some((item) => item.place.id === candidate.place.id)
         ? current
         : insertAlongRoute(current, candidate));
       setRejected((current) => current.filter((item) => item.id !== candidate.id));
     } else {
+      // 「興味なし」はお気に入りに触れない (Req 2.4)。
       setRoute((current) => current.filter((item) => item.id !== candidate.id));
       setRejected((current) => current.some((item) => item.id === candidate.id)
         ? current
         : [...current, candidate]);
     }
     setIndex((current) => current + 1);
-  }, [candidates, index]);
+  }, [addFavorite, candidates, index, lang]);
 
   const generateFinalPlan = useCallback(async (selectedRoute: RouteCandidate[]): Promise<void> => {
     setRoute(selectedRoute);
@@ -516,13 +529,15 @@ export function TourismRouteBuilder({
     let next = route;
     for (const candidate of candidates.slice(index, index + count)) {
       if (!next.some((item) => item.place.id === candidate.place.id)) {
+        // 一括追加も通常のスワイプと同じくお気に入りへ入れる (Req 2.8)。
+        addFavorite(spotFromRouteCandidate(candidate, lang));
         next = insertAlongRoute(next, candidate);
       }
     }
     setRoute(next);
     setIndex(candidates.length);
     return next;
-  }, [candidates, index, route]);
+  }, [addFavorite, candidates, index, lang, route]);
 
   /** 現在のデッキを飛ばして、そのステージのルートプレビューまで進める。 */
   const debugSkipDeck = useCallback((): void => {
@@ -578,6 +593,11 @@ export function TourismRouteBuilder({
     const times = routeTimes.length === route.length
       ? routeTimes
       : fallbackRouteTimes(route.length);
+    // 確定ルートをしおりへ流し込む (Req 4.1, 4.2)。到着予定時刻は Spot が持た
+    // ないため引き継がない (下の `times` は画面表示と Active_Plan 用)。
+    // `onComplete` はこの画面をアンマウントするので、書き込みを先に行う。
+    // ルートが空なら追加は no-op になる (Req 4.9)。
+    addSpotsToShiori(spotsFromRouteCandidates(route, lang));
     onComplete({
       ...theme,
       mode: "tourism",
