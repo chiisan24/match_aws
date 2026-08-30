@@ -1,0 +1,40 @@
+﻿=== includedTypes validity (probe area: 譚ｾ螻ｱ) ===
+  park                         OK   results=20
+  national_park                OK   results=0
+  garden                       OK   results=11
+  plaza                        OK   results=0
+  picnic_ground                OK   results=0
+  community_center             OK   results=20
+  rest_stop                    OK   results=1
+  tourist_information_center   OK   results=20
+  public_bath                  OK   results=20
+  convenience_store            OK   results=20
+
+=== combined search with valid types ===
+
+[髱｢豐ｳ貂・(螻ｱ髢馴Κ)] radius=10000m status=200 count=11
+   - 荵・ｸ・ｫ伜次逕ｺ 荳ｭ邨・・豌鷹､ｨ  types=community_center/event_venue/point_of_interest
+   - 縺翫ｂ縺斐・繧九＆縺ｨ縺ｮ鬧・ types=rest_stop/point_of_interest/establishment
+   - 蠕｡莨第・謇  types=park/point_of_interest/establishment
+   - 荵・ｸ・ｫ伜次逕ｺ 闍･螻ｱ蜈ｬ豌鷹､ｨ  types=community_center/event_venue/point_of_interest
+   - 荳狗峩轢ｬ蜈ｬ豌鷹､ｨ  types=community_center/event_venue/point_of_interest
+   - 髱｢豐ｳ繝繝蜈ｬ蝨・ types=park/point_of_interest/establishment
+   - 蜿､蟯ｩ螻区ｸｩ豕・蝗ｽ豌大ｮｿ闊主商蟯ｩ螻玖腰  types=public_bath/point_of_interest/establishment
+   - 縺繧薙□繧薙♀繧ゅ＃  types=rest_stop/point_of_interest/establishment
+   - 螟ｧ驥主慍蛹ｺ繧ｳ繝溘Η繝九ユ繧｣繧ｻ繝ｳ繧ｿ繝ｼ  types=community_center/event_venue/point_of_interest
+   - 縺企″霍ｯ莨第・謇  types=park/point_of_interest/establishment
+   - 逋ｾ蟾晏・蜈ｬ豌鷹､ｨ  types=community_center/event_venue/point_of_interest
+
+[譚ｾ螻ｱ蟶ゆｸｭ蠢・Κ] radius=3000m status=200 count=20
+   - ・ｸ・・┥奓ｰ ・戦梭・被・・ｭ  types=tourist_information_center/tour_agency/travel_agency
+   - E:N BASE  types=community_center/event_venue/point_of_interest
+   - 譫玲ｳ牙ｺｭ  types=garden/point_of_interest/establishment
+   - 諢帛ｪ帷恁閾ｪ豐ｻ莨夐､ｨ  types=community_center/event_venue/point_of_interest
+   - 螂･蠕｡谿ｿ霍｡豬∵ｰｴ蝨・ types=garden/point_of_interest/establishment
+   - 莠御ｹ倶ｸｸ蜿ｲ霍｡蠎ｭ蝨・ types=garden/tourist_attraction/point_of_interest
+   - 繝輔ぃ繝溘Μ繝ｼ繝槭・繝・諢帛ｪ帷恁蠎∝燕蠎・ types=convenience_store/food_store/store
+   - 蝓主ｱｱ蜈ｬ蝨・ types=park/point_of_interest/establishment
+   - 蝓主ｱｱ蜈ｬ蝨・縺輔￥繧牙ｺ・ｴ  types=park/point_of_interest/establishment
+   - 逡ｪ逕ｺ蜈ｬ豌鷹､ｨ  types=community_center/event_venue/point_of_interest
+   - 莨第・謇  types=park/point_of_interest/establishment
+   - 蝓主ｱｱ蜈ｬ蝨・繧・☆繧峨℃蠎・ｴ  types=park/point_of_interest/establishment
