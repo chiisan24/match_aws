@@ -34,7 +34,9 @@ import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { GoogleTourismMap } from "../components/GoogleTourismMap";
+import { PlaceholderImage } from "../components/PlaceholderImage";
 import { Tag } from "../components/Tag";
+import { useWikipediaImage } from "./useWikipediaImage";
 
 interface TourismRouteBuilderProps {
   chat: ChatPort;
@@ -62,12 +64,22 @@ type LoadStatus = "idle" | "loading" | "ready" | "error";
  */
 const DEBUG_SKIP_AUTO_PICK = 2;
 
-const FALLBACK_IMAGE: Record<RouteCandidateKind, string> = {
-  sightseeing: "/images/ehime/matsuyama-castle.jpg",
-  food: "/images/ehime/michi-no-eki.jpg",
-  cafe: "/images/ehime/brick-studio.jpg",
-  custom: "/images/ehime/kurushima-bridge.jpg",
-};
+/**
+ * 写真が無い候補のサムネイル枠に入れる無地タイル（和紙色の地に細い斜線）。
+ *
+ * `<img>` の src として差し替えられるので、一覧側の既存のサイズ指定（3.5rem 角 /
+ * 高さ 6rem）がそのまま効く。以前はここに種別ごとの固定写真（観光なら松山城）を
+ * 当てていたため、写真の無い候補が全部同じ絵になり、しかも実在しない場所の写真を
+ * 見せていた。
+ */
+const BLANK_PHOTO =
+  "data:image/svg+xml;utf8,"
+  + encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">'
+    + '<rect width="16" height="16" fill="#f3ece0"/>'
+    + '<path d="M0 16 16 0" stroke="#e4dac6" stroke-width="1.5"/>'
+    + "</svg>",
+  );
 
 function fallbackRouteTimes(count: number): string[] {
   const interval = Math.max(45, Math.min(90, Math.floor(600 / Math.max(1, count))));
@@ -142,17 +154,57 @@ function insertAlongRoute(
   return result;
 }
 
+/**
+ * スワイプカードの写真。優先順位は
+ *   1. Google Places の実写真（`place.photoUrl`。API キー設定時のみ付く）
+ *   2. 施設名で引いた ja.wikipedia の実写真（キー不要・CORS 可）
+ *   3. 施設名を載せたプレースホルダー
+ *
+ * 以前は 3 が種別ごとの固定画像（観光なら松山城）だったため、写真の無い候補が
+ * すべて同じ絵になり、しかも「ハタダ（みやげ）」に松山城が出るような取り違えが
+ * 起きていた。実在しない写真を当てるより、無いことを示すほうが誤解が少ない。
+ */
 function CandidatePhoto({ candidate }: { candidate: RouteCandidate }): JSX.Element {
-  const src = candidate.place.photoUrl ?? FALLBACK_IMAGE[candidate.kind];
+  const { t } = useI18n();
+  const [placePhotoErrored, setPlacePhotoErrored] = useState(false);
+  const [wikiErrored, setWikiErrored] = useState(false);
+
+  const placePhoto = candidate.place.photoUrl;
+  const hasPlacePhoto = Boolean(placePhoto) && !placePhotoErrored;
+
+  // Google の写真が無い（または壊れている）ときだけ名前で検索する。
+  const wiki = useWikipediaImage(
+    hasPlacePhoto ? null : candidate.place.name,
+    !hasPlacePhoto,
+  );
+  const wikiReady = wiki.status === "ready" && !wikiErrored;
+  const searching = !hasPlacePhoto && !wikiReady
+    && (wiki.status === "loading" || wiki.status === "idle");
+
   return (
     <div className="route-builder-card__photo-wrap">
-      <img
-        className="route-builder-card__photo"
-        src={src}
-        alt={candidate.place.name}
-        onError={(event) => { event.currentTarget.src = FALLBACK_IMAGE[candidate.kind]; }}
-      />
-      {candidate.place.photoAttributions?.length ? (
+      {hasPlacePhoto ? (
+        <img
+          className="route-builder-card__photo"
+          src={placePhoto}
+          alt={candidate.place.name}
+          onError={() => setPlacePhotoErrored(true)}
+        />
+      ) : wikiReady ? (
+        <img
+          className="route-builder-card__photo"
+          src={wiki.src}
+          alt={candidate.place.name}
+          onError={() => setWikiErrored(true)}
+        />
+      ) : (
+        <PlaceholderImage
+          motif={candidate.kind === "sightseeing" ? "spot" : "mikan"}
+          label={candidate.place.name}
+          sublabel={searching ? t("visit.photoSearching") : t("visit.photoSoon")}
+        />
+      )}
+      {hasPlacePhoto && candidate.place.photoAttributions?.length ? (
         <small className="route-builder-card__credit">
           Photo: {candidate.place.photoAttributions.map((item, index) => (
             <span key={`${item.displayName}-${index}`}>
@@ -164,6 +216,33 @@ function CandidatePhoto({ candidate }: { candidate: RouteCandidate }): JSX.Eleme
       ) : null}
     </div>
   );
+}
+
+/**
+ * 一覧用の小さなサムネイル。写真の出どころは {@link CandidatePhoto} と同じ順序
+ * （Google Places → 名前で ja.wikipedia → 無地タイル）。`useWikipediaImage` は
+ * 名前をキーにセッション内キャッシュを持つので、スワイプ中に既に引いた候補は
+ * 追加の通信なしで表示される。
+ */
+function CandidateThumb({ candidate }: { candidate: RouteCandidate }): JSX.Element {
+  const [placePhotoErrored, setPlacePhotoErrored] = useState(false);
+  const [wikiErrored, setWikiErrored] = useState(false);
+
+  const placePhoto = candidate.place.photoUrl;
+  const hasPlacePhoto = Boolean(placePhoto) && !placePhotoErrored;
+  const wiki = useWikipediaImage(
+    hasPlacePhoto ? null : candidate.place.name,
+    !hasPlacePhoto,
+  );
+  const wikiReady = wiki.status === "ready" && !wikiErrored;
+
+  if (hasPlacePhoto) {
+    return <img src={placePhoto} alt="" loading="lazy" onError={() => setPlacePhotoErrored(true)} />;
+  }
+  if (wikiReady) {
+    return <img src={wiki.src} alt="" loading="lazy" onError={() => setWikiErrored(true)} />;
+  }
+  return <img src={BLANK_PHOTO} alt="" />;
 }
 
 function BinarySwipeDeck({
@@ -671,9 +750,22 @@ export function TourismRouteBuilder({
       {candidateStage && status === "error" ? (
         <Card className="route-builder__status route-builder__status--error" raised>
           <p role="alert">{error || t("routeBuilder.loadError")}</p>
-          <Button variant="soft" onClick={() => void loadCandidates(stage, stage === "custom" ? customRequest : "")}>
-            {t("routeBuilder.retry")}
-          </Button>
+          {/* 食事 / カフェ / リクエストは任意の工程で、質問画面にもスキップがある。
+              面河渓のように周辺にカフェが実在しないエリアでは候補が 0 件になり、
+              Candidate_API は 502 を返す（Req 3.5）。この場合いくら再試行しても
+              候補は増えないので、再試行だけを出すと先へ進めなくなる。前へ進む
+              出口を必ず併記する。観光は工程の土台なので再試行のみを残す。 */}
+          {stage === "sightseeing" ? null : (
+            <p className="route-builder__status-hint">{t("routeBuilder.loadErrorSkipHint")}</p>
+          )}
+          <div className="route-builder__actions">
+            <Button variant="soft" onClick={() => void loadCandidates(stage, stage === "custom" ? customRequest : "")}>
+              {t("routeBuilder.retry")}
+            </Button>
+            {stage === "sightseeing" ? null : (
+              <Button variant="ghost" onClick={nextAfterDeck}>{t("routeBuilder.skip")}</Button>
+            )}
+          </div>
         </Card>
       ) : null}
 
@@ -791,7 +883,7 @@ export function TourismRouteBuilder({
               {route.map((candidate, routeIndex) => (
                 <li key={candidate.id}>
                   <span className="route-builder-editor__number">{routeIndex + 1}</span>
-                  <img src={candidate.place.photoUrl ?? FALLBACK_IMAGE[candidate.kind]} alt="" />
+                  <CandidateThumb candidate={candidate} />
                   <span className="route-builder-editor__details">
                     <time className="route-builder-editor__time" dateTime={routeTimes[routeIndex]}>
                       {routeTimes[routeIndex] ?? "--:--"}
@@ -814,7 +906,7 @@ export function TourismRouteBuilder({
               <div className="route-builder-rejected__list">
                 {rejected.map((candidate) => (
                   <button key={candidate.id} type="button" onClick={() => restoreCandidate(candidate)}>
-                    <img src={candidate.place.photoUrl ?? FALLBACK_IMAGE[candidate.kind]} alt="" />
+                    <CandidateThumb candidate={candidate} />
                     <span>＋ {candidate.title}</span>
                   </button>
                 ))}

@@ -2761,6 +2761,13 @@ Object.assign(UI_LABELS, {
   "routeBuilder.loading.custom": { ja: "リクエストに合う場所を探しています…", en: "Finding places matching your request…", iyo: "希望に合うところを探しよるけん…" },
   "routeBuilder.loadError": { ja: "候補を取得できませんでした。もう一度お試しください。", en: "Candidates could not be loaded. Please try again.", iyo: "候補を取れんかったけん、もう一回試してや。" },
   "routeBuilder.retry": { ja: "もう一度探す", en: "Try again", iyo: "もう一回探す" },
+  // 候補 0 件は「この周辺に実在しない」ことが理由の場合があり、再試行では解決
+  // しない。任意の工程（食事 / カフェ / リクエスト）では先へ進める旨を添える。
+  "routeBuilder.loadErrorSkipHint": {
+    ja: "この周辺には候補が見つからないことがあります。追加せずに次へ進めます。",
+    en: "There may be nothing nearby for this step. You can move on without adding anything.",
+    iyo: "この辺には候補がないこともあるけん。追加せんで次に進めるよ。",
+  },
   "routeBuilder.routeTitle": { ja: "現在のルート", en: "Current route", iyo: "今のルート" },
   "routeBuilder.routeLead": { ja: "興味ありを選んだ{count}スポットを道路ルートで表示しています。", en: "Showing a driving route through {count} selected stops.", iyo: "選んだ{count}か所を道路ルートで出しとるよ。" },
   "routeBuilder.mapFallback": { ja: "Google Mapsを読み込めないため、スポット一覧で確認してください。", en: "Google Maps is unavailable; review the stop list instead.", iyo: "地図を読めんけん、下の一覧を見てや。" },

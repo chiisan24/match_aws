@@ -5238,6 +5238,14 @@ textarea.nokyocho-field__control {
   border-color: var(--color-danger);
 }
 
+/* エラー本文（role="alert"）の下に添える補足。再試行では解決しない状況で、
+   先へ進める旨を控えめに伝えるので、警告色ではなく通常の副文として置く。 */
+.route-builder__status-hint {
+  margin: var(--space-2) 0 0;
+  color: var(--color-ink-soft);
+  font-size: var(--text-sm);
+}
+
 .route-builder__question-icon {
   display: block;
   font-size: 3rem;
