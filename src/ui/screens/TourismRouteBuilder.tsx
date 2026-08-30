@@ -12,9 +12,11 @@ import type {
   ChatPort,
   GeoArea,
   GeoPoint,
+  LangCode,
   RecommendedPlan,
   RouteCandidate,
   RouteCandidateKind,
+  Spot,
 } from "../../ports";
 import { debugSkipSwipeEnabled } from "../../config/debug";
 import {
@@ -26,6 +28,7 @@ import {
 import { haversineDistanceMeters } from "../../domain/geofence";
 import { DEFAULT_FALLBACK_POOLS } from "../../data/fallbackPools";
 import { useI18n } from "../../i18n";
+import { useTourism } from "../../app/TourismContext";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { GoogleTourismMap } from "../components/GoogleTourismMap";
@@ -135,6 +138,29 @@ function insertAlongRoute(
   const result = [...route];
   result.splice(bestIndex, 0, candidate);
   return result;
+}
+
+function routeCandidateToSpot(candidate: RouteCandidate, lang: LangCode): Spot {
+  const categoryByKind: Record<RouteCandidateKind, Spot["category"]> = {
+    sightseeing: "sightseeing",
+    food: "food",
+    cafe: "food",
+    custom: "sightseeing",
+  };
+  const place = candidate.place;
+  return {
+    id: place.id,
+    name: place.name,
+    category: categoryByKind[candidate.kind],
+    location: place.location,
+    localizedDescriptions: { [lang]: candidate.description },
+    reviews: [],
+    imageUrls: place.photoUrl ? [place.photoUrl] : [],
+    ...(place.regularOpeningHours && place.regularOpeningHours.length > 0
+      ? { openingHours: place.regularOpeningHours.join("\n") }
+      : {}),
+    ...(place.websiteUri ? { website: place.websiteUri } : {}),
+  };
 }
 
 function CandidatePhoto({ candidate }: { candidate: RouteCandidate }): JSX.Element {
@@ -335,6 +361,7 @@ export function TourismRouteBuilder({
   onComplete,
 }: TourismRouteBuilderProps): JSX.Element {
   const { t, lang } = useI18n();
+  const { addToShiori } = useTourism();
   const initialSelection = useMemo(() => initialRouteFromTheme(theme), [theme]);
   const [stage, setStage] = useState<BuilderStage>("sightseeing");
   const [status, setStatus] = useState<LoadStatus>("idle");
@@ -578,6 +605,7 @@ export function TourismRouteBuilder({
     const times = routeTimes.length === route.length
       ? routeTimes
       : fallbackRouteTimes(route.length);
+    route.forEach((candidate) => addToShiori(routeCandidateToSpot(candidate, lang)));
     onComplete({
       ...theme,
       mode: "tourism",
