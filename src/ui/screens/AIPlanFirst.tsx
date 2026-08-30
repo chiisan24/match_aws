@@ -6,7 +6,11 @@ import type {
   PlacePhotoAttribution,
   RecommendationExclusion,
   RecommendedPlan,
+  RecommendedPlansResult,
 } from "../../ports";
+// The single Itinerary_Contract implementation, shared with the API and the
+// fallback pool so the screen cannot reject a payload the server accepted.
+import { isTourismRecommendations } from "../../domain/itineraryContract";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -28,46 +32,25 @@ const TONES: TagTone[] = ["accent", "teal", "moss", "outline", "accent"];
 
 const requestCache = new WeakMap<
   ChatPort,
-  Map<LangCode, Promise<RecommendedPlan[]>>
+  Map<LangCode, Promise<RecommendedPlansResult>>
 >();
 const RECOMMENDATIONS_CACHE_VERSION = "v6-itinerary-v1";
-const ITINERARY_TIME_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
-const ITINERARY_KINDS = new Set(["sightseeing", "food", "cafe", "custom"]);
 
-function isTourismRecommendations(value: unknown): value is RecommendedPlan[] {
-  return Array.isArray(value)
-    && value.length === 5
-    && value.every((plan) => {
-      if (plan == null || typeof plan !== "object") return false;
-      const candidate = plan as { mode?: unknown; stops?: unknown };
-      let previousTime = "";
-      return candidate.mode === "tourism"
-        && Array.isArray(candidate.stops)
-        && candidate.stops.length >= 2
-        && candidate.stops.length <= 4
-        && candidate.stops.every((stop) => {
-          if (stop == null || typeof stop !== "object") return false;
-          const item = stop as {
-            time?: unknown;
-            kind?: unknown;
-            title?: unknown;
-            place?: { location?: { lat?: unknown; lng?: unknown } };
-          };
-          const time = String(item.time ?? "");
-          const location = item.place?.location;
-          const valid = ITINERARY_TIME_PATTERN.test(time)
-            && (!previousTime || time > previousTime)
-            && typeof item.kind === "string"
-            && ITINERARY_KINDS.has(item.kind)
-            && typeof item.title === "string"
-            && item.title.trim() !== ""
-            && Number.isFinite(location?.lat)
-            && Number.isFinite(location?.lng);
-          previousTime = time;
-          return valid;
-        });
-    });
-}
+/**
+ * How a fetch was triggered.
+ *
+ * A single `force` flag used to mean both "drop the cached fetch" and "POST with
+ * `refresh` + `exclude`", which made the error screen's retry spend a refresh
+ * slot and come back as HTTP 429. The three modes separate those meanings:
+ *
+ * - `initial`: first paint. sessionStorage answers immediately while a plain GET
+ *   refreshes the store in the background.
+ * - `recovery`: Recovery_Retry. Drops the failed fetch and re-runs a plain GET
+ *   with no `refresh` and no `exclude`, so it runs at once (Req 7.1 / 7.3).
+ * - `refresh`: Intentional_Refresh. POST with `refresh` and `exclude` to ask for
+ *   a different five (Req 7.2).
+ */
+type LoadMode = "initial" | "recovery" | "refresh";
 
 function recommendationDate(): string {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -102,17 +85,15 @@ function writeStoredRecommendations(
 function recommendations(
   chat: ChatPort,
   lang: LangCode,
-  force = false,
+  mode: LoadMode,
   exclude: RecommendationExclusion[] = [],
-): Promise<RecommendedPlan[]> {
+): Promise<RecommendedPlansResult> {
   let byLanguage = requestCache.get(chat);
   if (!byLanguage) {
     byLanguage = new Map();
     requestCache.set(chat, byLanguage);
   }
-  if (force) {
-    byLanguage.delete(lang);
-  } else {
+  if (mode === "initial") {
     const stored = readStoredRecommendations(lang);
     if (stored) {
       if (!byLanguage.has(lang)) {
@@ -123,9 +104,14 @@ function recommendations(
         });
         byLanguage.set(lang, refresh);
         void refresh.then(
-          (plans) => {
-            if (byLanguage?.get(lang) === refresh && isTourismRecommendations(plans)) {
-              writeStoredRecommendations(lang, plans);
+          (result) => {
+            if (
+              byLanguage?.get(lang) === refresh
+              // Req 8.4: a degraded response must not reach the store either.
+              && !result.degraded
+              && isTourismRecommendations(result.plans)
+            ) {
+              writeStoredRecommendations(lang, result.plans);
             }
           },
           () => {
@@ -133,8 +119,14 @@ function recommendations(
           },
         );
       }
-      return Promise.resolve(stored);
+      // Only non-degraded plans are ever stored, so replaying them is not a
+      // degraded state.
+      return Promise.resolve({ plans: stored, degraded: false });
     }
+  } else {
+    // Req 7.3: drop the failed fetch first, otherwise a retry would await the
+    // same rejected promise and fail again without calling the backend.
+    byLanguage.delete(lang);
   }
 
   const cached = byLanguage.get(lang);
@@ -145,15 +137,19 @@ function recommendations(
       lang,
       count: 5,
       date: recommendationDate(),
-      refresh: force,
-      ...(force && exclude.length > 0 ? { exclude } : {}),
+      // Only an Intentional_Refresh asks for a regeneration; a Recovery_Retry
+      // must stay a plain GET so it is not rate limited (Req 7.1).
+      ...(mode === "refresh" ? { refresh: true } : {}),
+      ...(mode === "refresh" && exclude.length > 0 ? { exclude } : {}),
     })
-    .then((plans) => {
-      if (!isTourismRecommendations(plans)) {
+    .then((result) => {
+      if (!isTourismRecommendations(result.plans)) {
         throw new Error("Invalid itinerary recommendations payload.");
       }
-      writeStoredRecommendations(lang, plans);
-      return plans;
+      // Req 8.4: keep degraded plans out of sessionStorage so the next visit
+      // retries AI generation instead of replaying the fallback set.
+      if (!result.degraded) writeStoredRecommendations(lang, result.plans);
+      return result;
     });
   byLanguage.set(lang, request);
   void request.catch(() => {
@@ -236,12 +232,18 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
   const [errorMessage, setErrorMessage] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState("");
+  // Req 8.1 / 8.5: mirrors the response's Degraded_Flag so the notice appears
+  // only while the listed plans are not AI-generated.
+  const [degraded, setDegraded] = useState(false);
 
   const load = useCallback(async (
-    force = false,
+    mode: LoadMode = "initial",
     exclude: RecommendationExclusion[] = [],
   ): Promise<void> => {
-    if (force) {
+    // Req 7.6: only an Intentional_Refresh keeps the list on screen; `initial`
+    // and `recovery` have nothing worth keeping.
+    const keepList = mode === "refresh";
+    if (keepList) {
       setRefreshing(true);
       setRefreshError("");
     } else {
@@ -249,28 +251,30 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
       setErrorMessage("");
     }
     try {
-      const next = await recommendations(chat, lang, force, exclude);
-      if (!isTourismRecommendations(next)) {
+      const result = await recommendations(chat, lang, mode, exclude);
+      if (!isTourismRecommendations(result.plans)) {
         throw new Error(t("planFirst.loadError"));
       }
-      setPlans(next);
-      if (!force) setSelected(null);
+      setPlans(result.plans);
+      setDegraded(result.degraded);
+      if (!keepList) setSelected(null);
       setStatus("ready");
     } catch (error) {
       const message = error instanceof Error ? error.message : t("planFirst.loadError");
-      if (force) {
+      // Req 7.7: a failed refresh keeps the visible list and only states why.
+      if (keepList) {
         setRefreshError(message);
       } else {
         setErrorMessage(message);
         setStatus("error");
       }
     } finally {
-      if (force) setRefreshing(false);
+      if (keepList) setRefreshing(false);
     }
   }, [chat, lang, t]);
 
   useEffect(() => {
-    void load();
+    void load("initial");
   }, [load]);
 
   const openPlan = (plan: RecommendedPlan): void => {
@@ -419,7 +423,9 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
       {status === "error" && (
         <Card className="plan-first-status plan-first-status--error" raised>
           <p role="alert">{errorMessage || t("planFirst.loadError")}</p>
-          <Button variant="soft" onClick={() => void load(true)}>
+          {/* Recovery_Retry: a GET with no exclusions, so it runs immediately
+              instead of hitting the refresh rate limit (Req 7.1 / 7.3). */}
+          <Button variant="soft" onClick={() => void load("recovery")}>
             {t("planFirst.retry")}
           </Button>
         </Card>
@@ -439,12 +445,20 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
                 leading="↻"
                 disabled={refreshing}
                 aria-busy={refreshing}
-                onClick={() => void load(true, exclusionsFrom(plans))}
+                onClick={() => void load("refresh", exclusionsFrom(plans))}
               >
                 {t(refreshing ? "planFirst.refreshing" : "planFirst.refresh")}
               </Button>
             </span>
           </div>
+          {/* Req 8.2: a note, not an alert. The plans below stay selectable, so
+              this is context rather than an error to recover from. */}
+          {degraded ? (
+            <p className="plan-first__degraded" role="note">
+              <span aria-hidden="true">🕊</span>
+              <span>{t("planFirst.degradedNotice")}</span>
+            </p>
+          ) : null}
           {refreshError ? (
             <p className="plan-first__refresh-error" role="alert">{refreshError}</p>
           ) : null}

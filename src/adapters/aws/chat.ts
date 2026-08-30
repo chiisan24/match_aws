@@ -29,6 +29,7 @@ import type {
   PlanStop,
   RecommendedPlan,
   RecommendedPlansInput,
+  RecommendedPlansResult,
   RouteCandidate,
   RouteCandidatesInput,
   RouteCandidatesResult,
@@ -39,6 +40,7 @@ import type {
 import type { AwsEnv } from "../../config/env";
 import { estimateLocalTempleNav, cleanTempleAddress } from "../../domain/templeNav";
 import { CANDIDATE_MINIMUM_COUNT } from "../../domain/candidateFallback";
+import { isTourismRecommendations } from "../../domain/itineraryContract";
 import { EHIME_SPOTS } from "../mock/spots";
 import { EHIME_TEMPLES } from "../mock/temples";
 import { AWS_NOT_CONFIGURED } from "./not-configured";
@@ -105,6 +107,8 @@ const RECOMMENDATION_SCHEMA = "itinerary-v1";
 
 interface RecommendationsApiResponse {
   plans?: RecommendedPlan[];
+  /** Absent on deployments that predate the degraded response (Req 1.4). */
+  degraded?: boolean;
 }
 
 interface NavApiResponse {
@@ -227,7 +231,7 @@ export class AwsChatAdapter implements ChatPort {
 
   async generateRecommendedPlans(
     input: RecommendedPlansInput,
-  ): Promise<RecommendedPlan[]> {
+  ): Promise<RecommendedPlansResult> {
     const base = apiBase(this.env, "ChatPort.generateRecommendedPlans");
     const count = input.count ?? 5;
     const date = input.date
@@ -238,7 +242,13 @@ export class AwsChatAdapter implements ChatPort {
       schema: RECOMMENDATION_SCHEMA,
       date,
     });
-    const res = await fetch(`${base}/recommendations?${query.toString()}`, input.refresh
+    // Req 7.1 / 7.2: a Recovery_Retry is a plain GET — no `refresh`, no
+    // `exclude`, so it never spends the refresh slot. Only an
+    // Intentional_Refresh sends POST with `refresh=1` and the exclusion list.
+    const url = `${base}/recommendations?${query.toString()}${
+      input.refresh ? "&refresh=1" : ""
+    }`;
+    const res = await fetch(url, input.refresh
       ? {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -275,13 +285,18 @@ export class AwsChatAdapter implements ChatPort {
     }
 
     const data = (await res.json()) as RecommendationsApiResponse;
-    if (!Array.isArray(data.plans) || data.plans.length !== 5) {
+    // The server validates Itinerary_Contract before answering 200; re-checking
+    // with the same shared predicate keeps a broken deployment from reaching the
+    // screen as five unusable cards.
+    if (!isTourismRecommendations(data.plans)) {
       console.error("Recommendations backend returned an unexpected shape", {
         plans: Array.isArray(data.plans) ? data.plans.length : null,
       });
       throw new Error("おすすめプランを5件取得できませんでした。");
     }
-    return data.plans;
+    // Deployments that predate the degraded response omit the flag; treating a
+    // missing value as `false` keeps the notice off rather than always on.
+    return { plans: data.plans, degraded: data.degraded === true };
   }
 
   async generateRouteCandidates(
