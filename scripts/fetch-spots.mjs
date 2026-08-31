@@ -11,6 +11,11 @@
  * descriptions, so `reviews` is empty and `localizedDescriptions` is a light
  * name-based line — honest about what the source provides.
  *
+ * Restaurants (`food`) keep everything except national chains. The previous
+ * policy was the reverse — an allow-list of 郷土料理 keywords — which left the
+ * whole prefecture with four restaurants and starved the route builder's 5km
+ * food search. See {@link LOCAL_FOOD} and {@link isChainFood}.
+ *
  * Run: node scripts/fetch-spots.mjs
  */
 
@@ -47,15 +52,94 @@ out center tags;
 
 /**
  * Per-category caps. Tourism attractions (観光地) are the focus, so sightseeing
- * dominates; ordinary restaurants are kept but secondary.
+ * dominates; restaurants are secondary but need real depth, because the route
+ * builder searches a 5km radius and a prefecture-wide handful leaves whole towns
+ * with nothing to offer at lunchtime.
  */
-const CAPS = { sightseeing: 300, onsen: 80, souvenir: 60, food: 120 };
+const CAPS = { sightseeing: 300, onsen: 80, souvenir: 60, food: 400 };
 
 /**
- * 愛媛の郷土料理・名物キーワード。food（飲食店）はこれに名前が一致する店だけを
- * グルメレイヤーに載せる（普通の飲食店は除外）。
+ * 愛媛の郷土料理・名物キーワード。
+ *
+ * かつては「これに一致する店だけを載せる」許可リストとして使っていたため、
+ * 県内の飲食店が4件しか残らず、半径5kmの食事候補が枯れていた。今は
+ * **除外条件ではなく優先度**として使う: 一致した店は cap で切られる前に先頭へ
+ * 並び、チェーン判定よりも優先して残す（名物店が全国チェーン名を含む場合の救済）。
  */
 const LOCAL_FOOD = /(鯛めし|鯛飯|たいめし|タイメシ|みかん|ミカン|蜜柑|柑橘|ポンジュース|三津浜焼|みつはま|三津浜|焼豚玉子飯|今治焼豚|じゃこ天|じゃこ|鍋焼きうどん|五色そうめん|そうめん|八幡浜ちゃんぽん|ちゃんぽん|さつま汁|削りかまぼこ|かまぼこ|蒲鉾|労研饅頭|労研|母恵夢|タルト|ぽん菓子|芋炊き|郷土料理)/i;
+
+/**
+ * 愛媛の名物店で、複数店舗を持つために「チェーン」と誤判定されうるもの。
+ * 郷土料理キーワードを名前に含まないので LOCAL_FOOD では拾えず、明示的に守る。
+ */
+const LOCAL_BRANDS = [
+  "白楽天",
+  "重松飯店",
+  "丸水",
+  "五志喜",
+  "ほづみ亭",
+  "10 FACTORY",
+  "一六本舗",
+  "ハタダ",
+  "亀井餅舗",
+];
+
+/**
+ * 全国チェーン / 大手フランチャイズの店名。
+ *
+ * 旅行者に薦める価値が薄く、件数だけを食って地元の店を cap から押し出すため
+ * 除外する。網羅は目的ではない（取りこぼしても害は小さい）ので、愛媛で実際に
+ * 見かける規模のものを挙げている。
+ */
+const CHAIN_NAMES = [
+  // ファストフード
+  "マクドナルド", "McDonald", "モスバーガー", "MOS BURGER", "ケンタッキー", "KFC",
+  "ロッテリア", "フレッシュネス", "バーガーキング", "サブウェイ", "Subway",
+  // 丼・定食・弁当
+  "吉野家", "すき家", "松屋", "なか卯", "かつや", "松のや", "てんや", "大戸屋",
+  "やよい軒", "ほっともっと", "オリジン弁当",
+  // ファミリーレストラン
+  "ガスト", "サイゼリヤ", "ジョイフル", "びっくりドンキー", "バーミヤン", "しゃぶ葉",
+  "ジョナサン", "デニーズ", "ロイヤルホスト", "ココス", "COCO'S", "和食さと",
+  "夢庵", "藍屋", "かっぱ食堂",
+  // 麺類
+  "丸亀製麺", "はなまるうどん", "ゆで太郎", "小諸そば", "リンガーハット",
+  "幸楽苑", "日高屋", "天下一品", "一蘭", "一風堂", "丸源ラーメン", "町田商店",
+  "スガキヤ",
+  // 寿司
+  "くら寿司", "スシロー", "はま寿司", "かっぱ寿司", "銚子丸", "平禄寿司", "魚べい",
+  // カレー・中華
+  "CoCo壱番屋", "ココイチ", "餃子の王将", "大阪王将", "ぎょうざの満洲",
+  // 焼肉・ステーキ
+  "牛角", "焼肉きんぐ", "あみやき亭", "安楽亭", "いきなりステーキ", "ペッパーランチ",
+  "焼肉ライク",
+  // カフェ
+  "スターバックス", "STARBUCKS", "ドトール", "DOUTOR", "タリーズ", "TULLY",
+  "コメダ", "珈琲館", "サンマルクカフェ", "ベローチェ", "プロント", "エクセルシオール",
+  "上島珈琲", "星乃珈琲", "むさしの森珈琲", "カフェ・ド・クリエ", "シャノアール",
+  // スイーツ・ドーナツ
+  "ミスタードーナツ", "ミスド", "クリスピー", "サーティワン", "シャトレーゼ",
+  "不二家", "コールドストーン",
+  // ピザ
+  "ドミノ・ピザ", "ドミノピザ", "ピザハット", "ピザーラ", "ナポリの窯",
+  // 居酒屋
+  "鳥貴族", "和民", "ワタミ", "白木屋", "魚民", "笑笑", "千年の宴", "目利きの銀次",
+  "磯丸水産", "串カツ田中", "塚田農場", "はなの舞", "山内農場",
+  // ベーカリー
+  "リトルマーメイド", "ヴィ・ド・フランス", "サンジェルマン",
+];
+
+/** Escape a literal so it can sit inside a RegExp alternation safely. */
+function escapeRegExp(literal) {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function toAlternation(literals) {
+  return new RegExp(`(${literals.map(escapeRegExp).join("|")})`, "i");
+}
+
+const CHAIN_RE = toAlternation(CHAIN_NAMES);
+const LOCAL_BRAND_RE = toAlternation(LOCAL_BRANDS);
 
 /** Build a searchable haystack from the tags OSM most often carries. */
 function foodHaystack(tags) {
@@ -69,6 +153,31 @@ function foodHaystack(tags) {
   ]
     .filter(Boolean)
     .join(" ");
+}
+
+/** Every name variant OSM might carry, for chain / local-brand matching. */
+function nameHaystack(tags) {
+  return [tags.name, tags["name:ja"], tags["name:en"], tags.brand]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** 愛媛の郷土料理・名物の店か。チェーン判定より優先される。 */
+function isLocalFood(tags) {
+  return LOCAL_FOOD.test(foodHaystack(tags)) || LOCAL_BRAND_RE.test(nameHaystack(tags));
+}
+
+/**
+ * 全国チェーンの店舗か。
+ *
+ * `brand:wikidata` / `brand:wikipedia` は OSM ではほぼチェーンにしか付かないので
+ * 名前リストより信頼できる一次signal。素の `brand` も併用し、リストは
+ * ブランドタグが未整備な店舗の取りこぼしを埋める役。
+ */
+function isChainFood(tags) {
+  if (tags["brand:wikidata"] || tags["brand:wikipedia"]) return true;
+  if (tags.brand) return true;
+  return CHAIN_RE.test(nameHaystack(tags));
 }
 
 /** Decide the app category from OSM tags (precedence matters). */
@@ -138,7 +247,8 @@ async function run() {
   console.log("Raw elements:", elements.length);
 
   const seen = new Set();
-  const byCat = { food: [], sightseeing: [], onsen: [], souvenir: [] };
+  const collected = { food: [], sightseeing: [], onsen: [], souvenir: [] };
+  let chainsSkipped = 0;
 
   for (const el of elements) {
     const tags = el.tags || {};
@@ -146,8 +256,13 @@ async function run() {
     if (!name) continue;
     const cat = categorize(tags);
     if (!cat) continue;
-    // グルメは愛媛の郷土料理・名物の店だけに絞る（普通の飲食店は除外）。
-    if (cat === "food" && !LOCAL_FOOD.test(foodHaystack(tags))) continue;
+    // 全国チェーンは除外し、それ以外の飲食店は残す。郷土料理・名物の店は
+    // チェーン判定より優先して必ず残す。
+    const local = cat === "food" && isLocalFood(tags);
+    if (cat === "food" && !local && isChainFood(tags)) {
+      chainsSkipped += 1;
+      continue;
+    }
     const loc = coordsOf(el);
     if (!loc) continue;
 
@@ -156,16 +271,15 @@ async function run() {
     if (seen.has(key)) continue;
     seen.add(key);
 
-    if (byCat[cat].length >= CAPS[cat]) continue;
-
     const nameEn = tags["name:en"];
     const website = tags.website || tags["contact:website"] || tags.url || undefined;
     // Prefer a real attraction description from OSM; fall back to name-based.
     const desc = tags["description:ja"] || tags.description || undefined;
-    byCat[cat].push({
+    collected[cat].push({
       id: `osm-${el.type}-${el.id}`,
       name,
       category: cat,
+      local,
       location: { lat: Number(loc.lat.toFixed(6)), lng: Number(loc.lng.toFixed(6)) },
       ja: desc ? desc : `${name}（${CATEGORY_JA[cat]}）`,
       en: nameEn ? `${nameEn} (${cat})` : undefined,
@@ -174,9 +288,29 @@ async function run() {
     });
   }
 
+  // 名物店を先頭へ寄せてから cap を適用する。cap で切られるのは必ず「郷土料理
+  // キーワードに一致しない普通の飲食店」の側になる。同グループ内は名前順に
+  // そろえて、Overpass の応答順が変わっても同じファイルが出るようにする。
+  // 他カテゴリは並べ替えない: 名前順にすると cap で残る300件が変わり、松山城の
+  // ような主要スポットが落ちうる。
+  collected.food.sort((a, b) => {
+    if (a.local !== b.local) return a.local ? -1 : 1;
+    if (a.name === b.name) return 0;
+    return a.name < b.name ? -1 : 1;
+  });
+
+  const byCat = {};
+  for (const [cat, list] of Object.entries(collected)) {
+    byCat[cat] = list.slice(0, CAPS[cat]);
+  }
+
   const all = [...byCat.food, ...byCat.sightseeing, ...byCat.onsen, ...byCat.souvenir];
+  const localFoodKept = byCat.food.filter((s) => s.local).length;
   console.log(
-    `Kept: food=${byCat.food.length} sightseeing=${byCat.sightseeing.length} onsen=${byCat.onsen.length} souvenir=${byCat.souvenir.length} total=${all.length}`,
+    `Kept: food=${byCat.food.length} (名物 ${localFoodKept}) sightseeing=${byCat.sightseeing.length} onsen=${byCat.onsen.length} souvenir=${byCat.souvenir.length} total=${all.length}`,
+  );
+  console.log(
+    `Food before cap: ${collected.food.length} / chains skipped: ${chainsSkipped}`,
   );
 
   const body = all
@@ -211,8 +345,10 @@ async function run() {
  * to refresh. Names & coordinates are from OSM; OSM provides no reviews and
  * rarely descriptions, so reviews are empty and descriptions are name-based.
  *
+ * food: 全国チェーンを除いた飲食店。愛媛の郷土料理・名物の店を先頭に並べてある。
+ *
  * Generated: ${new Date().toISOString()}
- * Count: ${all.length}
+ * Count: ${all.length} (food ${byCat.food.length} / sightseeing ${byCat.sightseeing.length} / onsen ${byCat.onsen.length} / souvenir ${byCat.souvenir.length})
  */
 
 import type { Spot } from "../../ports";

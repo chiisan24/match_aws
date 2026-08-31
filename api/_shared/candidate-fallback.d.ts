@@ -6,7 +6,7 @@
  * Bundled so the Vercel function build has no `../src/` specifier to
  * resolve; see scripts/build-api-shared.mjs for why that mattered.
  *
- * Sources (sha256 c88620c1228352a0):
+ * Sources (sha256 3ad5d74f961646c0):
  *   src/adapters/mock/ehime-food.curated.ts
  *   src/adapters/mock/ehime-spots.generated.ts
  *   src/adapters/mock/spots.ts
