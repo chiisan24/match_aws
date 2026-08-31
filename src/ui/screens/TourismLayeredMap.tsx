@@ -24,6 +24,8 @@ import { awsEnv } from "../../config/env";
 import { buildTourismLayerFeatures } from "../../adapters/mock";
 import { filterByLayers } from "../../domain/layers";
 import { haversineDistanceMeters } from "../../domain/geofence";
+import { googleMapsUrl, googleMapsUrlForPlaceId } from "../../domain/googleMapsUrl";
+import { useOptionalDiscovery } from "../../app/DiscoveryContext";
 import type {
   GeoArea,
   GeoPoint,
@@ -103,6 +105,16 @@ const CANDIDATE_RADIUS_METERS = 6_000;
 const PLAN_AREA_RADIUS_METERS = 5_000;
 const MAX_CANDIDATES = 3;
 
+/**
+ * Places results for catalogue-only pins, memoised for the session by feature id.
+ *
+ * Module scope rather than component state so it survives the screen unmounting
+ * on a tab switch — the tab bar is right there, and coming back to the map used
+ * to re-bill every pin the user reopened. `null` means "looked up, Places has
+ * nothing", which is worth keeping for exactly the same reason.
+ */
+const placeLookupCache = new Map<string, RecommendedPlace | null>();
+
 function boundsPointsForArea(area: GeoArea): GeoPoint[] {
   const latDelta = area.radiusMeters / 111_320;
   const lngScale = Math.max(0.2, Math.cos(area.center.lat * Math.PI / 180));
@@ -174,6 +186,10 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
   const { t, lang } = useI18n();
   const { activePlan, favorites, shiori } = useTourism();
   const { spots, addSpot } = useSpots();
+  // Optional: the 発見 photo cache also holds each spot's Place ID, which is
+  // enough to build a Google マップ link and skip a billed lookup entirely. The
+  // screen works without the provider — it just pays for the lookup.
+  const discovery = useOptionalDiscovery();
 
   const [current, setCurrent] = useState<GeoPoint | null>(null);
   const [loading, setLoading] = useState(true);
@@ -215,10 +231,59 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
   }, [map]);
 
   // Resolve catalogue-only spots lazily through the server-side Places API.
+  //
+  // Every lookup here is a billed Text Search, and the panel is a place users tap
+  // in and out of, so results are memoised for the session by feature id.
+  // Without that, tapping the same pin twice paid twice — a miss is remembered as
+  // `null` for the same reason.
   useEffect(() => {
-    setLookedUpPlace(selected?.place ?? null);
-    if (!selected || selected.place || !awsEnv.apiEndpoint) return;
+    if (!selected) {
+      setLookedUpPlace(null);
+      return;
+    }
+    if (selected.place) {
+      setLookedUpPlace(selected.place);
+      return;
+    }
+    const cached = placeLookupCache.get(selected.id);
+    if (cached !== undefined) {
+      setLookedUpPlace(cached);
+      return;
+    }
+
+    // 発見デッキで既に解決済みのスポットなら、写真と Place ID が localStorage に
+    // 残っている。そこから写真と Google マップリンクの両方が作れるので、この
+    // タップは課金呼び出しをせずに済む。
+    //
+    // 住所は入らないが、この分岐に来るのはカタログのみのピンで、以前もその住所は
+    // 表示されていなかった（詳細パネルは住所を `feature.place` から読んでおり、
+    // カタログのみのピンでは未定義だったため）。つまり画面の見え方は変わらない。
+    const photoEntry = selected.spotId ? discovery?.cachedPhoto(selected.spotId) : undefined;
+    if (photoEntry) {
+      const fromCache: RecommendedPlace = {
+        // 空文字になるのは Place ID を持たない旧バージョンのエントリのみ。
+        // 詳細パネルは空文字を「Place ID なし」として扱う。
+        id: photoEntry.placeId ?? "",
+        name: selected.label,
+        formattedAddress: "",
+        photoUrl: photoEntry.photoUrl,
+        ...(photoEntry.attributions.length > 0
+          ? { photoAttributions: photoEntry.attributions }
+          : {}),
+        ...(photoEntry.placeId
+          ? { googleMapsUri: googleMapsUrlForPlaceId(photoEntry.placeId) }
+          : {}),
+      };
+      placeLookupCache.set(selected.id, fromCache);
+      setLookedUpPlace(fromCache);
+      return;
+    }
+
+    setLookedUpPlace(null);
+    if (!awsEnv.apiEndpoint) return;
+
     let cancelled = false;
+    const featureId = selected.id;
     const base = awsEnv.apiEndpoint.replace(/\/+$/, "");
     void fetch(`${base}/places/lookup`, {
       method: "POST",
@@ -231,13 +296,16 @@ export function TourismLayeredMap({ map }: TourismLayeredMapProps): JSX.Element 
         return data.place ?? null;
       })
       .then((place) => {
+        placeLookupCache.set(featureId, place);
         if (!cancelled) setLookedUpPlace(place);
       })
       .catch(() => {
+        // A network failure is about this moment, not about the place, so it is
+        // not cached — the next tap may well succeed.
         if (!cancelled) setLookedUpPlace(null);
       });
     return () => { cancelled = true; };
-  }, [selected, lang]);
+  }, [selected, lang, discovery]);
 
   // All features across every layer — spots + facilities + swipe-driven lists.
   const allFeatures = useMemo<TourismMapFeature[]>(
@@ -551,6 +619,19 @@ function SpotDetailPanel({ feature, spot, place, current, onClose, t }: SpotDeta
     ? `https://www.google.com/maps/dir/?api=1&origin=${current.lat},${current.lng}&destination=${feature.location.lat},${feature.location.lng}`
     : `https://www.google.com/maps/search/?api=1&query=${feature.location.lat},${feature.location.lng}`;
 
+  // 営業時間・レビュー・電話番号は Places の Enterprise ティアなので取得していない。
+  // このリンクがその情報への導線で、スマホなら Google マップアプリが直接開く。
+  //
+  // `placeId` に渡すのは lookup で解決した `place` の id だけ。`feature.place` は
+  // 旅程の stop 由来で、フォールバックで組まれた場合は同梱カタログの id が入るため
+  // Place ID として使うと必ず外れたリンクになる（Google 由来なら `googleMapsUri`
+  // が付いているので、そちらが先に採用される）。
+  const detailUrl = googleMapsUrl({
+    googleMapsUri: googlePlace?.googleMapsUri,
+    placeId: place?.id,
+    searchQuery: `${feature.label} 愛媛県`,
+  });
+
   return (
     <Card className="tspot-detail" data-testid="tspot-detail" raised>
       <div className="tspot-detail__head">
@@ -585,15 +666,20 @@ function SpotDetailPanel({ feature, spot, place, current, onClose, t }: SpotDeta
         </p>
       )}
 
-      {feature.place && (
+      {/*
+        ★（rating / userRatingCount）と ☎（nationalPhoneNumber）はここにあったが、
+        どちらも Places の Enterprise ティアのフィールドで、この 2 つを要求するだけで
+        全リクエストが最上位単価になっていた。取得をやめ、下の Google マップリンクへ
+        委譲している（マップ側には評価も電話番号も最新の状態で揃っている）。
+
+        住所は `googlePlace` から読む。以前は `feature.place` 固定だったので、
+        ピン選択時に lookup で解決した場所の住所が出ないままだった。
+      */}
+      {(googlePlace?.formattedAddress || detailUrl) && (
         <div className="tspot-detail__place-meta">
-          <address>{feature.place.formattedAddress}</address>
-          {typeof feature.place.rating === "number" && (
-            <span>★ {feature.place.rating.toFixed(1)} ({feature.place.userRatingCount ?? 0})</span>
-          )}
-          {feature.place.nationalPhoneNumber && <span>☎ {feature.place.nationalPhoneNumber}</span>}
-          {feature.place.googleMapsUri && (
-            <a href={feature.place.googleMapsUri} target="_blank" rel="noopener noreferrer">
+          {googlePlace?.formattedAddress && <address>{googlePlace.formattedAddress}</address>}
+          {detailUrl && (
+            <a href={detailUrl} target="_blank" rel="noopener noreferrer">
               {t("planFirst.openGoogleMaps")} ↗
             </a>
           )}
@@ -621,19 +707,45 @@ function SpotDetailPanel({ feature, spot, place, current, onClose, t }: SpotDeta
           </a>
         </div>
 
-        {/* 営業時間 */}
+        {/*
+          営業時間。Google からは取得しない（Enterprise ティア）ので、出所は
+          同梱カタログ（OpenStreetMap）だけになった。カタログにも無い場合は
+          「情報なし」で終わらせず Google マップへ送る — 営業時間を知りたい人に
+          とっては、それが唯一まだ機能する導線だから。
+
+          `regularOpeningHours` の参照は残してある。Google は返さなくなったが、
+          オフラインのフォールバック経路がカタログの値でこの項目を埋めるため。
+        */}
         <div className="tspot-detail__box" data-testid="tspot-detail-hours">
           <span className="tspot-detail__box-label">🕒 {t("tlmap.detail.hours")}</span>
-          <span className="tspot-detail__box-value tspot-detail__box-value--sm">
-            {feature.place?.regularOpeningHours?.join(" / ") ?? spot?.openingHours ?? t("tlmap.detail.noInfo")}
-          </span>
+          {(() => {
+            const hours = googlePlace?.regularOpeningHours?.join(" / ") ?? spot?.openingHours;
+            if (hours) {
+              return (
+                <span className="tspot-detail__box-value tspot-detail__box-value--sm">
+                  {hours}
+                </span>
+              );
+            }
+            return detailUrl ? (
+              <a className="tspot-detail__link" href={detailUrl} target="_blank" rel="noopener noreferrer">
+                {t("planFirst.openGoogleMaps")}
+              </a>
+            ) : (
+              <span className="tspot-detail__box-sub">{t("tlmap.detail.noInfo")}</span>
+            );
+          })()}
         </div>
 
-        {/* ホームページ */}
+        {/*
+          ホームページ。こちらも Google からは取得しない（Enterprise ティア）。
+          カタログの `website` があれば出し、無ければ「情報なし」。上に Google マップ
+          リンクがあるので、ここで 3 つ目の同じリンクは足さない。
+        */}
         <div className="tspot-detail__box" data-testid="tspot-detail-website">
           <span className="tspot-detail__box-label">🌐 {t("tlmap.detail.website")}</span>
-          {feature.place?.websiteUri ?? spot?.website ? (
-            <a className="tspot-detail__link" href={feature.place?.websiteUri ?? spot?.website} target="_blank" rel="noopener noreferrer">
+          {googlePlace?.websiteUri ?? spot?.website ? (
+            <a className="tspot-detail__link" href={googlePlace?.websiteUri ?? spot?.website} target="_blank" rel="noopener noreferrer">
               {t("tlmap.detail.openSite")}
             </a>
           ) : (

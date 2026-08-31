@@ -30,6 +30,11 @@
  * `discoveryPhotos` storage key. The name is now narrower than the role, but the
  * key is deliberately left alone: changing it would orphan every photo users
  * have already cached.
+ *
+ * Each entry also keeps the spot's Google Place ID. The app no longer requests
+ * ratings, opening hours or phone numbers from Places — those are Enterprise-tier
+ * fields — so users reach that detail through a Google マップ link instead, and a
+ * stored Place ID is enough to build one without ever calling the API again.
  */
 
 import { useEffect, useRef } from "react";
@@ -54,6 +59,8 @@ export interface PlacePhotoSubject {
 /** Shape of the `/places/lookup` success body we care about. */
 interface LookupResponse {
   place?: {
+    /** Google Place ID — kept so a マップ link costs nothing later. */
+    id?: unknown;
     photoUrl?: unknown;
     photoAttributions?: unknown;
   };
@@ -144,10 +151,15 @@ export function usePlacePhotos(
             return;
           }
           if (cancelled) return;
+          // The Place ID rides along with the photo. This call is already paid
+          // for, so storing the id here is what makes every later Google マップ
+          // link free — the app never looks a spot up again just to build one.
+          const placeId = data.place?.id;
           cachePhoto({
             id: spot.id,
             photoUrl,
             attributions: parseAttributions(data.place?.photoAttributions),
+            ...(typeof placeId === "string" && placeId !== "" ? { placeId } : {}),
           });
         } catch {
           // Network error / abort — treat as "no photo this session" (Req 8.5).

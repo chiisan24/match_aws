@@ -30,6 +30,22 @@ export interface PhotoCacheEntry {
   photoUrl: string;
   /** Google's required photographer credits, shown on the same card. */
   attributions: PlacePhotoAttribution[];
+  /**
+   * Google Place ID for this spot, when the lookup that filled this entry
+   * reported one.
+   *
+   * Stored so a Google マップ link can be built with **no further API call** —
+   * `https://www.google.com/maps/place/?q=place_id:...` needs nothing but this
+   * string. That matters because the app no longer requests ratings, opening
+   * hours or phone numbers (they are Enterprise-tier fields), so the link is how
+   * users reach that detail.
+   *
+   * Optional for two reasons: a place may resolve without an id, and entries
+   * written by earlier builds do not have one. Those older entries are left
+   * alone rather than re-resolved — a re-lookup would be billed, and the link
+   * falls back to a free name search instead.
+   */
+  placeId?: string;
 }
 
 /**
@@ -108,7 +124,20 @@ export function normalizePhotoCache(value: unknown): PhotoCache {
           && typeof (attribution as PlacePhotoAttribution).displayName === "string",
       )
       : [];
-    entries.push({ id: candidate.id, photoUrl: candidate.photoUrl, attributions });
+    // A missing `placeId` is normal (older entries, or a place that resolved
+    // without one) and must not disqualify the photo, so it is dropped rather
+    // than treated as corruption. Only the shape is checked: Place IDs are
+    // opaque strings and Google is free to change their format, so a
+    // stricter guess here would reject valid ids later.
+    const placeId = typeof candidate.placeId === "string" && candidate.placeId !== ""
+      ? candidate.placeId
+      : undefined;
+    entries.push({
+      id: candidate.id,
+      photoUrl: candidate.photoUrl,
+      attributions,
+      ...(placeId ? { placeId } : {}),
+    });
   }
   return entries.length <= PHOTO_CACHE_LIMIT
     ? entries

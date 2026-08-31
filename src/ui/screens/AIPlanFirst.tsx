@@ -11,6 +11,7 @@ import type {
 // The single Itinerary_Contract implementation, shared with the API and the
 // fallback pool so the screen cannot reject a payload the server accepted.
 import { isTourismRecommendations } from "../../domain/itineraryContract";
+import { googleMapsUrl } from "../../domain/googleMapsUrl";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
@@ -363,11 +364,26 @@ export function AIPlanFirst({ chat, onStart }: AIPlanFirstProps): JSX.Element {
                             {stop.place.formattedAddress ? (
                               <address>{stop.place.formattedAddress}</address>
                             ) : null}
-                            {stop.place.googleMapsUri ? (
-                              <a href={stop.place.googleMapsUri} target="_blank" rel="noreferrer">
-                                {t("planFirst.openGoogleMaps")} ↗
-                              </a>
-                            ) : null}
+                            {/*
+                              営業時間・評価・電話番号は Places の Enterprise ティア
+                              なので取得していない。このリンクがその情報への導線で、
+                              スマホなら Google マップアプリが直接開く。
+
+                              `googleMapsUri` が無い stop（同梱フォールバックで組まれた
+                              プラン）でも名前検索の URL で導線を残す。以前はここが
+                              リンク無しで終わっていた。
+                            */}
+                            {(() => {
+                              const mapsUrl = googleMapsUrl({
+                                googleMapsUri: stop.place.googleMapsUri,
+                                searchQuery: stop.searchQuery || stop.place.name,
+                              });
+                              return mapsUrl ? (
+                                <a href={mapsUrl} target="_blank" rel="noreferrer">
+                                  {t("planFirst.openGoogleMaps")} ↗
+                                </a>
+                              ) : null;
+                            })()}
                           </div>
                         ) : (
                           <small className="plan-first-place__unavailable">

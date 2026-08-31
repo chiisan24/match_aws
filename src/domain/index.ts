@@ -31,6 +31,15 @@ export {
 } from "./photoCache";
 export type { PhotoCache, PhotoCacheEntry } from "./photoCache";
 
+// Google マップへの外部リンク。営業時間やレビューはアプリでは取得しないので、
+// この導線が詳細情報への唯一の道になる。
+export {
+  googleMapsUrl,
+  googleMapsUrlForPlaceId,
+  googleMapsUrlForQuery,
+} from "./googleMapsUrl";
+export type { GoogleMapsLinkSource } from "./googleMapsUrl";
+
 // 発見 (discovery) collection game: deck order, area classification and the
 // achievement rate / badges.
 export {

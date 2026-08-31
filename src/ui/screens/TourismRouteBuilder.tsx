@@ -475,9 +475,15 @@ function BinarySwipeDeck({
               </small>
             ) : null}
             <p>{current.description}</p>
-            {current.place.rating != null ? (
-              <small>★ {current.place.rating} ({current.place.userRatingCount ?? 0})</small>
-            ) : null}
+            {/*
+              ★（rating / userRatingCount）はここにあったが、Places の Enterprise
+              ティアのフィールドなので取得をやめた。この 2 つだけで候補取得の全
+              リクエストが最上位単価になっていた。
+
+              代わりの Google マップリンクは意図的に置いていない。ここは「興味あり /
+              なし」を決めるだけの画面で、外部リンクを挟むとスワイプの流れが切れる。
+              評価を見たい場合は、旅程に入ったあと詳細パネルのリンクから辿れる。
+            */}
             {current.place.formattedAddress ? <address>{current.place.formattedAddress}</address> : null}
           </div>
         </div>
