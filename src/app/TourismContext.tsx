@@ -10,18 +10,26 @@
  *  - **しおり** (`shiori`): the single ordered itinerary list. It is appended to,
  *    removed from and reordered through the pure {@link reorder} helper, and is
  *    the one list the しおり editor, the favorites しおり tab and the map all read.
+ *  - **{@link TourismContextValue.savedItineraries}**: the しおり **library** —
+ *    every confirmed schedule saved from the route builder, newest first. Each
+ *    can be renamed and deleted on its own, and one of them is open at a time
+ *    ({@link TourismContextValue.activeItineraryId}).
  *  - **{@link TourismContextValue.activePlan}**: the recommendation picked during
  *    onboarding, which the map uses to draw the guided route.
  *
- * **Persistence** is delegated to the optional {@link StoragePort} prop. Both
- * the しおり (`"shiori"` key) and お気に入り (`"favorites"` key) are rehydrated
- * once on mount and re-saved on every change. Each list gets its own hydration
- * guard and its own pair of effects, so the two keys are persisted
- * independently and a failure on one never blocks the other (Req 3.8). The
- * guard keeps the empty initial value from overwriting saved data before the
- * load resolves, and both directions swallow failures so the in-memory lists
- * stay authoritative and the UI keeps working. With no port injected the state
- * simply lives in memory.
+ * **Persistence** is delegated to the optional {@link StoragePort} prop. The
+ * しおり (`"shiori"`), お気に入り (`"favorites"`) and the itinerary library
+ * (`"savedItineraries"`) are each rehydrated once on mount and re-saved on every
+ * change. Each gets its own hydration guard and its own pair of effects, so the
+ * keys are persisted independently and a failure on one never blocks the others
+ * (Req 3.8). The guard keeps the empty initial value from overwriting saved data
+ * before the load resolves, and both directions swallow failures so the
+ * in-memory state stays authoritative and the UI keeps working. With no port
+ * injected the state simply lives in memory.
+ *
+ * The library load also **migrates** the superseded single-itinerary key: a
+ * schedule saved by an older build is promoted into a one-entry library and the
+ * old key is cleared, so upgrading does not look like the trip was deleted.
  */
 
 import {
@@ -38,7 +46,12 @@ import {
 import { reorder } from "../domain/reorder";
 import { appendUniqueById } from "../domain/routeCandidate";
 import {
-  isSavedItinerary,
+  activeSavedItinerary,
+  addSavedItinerary,
+  newSavedItineraryId,
+  normalizeSavedItineraries,
+  removeSavedItinerary,
+  renameSavedItinerary,
   savedItineraryFromPlan,
 } from "../domain/savedItinerary";
 import type {
@@ -166,21 +179,56 @@ export interface TourismContextValue {
    */
   reorderShiori: (from: number, to: number) => void;
   /**
-   * The confirmed itinerary saved from the route builder — the scheduled route
-   * the しおり renders as a map plus a timeline. `null` until a plan is saved.
+   * The しおり library: every confirmed schedule saved from the route builder,
+   * **newest first**. Empty until a plan is saved.
+   *
+   * A list rather than a single value because planning a trip is iterative — the
+   * user builds a route for Saturday, then another for Sunday, then a rainy-day
+   * alternative — and each of those is a schedule they want to come back to, not
+   * a draft that should silently replace the last one.
    *
    * Distinct from {@link TourismContextValue.activePlan}, which is the live
    * in-memory selection driving the map and is deliberately not persisted.
    */
+  savedItineraries: SavedItinerary[];
+  /**
+   * Id of the itinerary the しおり screen has open, or `null` to follow the
+   * newest. Session-only UI state: it is not persisted, because "which one was I
+   * looking at" is not worth surviving a reload when the fallback is the newest.
+   */
+  activeItineraryId: string | null;
+  /**
+   * The itinerary currently open — the entry matching
+   * {@link TourismContextValue.activeItineraryId}, falling back to the newest,
+   * and `null` only when the library is empty.
+   */
   savedItinerary: SavedItinerary | null;
   /**
-   * Save a confirmed plan as the しおり's itinerary, replacing any previous one.
+   * Save a confirmed plan as a **new** itinerary in the library and open it.
    *
-   * One itinerary is kept rather than a history: the しおり is a single travel
-   * notebook, and the route builder always produces "the trip I am taking now".
+   * Adds rather than replaces, so building a second route never destroys the
+   * first. Saving the same plan twice yields two entries: they are separate
+   * copies of a schedule and the user may want to rename them differently
+   * (「土曜プラン」/「雨の日プラン」). The library is capped, and the oldest entry
+   * is dropped once it is full.
    */
   saveItinerary: (plan: RecommendedPlan) => void;
-  /** Discard the saved itinerary, leaving the しおり's spot list untouched. */
+  /** Open a saved itinerary by id. Unknown ids leave the selection unchanged. */
+  selectItinerary: (itineraryId: string) => void;
+  /**
+   * Rename a saved itinerary — the しおり's heading. A blank or unchanged title is
+   * a no-op, so an accidentally emptied field does not leave an untitled entry.
+   */
+  renameItinerary: (itineraryId: string, title: string) => void;
+  /**
+   * Delete one saved itinerary, leaving the rest of the library and the しおり's
+   * spot list untouched.
+   */
+  removeItinerary: (itineraryId: string) => void;
+  /**
+   * Delete the itinerary currently open, leaving the しおり's spot list untouched.
+   * Equivalent to {@link TourismContextValue.removeItinerary} on the active id.
+   */
   clearItinerary: () => void;
 }
 
@@ -190,8 +238,14 @@ const TourismContext = createContext<TourismContextValue | null>(null);
 const SHIORI_KEY: StorageKey = "shiori";
 /** Storage key お気に入り is persisted under (Req 3.1, 3.2). */
 const FAVORITES_KEY: StorageKey = "favorites";
-/** Storage key the confirmed itinerary is persisted under. */
-const SAVED_ITINERARY_KEY: StorageKey = "savedItinerary";
+/** Storage key the しおり library (many itineraries, newest first) lives under. */
+const SAVED_ITINERARIES_KEY: StorageKey = "savedItineraries";
+/**
+ * Superseded key that held a single itinerary. Read once on mount so an older
+ * build's schedule is migrated into the library, then cleared. Never written
+ * with a new value.
+ */
+const LEGACY_SAVED_ITINERARY_KEY: StorageKey = "savedItinerary";
 
 /** Internal store shape held in a single state object. */
 interface TourismState {
@@ -200,8 +254,10 @@ interface TourismState {
   favorites: Spot[];
   /** しおり (Req 4.4). */
   shiori: Spot[];
-  /** The scheduled route saved from the route builder. */
-  savedItinerary: SavedItinerary | null;
+  /** Every schedule saved from the route builder, newest first. */
+  savedItineraries: SavedItinerary[];
+  /** Which saved itinerary the しおり has open; null follows the newest. */
+  activeItineraryId: string | null;
 }
 
 export interface TourismProviderProps {
@@ -222,7 +278,8 @@ function createInitialState(): TourismState {
     activePlan: null,
     favorites: [],
     shiori: [],
-    savedItinerary: null,
+    savedItineraries: [],
+    activeItineraryId: null,
   };
 }
 
@@ -312,14 +369,22 @@ export function TourismProvider({
   }, [storage, state.favorites]);
 
   // Third independent hydration guard. Kept separate from the two above so the
-  // itinerary, お気に入り and しおり each hydrate and save on their own schedule
-  // and one key's failure never blocks another's write.
+  // itinerary library, お気に入り and しおり each hydrate and save on their own
+  // schedule and one key's failure never blocks another's write.
   const itineraryHydratedRef = useRef(false);
 
-  // Rehydrate the saved itinerary once on mount. Storage is untrusted, so the
-  // loaded value goes through `isSavedItinerary`: an older shape, a hand-edited
-  // value or a truncated write is discarded and the screen simply shows "no
-  // itinerary yet" instead of rendering a half-built card.
+  // Rehydrate the しおり library once on mount, migrating the superseded
+  // single-itinerary key on the way.
+  //
+  // Storage is untrusted, so the loaded value goes through
+  // `normalizeSavedItineraries`: an older shape, a hand-edited value or a
+  // truncated write is dropped **per entry**, so one unreadable trip costs that
+  // trip and not the whole library.
+  //
+  // The legacy key is only consulted when the library came back empty — once the
+  // user has a library, an old single value is stale and re-importing it would
+  // resurrect a trip they deleted. After a successful migration the old key is
+  // cleared for the same reason.
   useEffect(() => {
     if (!storage) {
       itineraryHydratedRef.current = true;
@@ -328,12 +393,24 @@ export function TourismProvider({
     let cancelled = false;
     void (async () => {
       try {
-        const saved = await storage.load<unknown>(SAVED_ITINERARY_KEY);
-        if (!cancelled && isSavedItinerary(saved)) {
-          setState((s) => ({ ...s, savedItinerary: saved }));
+        const stored = await storage.load<unknown>(SAVED_ITINERARIES_KEY);
+        let itineraries = normalizeSavedItineraries(stored);
+        if (itineraries.length === 0) {
+          const legacy = await storage.load<unknown>(LEGACY_SAVED_ITINERARY_KEY);
+          itineraries = normalizeSavedItineraries(legacy);
+          if (itineraries.length > 0) {
+            // Best-effort: if clearing the old key fails the library still wins,
+            // because the legacy branch only runs while the library is empty.
+            await storage
+              .save<null>(LEGACY_SAVED_ITINERARY_KEY, null)
+              .catch(() => {});
+          }
+        }
+        if (!cancelled && itineraries.length > 0) {
+          setState((s) => ({ ...s, savedItineraries: itineraries }));
         }
       } catch {
-        // Ignore — keep the in-memory itinerary.
+        // Ignore — keep the in-memory library.
       }
       if (!cancelled) itineraryHydratedRef.current = true;
     })();
@@ -342,17 +419,19 @@ export function TourismProvider({
     };
   }, [storage]);
 
-  // Persist the saved itinerary whenever it changes (after hydration). A failed
-  // save is swallowed: the in-memory itinerary stays authoritative and the
-  // しおり keeps rendering.
+  // Persist the しおり library whenever it changes (after hydration). A failed
+  // save is swallowed: the in-memory library stays authoritative and the しおり
+  // keeps rendering. `activeItineraryId` is deliberately absent from the written
+  // value — it is view state, and persisting it would make a stale selection
+  // outlive the reason for it.
   useEffect(() => {
     if (!storage || !itineraryHydratedRef.current) return;
     void storage
-      .save<SavedItinerary | null>(SAVED_ITINERARY_KEY, state.savedItinerary)
+      .save<SavedItinerary[]>(SAVED_ITINERARIES_KEY, state.savedItineraries)
       .catch(() => {
-        // Persistence failed — in-memory itinerary remains authoritative.
+        // Persistence failed — in-memory library remains authoritative.
       });
-  }, [storage, state.savedItinerary]);
+  }, [storage, state.savedItineraries]);
 
   // Add a spot to one of the route-driven collections, de-duplicated by id so
   // re-deciding the same place never creates duplicate entries. Returns the same
@@ -426,16 +505,73 @@ export function TourismProvider({
     setState((s) => ({ ...s, activePlan: plan }));
   }, []);
 
-  // Project the plan down to what the しおり renders. The timestamp is taken
-  // here rather than inside the pure converter so the conversion stays testable
-  // without freezing the clock.
+  // Project the plan down to what the しおり renders and add it to the library.
+  //
+  // The timestamp and the id are both minted here rather than inside the pure
+  // converter, so the conversion stays testable without freezing the clock or
+  // stubbing a random source. The new entry becomes the open one: the user just
+  // pressed 「このルートで旅を始める」, so that trip is what they want to see.
   const saveItinerary = useCallback((plan: RecommendedPlan): void => {
-    const itinerary = savedItineraryFromPlan(plan, new Date().toISOString());
-    setState((s) => ({ ...s, savedItinerary: itinerary }));
+    const itinerary = savedItineraryFromPlan(
+      plan,
+      new Date().toISOString(),
+      newSavedItineraryId(),
+    );
+    setState((s) => ({
+      ...s,
+      savedItineraries: addSavedItinerary(s.savedItineraries, itinerary),
+      activeItineraryId: itinerary.id,
+    }));
   }, []);
 
+  // Open a saved itinerary. Unknown ids are ignored rather than clearing the
+  // selection, so a stale id from a deleted entry cannot blank the screen.
+  const selectItinerary = useCallback((itineraryId: string): void => {
+    setState((s) => {
+      if (s.activeItineraryId === itineraryId) return s;
+      if (!s.savedItineraries.some((entry) => entry.id === itineraryId)) return s;
+      return { ...s, activeItineraryId: itineraryId };
+    });
+  }, []);
+
+  // Rename through the pure helper, which trims and returns the same list for a
+  // no-op — so a blank or unchanged title costs neither a re-render nor a write.
+  const renameItinerary = useCallback(
+    (itineraryId: string, title: string): void => {
+      setState((s) => {
+        const next = renameSavedItinerary(s.savedItineraries, itineraryId, title);
+        return next === s.savedItineraries ? s : { ...s, savedItineraries: next };
+      });
+    },
+    [],
+  );
+
+  // Delete one entry. The selection is cleared only when the deleted entry was
+  // the open one, in which case `activeSavedItinerary` falls back to the newest
+  // remaining trip — the screen keeps showing a schedule instead of going blank.
+  const removeItinerary = useCallback((itineraryId: string): void => {
+    setState((s) => {
+      const next = removeSavedItinerary(s.savedItineraries, itineraryId);
+      if (next === s.savedItineraries) return s;
+      return {
+        ...s,
+        savedItineraries: next,
+        activeItineraryId:
+          s.activeItineraryId === itineraryId ? null : s.activeItineraryId,
+      };
+    });
+  }, []);
+
+  // Delete whichever itinerary is open. Resolved through the same fallback the
+  // view uses, so the button removes the card the user is actually looking at
+  // even when nothing was explicitly selected.
   const clearItinerary = useCallback((): void => {
-    setState((s) => (s.savedItinerary === null ? s : { ...s, savedItinerary: null }));
+    setState((s) => {
+      const active = activeSavedItinerary(s.savedItineraries, s.activeItineraryId);
+      if (!active) return s;
+      const next = removeSavedItinerary(s.savedItineraries, active.id);
+      return { ...s, savedItineraries: next, activeItineraryId: null };
+    });
   }, []);
 
   const value = useMemo<TourismContextValue>(
@@ -450,8 +586,19 @@ export function TourismProvider({
       addSpotsToShiori,
       removeFromShiori,
       reorderShiori,
-      savedItinerary: state.savedItinerary,
+      savedItineraries: state.savedItineraries,
+      activeItineraryId: state.activeItineraryId,
+      // Derived here, not stored: keeping "which one is open" as a single source
+      // (the id) means a rename or a delete cannot leave the card and the list
+      // disagreeing about the same trip.
+      savedItinerary: activeSavedItinerary(
+        state.savedItineraries,
+        state.activeItineraryId,
+      ),
       saveItinerary,
+      selectItinerary,
+      renameItinerary,
+      removeItinerary,
       clearItinerary,
     }),
     [
@@ -464,6 +611,9 @@ export function TourismProvider({
       removeFromShiori,
       reorderShiori,
       saveItinerary,
+      selectItinerary,
+      renameItinerary,
+      removeItinerary,
       clearItinerary,
     ],
   );

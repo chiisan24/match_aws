@@ -1,5 +1,12 @@
 /**
- * useDiscoveryPhotos — resolves Google Places photos for the 発見 screen.
+ * usePlacePhotos — resolves Google Places photos for spots that come from the
+ * bundled catalogue rather than from a Places lookup.
+ *
+ * Two screens need this and for the same reason. The 発見 deck is built entirely
+ * from the catalogue, and the ルート提案 deck falls back to it whenever the model
+ * named too few places — and catalogue entries are OpenStreetMap rows, which
+ * carry a name and a coordinate but never a photo. Without this the cards showed
+ * a placeholder (「写真は準備中です」) for places that do have photos in Places.
  *
  * Every lookup is billed, so this hook exists to make one promise precise: a
  * spot is looked up **at most once, ever**. Three layers enforce it.
@@ -8,7 +15,9 @@
  *     Prefetching exactly one ahead is what keeps the next card instant without
  *     paying for spots the user may never reach.
  *  2. The persisted cache is checked first, so a spot resolved in an earlier
- *     session costs nothing (Req 7.2, 7.3).
+ *     session costs nothing (Req 7.2, 7.3). The cache is keyed by catalogue id
+ *     and shared across screens, so a photo paid for in 発見 is free in
+ *     ルート提案 and the other way round.
  *  3. Failures are remembered for the session, so a 404 (the spot simply is not
  *     in Places) is not retried on every re-render (Req 8.10, 8.11).
  *
@@ -16,17 +25,42 @@
  * ever made and every card falls back to a bundled image (Req 8.6, 8.7). That is
  * also what makes this safe under jsdom: tests never touch the network unless
  * they set the endpoint themselves.
+ *
+ * The cache itself still lives in {@link DiscoveryProvider} under the
+ * `discoveryPhotos` storage key. The name is now narrower than the role, but the
+ * key is deliberately left alone: changing it would orphan every photo users
+ * have already cached.
+ *
+ * Each entry also keeps the spot's Google Place ID. The app no longer requests
+ * ratings, opening hours or phone numbers from Places — those are Enterprise-tier
+ * fields — so users reach that detail through a Google マップ link instead, and a
+ * stored Place ID is enough to build one without ever calling the API again.
  */
 
 import { useEffect, useRef } from "react";
 
-import { useDiscovery } from "../../app/DiscoveryContext";
+import { useOptionalDiscovery } from "../../app/DiscoveryContext";
 import { awsEnv } from "../../config/env";
-import type { LangCode, PlacePhotoAttribution, Spot } from "../../domain/types";
+import type { LangCode, PlacePhotoAttribution } from "../../domain/types";
+
+/**
+ * The minimum a subject needs to be looked up: a stable cache key and the name
+ * to search Places with.
+ *
+ * Declared structurally rather than as `Spot` so a `RouteCandidate`'s `place`
+ * fits too — the route builder holds candidates, not catalogue spots, and both
+ * carry exactly these two fields.
+ */
+export interface PlacePhotoSubject {
+  id: string;
+  name: string;
+}
 
 /** Shape of the `/places/lookup` success body we care about. */
 interface LookupResponse {
   place?: {
+    /** Google Place ID — kept so a マップ link costs nothing later. */
+    id?: unknown;
     photoUrl?: unknown;
     photoAttributions?: unknown;
   };
@@ -65,9 +99,19 @@ function parseAttributions(value: unknown): PlacePhotoAttribution[] {
  * pending request never blocks rendering or the decision buttons (Req 6.9). A
  * result that lands after the user has already swiped past is still cached, so
  * the work is not wasted.
+ *
+ * Pass a memoised array. `spots` is an effect dependency, so a fresh array on
+ * every render would re-run the effect each time — harmless for billing (the
+ * cache and in-flight guards absorb it) but pointless work.
  */
-export function useDiscoveryPhotos(spots: readonly Spot[], lang: LangCode): void {
-  const { hasPhoto, cachePhoto, photoFailed, markPhotoFailed } = useDiscovery();
+export function usePlacePhotos(
+  spots: readonly PlacePhotoSubject[],
+  lang: LangCode,
+): void {
+  // Optional on purpose: without the cache there is nowhere to put a result, so
+  // there is no point paying for one. The caller still renders — it just falls
+  // back to a bundled image or a placeholder.
+  const discovery = useOptionalDiscovery();
 
   // Requests in flight this mount. Without this, a re-render between "request
   // sent" and "result cached" would fire a second billed call for the same spot.
@@ -76,7 +120,8 @@ export function useDiscoveryPhotos(spots: readonly Spot[], lang: LangCode): void
   useEffect(() => {
     const endpoint = awsEnv.apiEndpoint;
     // No backend configured — never call, every card uses a bundled image.
-    if (!endpoint) return;
+    if (!endpoint || !discovery) return;
+    const { hasPhoto, cachePhoto, photoFailed, markPhotoFailed } = discovery;
 
     let cancelled = false;
     const inFlight = inFlightRef.current;
@@ -106,10 +151,15 @@ export function useDiscoveryPhotos(spots: readonly Spot[], lang: LangCode): void
             return;
           }
           if (cancelled) return;
+          // The Place ID rides along with the photo. This call is already paid
+          // for, so storing the id here is what makes every later Google マップ
+          // link free — the app never looks a spot up again just to build one.
+          const placeId = data.place?.id;
           cachePhoto({
             id: spot.id,
             photoUrl,
             attributions: parseAttributions(data.place?.photoAttributions),
+            ...(typeof placeId === "string" && placeId !== "" ? { placeId } : {}),
           });
         } catch {
           // Network error / abort — treat as "no photo this session" (Req 8.5).
@@ -123,5 +173,5 @@ export function useDiscoveryPhotos(spots: readonly Spot[], lang: LangCode): void
     return () => {
       cancelled = true;
     };
-  }, [spots, lang, hasPhoto, cachePhoto, photoFailed, markPhotoFailed]);
+  }, [spots, lang, discovery]);
 }

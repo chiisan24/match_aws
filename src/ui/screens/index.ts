@@ -15,6 +15,7 @@ export { DiscoveryScreen } from "./DiscoveryScreen";
 export { FavoritesView } from "./FavoritesView";
 
 export { ShioriEditor } from "./ShioriEditor";
+export type { ShioriEditorProps } from "./ShioriEditor";
 
 export { PlanShare } from "./PlanShare";
 export type { PlanShareProps } from "./PlanShare";

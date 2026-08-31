@@ -202,7 +202,11 @@ async function generateCandidates(
     baseRadiusMeters: area.radiusMeters,
     usedPlaceIds: routePlaceIds,
     maximumCount: CANDIDATE_MAXIMUM_COUNT,
-    minimumCount: kind === "sightseeing" ? CANDIDATE_MINIMUM_COUNT : undefined,
+    // Every kind carries the same floor. This used to read
+    // `kind === "sightseeing" ? … : undefined`, which suggested the other kinds
+    // had no minimum — they did (an omitted value resolves to the same
+    // constant); what they lacked was any fallback to reach it with.
+    minimumCount: CANDIDATE_MINIMUM_COUNT,
   }, DEFAULT_FALLBACK_POOLS);
 }
 

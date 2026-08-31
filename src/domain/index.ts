@@ -31,6 +31,15 @@ export {
 } from "./photoCache";
 export type { PhotoCache, PhotoCacheEntry } from "./photoCache";
 
+// Google マップへの外部リンク。営業時間やレビューはアプリでは取得しないので、
+// この導線が詳細情報への唯一の道になる。
+export {
+  googleMapsUrl,
+  googleMapsUrlForPlaceId,
+  googleMapsUrlForQuery,
+} from "./googleMapsUrl";
+export type { GoogleMapsLinkSource } from "./googleMapsUrl";
+
 // 発見 (discovery) collection game: deck order, area classification and the
 // achievement rate / badges.
 export {
@@ -46,13 +55,22 @@ export type {
   DiscoveryProgress,
 } from "./discovery";
 
-// Confirmed plan -> しおり saved itinerary, plus the map pins and the
-// at-a-glance summary the しおり header shows.
+// Confirmed plan -> しおり saved itinerary, plus the map pins, the at-a-glance
+// summary the しおり header shows, and the list operations behind the しおり
+// library (many saved itineraries, newest first).
 export {
   savedItineraryFromPlan,
   itineraryMapItems,
   itinerarySummary,
   isSavedItinerary,
+  normalizeSavedItineraries,
+  addSavedItinerary,
+  renameSavedItinerary,
+  removeSavedItinerary,
+  activeSavedItinerary,
+  itineraryStartStop,
+  newSavedItineraryId,
+  MAX_SAVED_ITINERARIES,
 } from "./savedItinerary";
 export type { ItineraryMapItem, ItinerarySummary } from "./savedItinerary";
 
@@ -69,7 +87,26 @@ export {
   estimateLocalTempleNav,
   cleanTempleAddress,
 } from "./templeNav";
-export type { LocalNavNumbers } from "./templeNav";export { filterByLayers } from "./layers";
+export type { LocalNavNumbers } from "./templeNav";
+
+// Per-transport-mode distance / duration estimates — one speed table for every
+// screen that answers 「現在地からどのくらい？」.
+export {
+  TRAVEL_MODES,
+  straightLineMeters,
+  estimateTravel,
+  estimateTravelFromDistance,
+  estimateTravelAllModes,
+  formatDistanceMeters,
+  splitDurationMinutes,
+} from "./travelEstimate";
+export type {
+  TravelMode,
+  TravelEstimate,
+  DurationParts,
+} from "./travelEstimate";
+
+export { filterByLayers } from "./layers";
 export { resolveLabel } from "./i18n";
 
 // Task 8.8 — plan-sharing encode/decode round-trip (Req 7.1–7.3, Property 13).

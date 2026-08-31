@@ -1,0 +1,43 @@
+/**
+ * photo-credit.css — the credit line shown beside a photo we did not take.
+ *
+ * Wikimedia files are licensed per file and CC BY / BY-SA require the author to
+ * be named wherever the image appears, so this is a compliance surface rather
+ * than decoration. It lives in its own file because the same credit now appears
+ * on the 発見 / ルート提案 / 巡礼 screens, and `screens.css` already carries three
+ * separate, screen-specific credit classes that predate it.
+ *
+ * Two forms:
+ *  - default: a faint line of text in normal flow, under the image;
+ *  - `--overlay`: pinned to the bottom of a `position: relative` photo wrapper,
+ *    over a scrim, for cards where the photo fills the frame.
+ */
+
+.photo-credit {
+  margin: var(--space-1) 0 0;
+  color: var(--color-ink-faint);
+  font-size: 0.65rem;
+  line-height: 1.4;
+}
+
+.photo-credit a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.photo-credit--overlay {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  margin: 0;
+  padding: 0.2rem var(--space-2);
+  /* The scrim keeps the credit readable over any photo, which is the point:
+     an unreadable credit is not a credit. */
+  background: linear-gradient(to top, rgb(0 0 0 / 62%), rgb(0 0 0 / 0%));
+  color: #fff;
+  text-align: end;
+}
+
+.photo-credit--overlay a {
+  color: #fff;
+}

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Screen-level styles (Req 18.1, 18.2).
  *
  * Built entirely on the design tokens. Screen classes are namespaced per screen
@@ -3645,8 +3645,156 @@ textarea.nokyocho-field__control {
   color: var(--color-ink-soft);
 }
 
-/* ---- 行程カード（時刻 + 地図）------------------------------------------------
-   立寄先リストの上に置く「当日の行程」。要点だけを並べて、地図の番号と
+/* ヘッダは縦積み（stretch）なので、ボタンだけは内容幅に留めて左に寄せる。 */
+.shiori__create {
+  align-self: flex-start;
+  margin-block-start: var(--space-1);
+}
+
+/* ---- しおり一覧（複数のしおりを切り替える）------------------------------------
+   ルートを確定するたびに1件増えるので、ここは「どれを見ているか」と「他に何が
+   あるか」だけを扱う。行程の中身は下の行程カードの担当なので、各行は見出しと
+   日付・件数に絞って高さを詰める。 */
+.shiori-library {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-teal-50);
+}
+
+.shiori-library__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.shiori-library__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-teal-800);
+  font-size: var(--text-md);
+}
+
+.shiori-library__count {
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-teal-100);
+  color: var(--color-teal-800);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+.shiori-library__lead {
+  margin: 0;
+  color: var(--color-ink-soft);
+  font-size: var(--text-xs);
+}
+
+.shiori-library__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* 行そのものは枠だけ。開くボタンが行幅いっぱいを占め、削除だけが右端に残る。 */
+.shiori-library__item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.shiori-library__item--active {
+  border-color: var(--color-teal-500);
+  box-shadow: var(--shadow-sm);
+}
+
+.shiori-library__open {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.shiori-library__open:hover,
+.shiori-library__open:focus-visible {
+  background: var(--color-teal-50);
+}
+
+.shiori-library__item-title {
+  overflow: hidden;
+  color: var(--color-teal-800);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shiori-library__item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.5rem;
+  color: var(--color-ink-faint);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.shiori-library__badge {
+  padding: 0.05rem 0.4rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-teal-500);
+  color: #fff;
+  font-weight: var(--weight-bold);
+}
+
+.shiori-library__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  margin-inline-end: var(--space-2);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink-soft);
+  cursor: pointer;
+}
+
+.shiori-library__remove:hover {
+  border-color: var(--color-mikan-500);
+  background: var(--color-mikan-100);
+}
+
+.shiori-library__full {
+  margin: 0;
+  color: var(--color-mikan-700);
+  font-size: var(--text-xs);
+}
+
+/* ---- 行程カード（見出し + 距離 + 時刻 + 地図）---------------------------------
+   しおりで表示する「当日の行程」。要点だけを並べて、地図の番号と
    タイムラインの番号を目で突き合わせられる状態にする。 */
 .shiori-itinerary {
   display: flex;
@@ -3665,10 +3813,66 @@ textarea.nokyocho-field__control {
   gap: var(--space-1);
 }
 
+/* 見出しと「見出しを変える」を同じ行に。見出しが長いときはボタンを次行へ落とす
+   （見出しを切り詰めるより折り返した方が、どのしおりか分かる）。 */
+.shiori-itinerary__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-2);
+}
+
 .shiori-itinerary__title {
   margin: 0;
   color: var(--color-teal-800);
   font-size: var(--text-lg);
+}
+
+.shiori-itinerary__rename {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-ink-soft);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+
+.shiori-itinerary__rename:hover {
+  border-color: var(--color-teal-500);
+  background: var(--color-teal-50);
+  color: var(--color-teal-800);
+}
+
+.shiori-itinerary__rename-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+}
+
+.shiori-itinerary__rename-label {
+  color: var(--color-ink-soft);
+  font-size: var(--text-xs);
+}
+
+/* 入力欄だけが伸びる。狭い画面ではボタン列が下に回る。 */
+.shiori-itinerary__rename-input {
+  flex: 1 1 12rem;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-teal-300);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+}
+
+.shiori-itinerary__rename-actions {
+  display: flex;
+  gap: var(--space-1);
 }
 
 /* 事実だけを中黒で区切って1行に。折り返しても読めるよう flex-wrap にする。 */
@@ -3756,6 +3960,15 @@ textarea.nokyocho-field__control {
   min-width: 0;
 }
 
+/* 現在地からの距離は名前の下に小さく。行の主役は時刻と名前なので、距離が桁を
+   押し広げないよう別行にする。現在地が不明なときはそもそも描かれない。 */
+.shiori-itinerary__stop-distance {
+  display: block;
+  color: var(--color-ink-faint);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 30rem) {
   /* 狭い画面ではタグを名前の下へ回して、時刻と名前の桁を崩さない。 */
   .shiori-itinerary__stop {
@@ -3767,125 +3980,99 @@ textarea.nokyocho-field__control {
   }
 }
 
-.shiori__empty {
-  border-radius: var(--radius-blob);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--color-line);
-}
-
-.shiori__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+/* ---- 現在地から出発地点までのアクセス ----------------------------------------
+   「今からこのしおりに行けるか」を1ブロックで答える。直線距離は1回だけ出し、
+   交通手段ごとの経路距離と所要時間を横並びのカードにする: 3 km が徒歩40分か
+   車10分かは手段でしか分からないので、手段を畳んで1つの数字にはしない。 */
+.shiori-access {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-}
-
-.shiori-item {
-  display: grid;
-  grid-template-columns: auto 3.25rem 1fr auto auto;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
-  background: var(--color-surface);
-  border: 1px solid var(--color-line);
+  padding: var(--space-3);
+  border: 1px dashed var(--color-teal-300);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
+  background: var(--color-teal-50);
 }
 
-.shiori-item__order {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: var(--radius-pill);
-  background: var(--color-teal-50);
-  color: var(--color-teal-700);
+.shiori-access__heading {
+  margin: 0;
+  color: var(--color-teal-800);
   font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.shiori-access__target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 0.5rem;
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.shiori-access__target-name {
+  color: var(--color-ink);
   font-weight: var(--weight-medium);
 }
 
-.shiori-item__thumb {
-  width: 3.25rem;
-  height: 3.25rem;
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  display: block;
+.shiori-access__straight {
+  color: var(--color-ink-soft);
+  font-variant-numeric: tabular-nums;
 }
 
-.shiori-item__img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.shiori-access__status {
+  margin: 0;
+  color: var(--color-ink-soft);
+  font-size: var(--text-xs);
 }
 
-.shiori-item__meta {
+/* auto-fit で、広い画面では4手段が1行に、狭い画面では2列に折り返す。 */
+.shiori-access__modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.shiori-access__mode {
   display: flex;
   flex-direction: column;
   gap: 0.1rem;
-  min-width: 0;
-}
-
-.shiori-item__name {
-  font-size: var(--text-md);
-  font-weight: var(--weight-medium);
-  color: var(--color-teal-900);
-}
-
-.shiori-item__desc {
-  font-size: var(--text-xs);
-  color: var(--color-ink-faint);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.shiori-item__moves {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.shiori-item__move,
-.shiori-item__remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 1.6rem;
+  padding: var(--space-2);
   border: 1px solid var(--color-line);
   border-radius: var(--radius-sm);
   background: var(--color-surface);
-  color: var(--color-teal-700);
-  cursor: pointer;
-  transition:
-    background var(--dur-base) var(--ease-soft),
-    border-color var(--dur-base) var(--ease-soft);
 }
 
-.shiori-item__move:hover:not(:disabled),
-.shiori-item__remove:hover {
-  background: var(--color-teal-50);
-  border-color: var(--color-teal-500);
+.shiori-access__mode-name {
+  color: var(--color-ink-soft);
+  font-size: var(--text-xs);
 }
 
-.shiori-item__move:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.shiori-access__mode-figures {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
 }
 
-.shiori-item__remove {
-  width: 2.2rem;
-  height: 2.2rem;
-  color: var(--color-mikan-500);
+.shiori-access__mode-distance {
+  color: var(--color-teal-800);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
 }
 
-.shiori-item__remove:hover {
-  border-color: var(--color-mikan-500);
-  background: var(--color-mikan-100);
+.shiori-access__mode-duration {
+  color: var(--color-vermilion-500);
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.shiori-access__note {
+  margin: 0;
+  color: var(--color-ink-faint);
+  font-size: var(--text-xs);
+  line-height: 1.5;
 }
 
 /* --- プラン共有 ----------------------------------------------------------- */

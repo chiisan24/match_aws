@@ -40,7 +40,7 @@ import type { LangCode, Spot } from "../../domain/types";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Tag } from "../components/Tag";
-import { useDiscoveryPhotos } from "./useDiscoveryPhoto";
+import { usePlacePhotos } from "./usePlacePhotos";
 
 /** Past this horizontal travel (px) a release commits to a decision (Req 2.4, 2.7). */
 const DRAG_THRESHOLD = 80;
@@ -108,7 +108,7 @@ export function DiscoveryScreen(): JSX.Element {
     () => [current, next].filter((spot): spot is Spot => spot != null),
     [current, next],
   );
-  useDiscoveryPhotos(photoTargets, lang);
+  usePlacePhotos(photoTargets, lang);
 
   const decide = useCallback(
     (interested: boolean): void => {

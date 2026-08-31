@@ -11,6 +11,12 @@ import { TOURISM_TAB_CONTENT } from "./tourismTabs";
 export interface ModeShellProps {
   onOpenSettings: () => void;
   map: MapLocationPort;
+  /**
+   * Start planning another trip — leaves the tabs and returns to the AI plan
+   * picker. Passed through to the しおり tab, which is where the user sees what
+   * they have already saved and decides they want one more.
+   */
+  onCreateItinerary?: () => void;
 }
 
 interface TabMeta {
@@ -27,7 +33,11 @@ const TOURISM_TAB_META: TabMeta[] = [
 ];
 
 /** Tourism-only application shell. */
-export function ModeShell({ onOpenSettings, map }: ModeShellProps): JSX.Element {
+export function ModeShell({
+  onOpenSettings,
+  map,
+  onCreateItinerary,
+}: ModeShellProps): JSX.Element {
   const { t } = useI18n();
   const { tab, setTab } = useMode();
   const active = TOURISM_TAB_META.find((item) => item.id === tab) ?? TOURISM_TAB_META[0];
@@ -49,7 +59,7 @@ export function ModeShell({ onOpenSettings, map }: ModeShellProps): JSX.Element 
       />
 
       <div className="mode-shell__content" role="region" aria-label={t(active.navKey)}>
-        {renderer({ map })}
+        {renderer({ map, ...(onCreateItinerary ? { onCreateItinerary } : {}) })}
       </div>
 
       <BottomNav

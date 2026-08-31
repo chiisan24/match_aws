@@ -14,10 +14,11 @@
  *  - `shiori`    → ShioriEditor / PlanShare
  *
  * Each renderer receives a small {@link TourismTabContext} carrying the
- * dependencies its screen needs — currently just the {@link MapLocationPort}
- * for the 重ねるマップ tab. All tourism tabs share the {@link TourismProvider}
- * store mounted above the shell, so the favorites and shiori collections
- * persist across tab switches.
+ * dependencies its screen needs — the {@link MapLocationPort} goes to the
+ * 重ねるマップ tab and to the しおり, which reads the current location once to show
+ * how far the trip's starting point is. All tourism tabs share the
+ * {@link TourismProvider} store mounted above the shell, so the favorites and
+ * shiori collections persist across tab switches.
  */
 
 import type { ReactNode } from "react";
@@ -31,8 +32,17 @@ import { TourismLayeredMap } from "./TourismLayeredMap";
 
 /** Context handed to each tourism tab renderer. */
 export interface TourismTabContext {
-  /** Map/location backend for the 重ねるマップ tab (inject `gateway.map`). */
+  /**
+   * Map/location backend for the 重ねるマップ tab and the しおり's distance figures
+   * (inject `gateway.map`).
+   */
   map: MapLocationPort;
+  /**
+   * Leave the tabs and plan another trip. Optional because the shell is
+   * mountable without it (tests), in which case the しおり hides the button
+   * rather than offering an action that would do nothing.
+   */
+  onCreateItinerary?: () => void;
 }
 
 /** A function that renders the content for a tourism tab. */
@@ -47,5 +57,10 @@ export const TOURISM_TAB_CONTENT: Record<TourismTab, TourismTabRenderer> = {
   map: ({ map }) => <TourismLayeredMap map={map} />,
   discover: () => <DiscoveryScreen />,
   favorites: () => <FavoritesView />,
-  shiori: () => <ShioriEditor />,
+  shiori: ({ map, onCreateItinerary }) => (
+    <ShioriEditor
+      map={map}
+      {...(onCreateItinerary ? { onCreateItinerary } : {})}
+    />
+  ),
 };

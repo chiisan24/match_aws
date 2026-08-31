@@ -10,6 +10,7 @@
 @import "./tokens.css";
 @import "./components.css";
 @import "./screens.css";
+@import "./photo-credit.css";
 
 * {
   box-sizing: border-box;

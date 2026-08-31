@@ -12,10 +12,12 @@ import type {
   ChatPort,
   GeoArea,
   GeoPoint,
+  PlacePhotoAttribution,
   RecommendedPlan,
   RouteCandidate,
   RouteCandidateKind,
 } from "../../ports";
+import { useOptionalDiscovery } from "../../app/DiscoveryContext";
 import { useTourism } from "../../app/TourismContext";
 import { debugSkipSwipeEnabled } from "../../config/debug";
 import {
@@ -34,8 +36,10 @@ import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
 import { Card } from "../components/Card";
 import { GoogleTourismMap } from "../components/GoogleTourismMap";
+import { PhotoCredit } from "../components/PhotoCredit";
 import { PlaceholderImage } from "../components/PlaceholderImage";
 import { Tag } from "../components/Tag";
+import { usePlacePhotos } from "./usePlacePhotos";
 import { useWikipediaImage } from "./useWikipediaImage";
 
 interface TourismRouteBuilderProps {
@@ -155,48 +159,137 @@ function insertAlongRoute(
 }
 
 /**
+ * この候補の写真を ja.wikipedia に探しに行ってよいか。
+ *
+ * 観光地だけ。城・美術館・山・神社は ja.wikipedia に記事があり、名前が一致すれば
+ * その画像は信頼できる。一方で飲食店やカフェの記事はまず存在しないので、返って
+ * くる「ヒット」は全文検索が拾った無関係な記事でしかない（`喫茶ニジ` のカードに
+ * 他人の集合写真が出たのがこれ）。引かなければ誤りは起きず、失うものもない。
+ *
+ * custom（自由記述）も同じ理由で対象外。何が返るか事前に見当がつかない。
+ */
+function mayUseWikipediaPhoto(candidate: RouteCandidate): boolean {
+  return candidate.kind === "sightseeing";
+}
+
+/** Google Places の帰属表示。Places 由来の写真を出しているときだけ描く。 */
+function PlacesCredit({
+  attributions,
+}: {
+  attributions: readonly PlacePhotoAttribution[];
+}): JSX.Element | null {
+  if (attributions.length === 0) return null;
+  return (
+    <small className="route-builder-card__credit">
+      Photo: {attributions.map((item, index) => (
+        <span key={`${item.displayName}-${index}`}>
+          {index > 0 ? ", " : ""}
+          {item.uri
+            ? <a href={item.uri} target="_blank" rel="noreferrer">{item.displayName}</a>
+            : item.displayName}
+        </span>
+      ))}
+    </small>
+  );
+}
+
+/**
+ * 候補に使える Places の写真を、出どころの違いを畳んで返す。
+ *
+ * 一次候補（AI が名前を挙げ、API が Places で実在確認したもの）は `place.photoUrl`
+ * を持って来る。カタログ由来の補完候補は持たない — OpenStreetMap の行には名前と
+ * 座標しかないため。後者は {@link usePlacePhotos} が名前で引いて共有キャッシュに
+ * 入れるので、ここで拾い上げる。
+ */
+function usePlacesPhoto(
+  candidate: RouteCandidate,
+  primaryErrored: boolean,
+  cachedErrored: boolean,
+): { src: string; attributions: readonly PlacePhotoAttribution[] } | null {
+  // 任意依存。キャッシュが無い環境（プロバイダ未マウント、テストなど）でも
+  // 一次候補の写真とプレースホルダーで成立させる。
+  const discovery = useOptionalDiscovery();
+
+  const primarySrc = primaryErrored ? undefined : candidate.place.photoUrl;
+  if (primarySrc) {
+    return { src: primarySrc, attributions: candidate.place.photoAttributions ?? [] };
+  }
+  if (cachedErrored) return null;
+
+  const cached = discovery?.cachedPhoto(candidate.place.id);
+  return cached
+    ? { src: cached.photoUrl, attributions: cached.attributions }
+    : null;
+}
+
+/**
  * スワイプカードの写真。優先順位は
- *   1. Google Places の実写真（`place.photoUrl`。API キー設定時のみ付く）
- *   2. 施設名で引いた ja.wikipedia の実写真（キー不要・CORS 可）
+ *   1. Google Places の実写真。一次候補は API が付けた `place.photoUrl`、
+ *      カタログ由来の補完候補は施設名で引いた共有キャッシュ（{@link usePlacePhotos}）
+ *   2. 観光地に限り、施設名で引いた ja.wikipedia の実写真（キー不要・CORS 可）
  *   3. 施設名を載せたプレースホルダー
  *
  * 以前は 3 が種別ごとの固定画像（観光なら松山城）だったため、写真の無い候補が
  * すべて同じ絵になり、しかも「ハタダ（みやげ）」に松山城が出るような取り違えが
  * 起きていた。実在しない写真を当てるより、無いことを示すほうが誤解が少ない。
+ * 2 を観光地だけに絞ったのも同じ判断で、こちらは同じ取り違えが別経路で
+ * 再発していた（{@link mayUseWikipediaPhoto}）。
+ *
+ * 1 に「名前で引いた Places」を足したのは、その厳格化で補完候補がほぼ全部
+ * プレースホルダーになったため。実在の写真が Places にあるのに出せていない、
+ * というのが残っていた穴だった。
  */
 function CandidatePhoto({ candidate }: { candidate: RouteCandidate }): JSX.Element {
   const { t } = useI18n();
   const [placePhotoErrored, setPlacePhotoErrored] = useState(false);
+  const [cachedPhotoErrored, setCachedPhotoErrored] = useState(false);
   const [wikiErrored, setWikiErrored] = useState(false);
 
-  const placePhoto = candidate.place.photoUrl;
-  const hasPlacePhoto = Boolean(placePhoto) && !placePhotoErrored;
+  const places = usePlacesPhoto(candidate, placePhotoErrored, cachedPhotoErrored);
+  const isPrimary = places != null && !placePhotoErrored && Boolean(candidate.place.photoUrl);
 
-  // Google の写真が無い（または壊れている）ときだけ名前で検索する。
-  const wiki = useWikipediaImage(
-    hasPlacePhoto ? null : candidate.place.name,
-    !hasPlacePhoto,
-  );
+  // Places の写真が無い（または壊れている）ときだけ、しかも観光地に限って
+  // 名前で Wikipedia を検索する。
+  const wikiQuery = places === null && mayUseWikipediaPhoto(candidate)
+    ? candidate.place.name
+    : null;
+  const wiki = useWikipediaImage(wikiQuery, wikiQuery !== null);
   const wikiReady = wiki.status === "ready" && !wikiErrored;
-  const searching = !hasPlacePhoto && !wikiReady
+  // 検索しない候補で「検索中」と出し続けないよう、問い合わせている場合に限る。
+  const searching = wikiQuery !== null && !wikiReady
     && (wiki.status === "loading" || wiki.status === "idle");
 
   return (
     <div className="route-builder-card__photo-wrap">
-      {hasPlacePhoto ? (
-        <img
-          className="route-builder-card__photo"
-          src={placePhoto}
-          alt={candidate.place.name}
-          onError={() => setPlacePhotoErrored(true)}
-        />
+      {places ? (
+        <>
+          <img
+            className="route-builder-card__photo"
+            src={places.src}
+            alt={candidate.place.name}
+            onError={() =>
+              isPrimary ? setPlacePhotoErrored(true) : setCachedPhotoErrored(true)
+            }
+          />
+          <PlacesCredit attributions={places.attributions} />
+        </>
       ) : wikiReady ? (
-        <img
-          className="route-builder-card__photo"
-          src={wiki.src}
-          alt={candidate.place.name}
-          onError={() => setWikiErrored(true)}
-        />
+        <>
+          <img
+            className="route-builder-card__photo"
+            src={wiki.photo.src}
+            alt={candidate.place.name}
+            onError={() => setWikiErrored(true)}
+          />
+          {/* Wikimedia の写真はライセンス上クレジットが必須。撮影者を出せない
+              画像はフック側で弾いてあるので、ここに来た写真は必ず名前を出せる。 */}
+          <PhotoCredit
+            artist={wiki.photo.artist}
+            license={wiki.photo.license}
+            href={wiki.photo.descriptionUrl}
+            overlay
+          />
+        </>
       ) : (
         <PlaceholderImage
           motif={candidate.kind === "sightseeing" ? "spot" : "mikan"}
@@ -204,43 +297,63 @@ function CandidatePhoto({ candidate }: { candidate: RouteCandidate }): JSX.Eleme
           sublabel={searching ? t("visit.photoSearching") : t("visit.photoSoon")}
         />
       )}
-      {hasPlacePhoto && candidate.place.photoAttributions?.length ? (
-        <small className="route-builder-card__credit">
-          Photo: {candidate.place.photoAttributions.map((item, index) => (
-            <span key={`${item.displayName}-${index}`}>
-              {index > 0 ? ", " : ""}
-              {item.uri ? <a href={item.uri} target="_blank" rel="noreferrer">{item.displayName}</a> : item.displayName}
-            </span>
-          ))}
-        </small>
-      ) : null}
     </div>
   );
 }
 
 /**
  * 一覧用の小さなサムネイル。写真の出どころは {@link CandidatePhoto} と同じ順序
- * （Google Places → 名前で ja.wikipedia → 無地タイル）。`useWikipediaImage` は
- * 名前をキーにセッション内キャッシュを持つので、スワイプ中に既に引いた候補は
- * 追加の通信なしで表示される。
+ * （Places → 観光地なら名前で ja.wikipedia → 無地タイル）。どちらもキャッシュから
+ * 読むだけなので、この一覧が通信を起こすことはない。
+ *
+ * サムネイルは名前がすぐ隣に並ぶぶんだけ取り違えが目につきやすい面もあるが、
+ * 一致判定は {@link CandidatePhoto} と共通にしてある。片方だけ緩いと、同じ候補が
+ * 画面によって違う写真を持つことになる。
+ *
+ * ただし Wikipedia 側は、クレジットの必要な写真をここでは使わない。40px の枠に
+ * 撮影者名を読める形で収める方法がなく、Wikimedia の CC BY / BY-SA は「表示する
+ * 場所ごとに著作者を示す」ことを求めるため。クレジット不要な写真（パブリック
+ * ドメイン等）だけを通し、それ以外は無地タイルにする。
  */
 function CandidateThumb({ candidate }: { candidate: RouteCandidate }): JSX.Element {
   const [placePhotoErrored, setPlacePhotoErrored] = useState(false);
+  const [cachedPhotoErrored, setCachedPhotoErrored] = useState(false);
   const [wikiErrored, setWikiErrored] = useState(false);
 
-  const placePhoto = candidate.place.photoUrl;
-  const hasPlacePhoto = Boolean(placePhoto) && !placePhotoErrored;
-  const wiki = useWikipediaImage(
-    hasPlacePhoto ? null : candidate.place.name,
-    !hasPlacePhoto,
-  );
-  const wikiReady = wiki.status === "ready" && !wikiErrored;
+  const places = usePlacesPhoto(candidate, placePhotoErrored, cachedPhotoErrored);
+  const isPrimary = places != null && !placePhotoErrored && Boolean(candidate.place.photoUrl);
 
-  if (hasPlacePhoto) {
-    return <img src={placePhoto} alt="" loading="lazy" onError={() => setPlacePhotoErrored(true)} />;
+  const wikiQuery = places === null && mayUseWikipediaPhoto(candidate)
+    ? candidate.place.name
+    : null;
+  const wiki = useWikipediaImage(wikiQuery, wikiQuery !== null);
+  const creditFreeWiki = wiki.status === "ready"
+    && !wikiErrored
+    && !wiki.photo.requiresAttribution
+    ? wiki.photo
+    : null;
+
+  if (places) {
+    return (
+      <img
+        src={places.src}
+        alt=""
+        loading="lazy"
+        onError={() =>
+          isPrimary ? setPlacePhotoErrored(true) : setCachedPhotoErrored(true)
+        }
+      />
+    );
   }
-  if (wikiReady) {
-    return <img src={wiki.src} alt="" loading="lazy" onError={() => setWikiErrored(true)} />;
+  if (creditFreeWiki) {
+    return (
+      <img
+        src={creditFreeWiki.src}
+        alt=""
+        loading="lazy"
+        onError={() => setWikiErrored(true)}
+      />
+    );
   }
   return <img src={BLANK_PHOTO} alt="" />;
 }
@@ -260,7 +373,7 @@ function BinarySwipeDeck({
   minimumCount: number;
   onDecision: (interested: boolean) => void;
 }): JSX.Element | null {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const current = candidates[index];
   const startX = useRef<number | null>(null);
   const [offsetX, setOffsetX] = useState(0);
@@ -271,6 +384,19 @@ function BinarySwipeDeck({
     startX.current = null;
     onDecision(interested);
   }, [onDecision]);
+
+  // カタログ由来の補完候補は写真を持たないので、名前で Places に引きに行く。
+  // 対象は表示中のカードと次の1枚だけ。1件ごとに課金されるうえ、利用者が
+  // たどり着かない候補まで先に払う必要はない。一次候補は既に写真を持っているので
+  // 除外する。結果は共有キャッシュに入り、カード側はそこから読む。
+  const photoTargets = useMemo(
+    () => [candidates[index], candidates[index + 1]]
+      .filter((candidate): candidate is RouteCandidate =>
+        candidate != null && !candidate.place.photoUrl)
+      .map((candidate) => ({ id: candidate.place.id, name: candidate.place.name })),
+    [candidates, index],
+  );
+  usePlacePhotos(photoTargets, lang);
 
   if (!current) return null;
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
@@ -349,9 +475,15 @@ function BinarySwipeDeck({
               </small>
             ) : null}
             <p>{current.description}</p>
-            {current.place.rating != null ? (
-              <small>★ {current.place.rating} ({current.place.userRatingCount ?? 0})</small>
-            ) : null}
+            {/*
+              ★（rating / userRatingCount）はここにあったが、Places の Enterprise
+              ティアのフィールドなので取得をやめた。この 2 つだけで候補取得の全
+              リクエストが最上位単価になっていた。
+
+              代わりの Google マップリンクは意図的に置いていない。ここは「興味あり /
+              なし」を決めるだけの画面で、外部リンクを挟むとスワイプの流れが切れる。
+              評価を見たい場合は、旅程に入ったあと詳細パネルのリンクから辿れる。
+            */}
             {current.place.formattedAddress ? <address>{current.place.formattedAddress}</address> : null}
           </div>
         </div>

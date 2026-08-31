@@ -36,6 +36,7 @@ import { useGeneratedImage } from "../../app/ImageContext";
 import type { ImagePrompt, Temple } from "../../domain/types";
 import { useI18n } from "../../i18n";
 import { Button } from "../components/Button";
+import { PhotoCredit } from "../components/PhotoCredit";
 import { PlaceholderImage } from "../components/PlaceholderImage";
 import { SectionHeader } from "../components/SectionHeader";
 import { useWikipediaImage } from "./useWikipediaImage";
@@ -396,14 +397,27 @@ function TemplePhoto({ temple }: { temple: Temple }): JSX.Element {
   }
 
   if (wikiReady) {
+    // Wikimedia の写真はライセンス上クレジットが必須。撮影者を出せない画像は
+    // フック側で弾いてあるので、ここに来た写真は必ず名前を出せる。
     return (
-      <img
-        className="visit-card__img"
-        src={wiki.src}
-        alt={alt}
-        loading="lazy"
-        onError={() => setWikiErrored(true)}
-      />
+      <>
+        <img
+          className="visit-card__img"
+          src={wiki.photo.src}
+          alt={alt}
+          loading="lazy"
+          onError={() => setWikiErrored(true)}
+        />
+        {/* 親の .swipe-card__photo-wrap が position: relative なので overlay に
+            できる。カードの高さを変えずに済み、Places 写真のクレジット
+            (.route-builder-card__credit / .discover-card__credit) と見た目もそろう。 */}
+        <PhotoCredit
+          artist={wiki.photo.artist}
+          license={wiki.photo.license}
+          href={wiki.photo.descriptionUrl}
+          overlay
+        />
+      </>
     );
   }
 

@@ -37,7 +37,11 @@ export interface FallbackPoint {
   formattedAddress: string;
   /** Language code to description. Unlisted languages fall back to `ja`. */
   descriptions: Partial<Record<string, string>>;
-  /** Spot-derived only. Used to exclude food spots for `sightseeing`. */
+  /**
+   * Spot-derived only. Decides which kinds a point may stand in for — see
+   * {@link isEligibleFallback}: `sightseeing` excludes food, `food` / `cafe`
+   * accept nothing else.
+   */
   category?: "sightseeing" | "food" | "souvenir" | "onsen";
   photoUrl?: string;
   websiteUri?: string;
@@ -139,12 +143,18 @@ function resolveMaximumCount(maximumCount: number): number {
 /**
  * Settles the candidate set: keeps every Primary candidate that is not already
  * on the route (order preserved, duplicate `place.id` dropped, truncated at
- * `maximumCount`), then — for `sightseeing` only — tops the set up from the
- * local fallback pools while stepping the radius outwards.
+ * `maximumCount`), then tops the set up from the local fallback pools while
+ * stepping the radius outwards.
  *
- * Non-`sightseeing` kinds never receive fallback candidates and always report
- * `appliedRadiusMeters === baseRadiusMeters`, preserving the existing
- * `food` / `cafe` / `custom` behaviour.
+ * Which pool entries may stand in is decided per kind by
+ * {@link isEligibleFallback}. `food` and `cafe` used to return here empty-handed,
+ * which is why a lunch deck could come back with two cards while the 観光 deck
+ * beside it always filled: the primary source is the model naming at most six
+ * restaurants, and every one that failed its Places lookup simply vanished.
+ *
+ * `custom` is the one kind that still never receives fallbacks — the request is
+ * free text, so padding it from a local pool would answer a question the
+ * traveller did not ask.
  */
 export function finalizeCandidates(
   primary: readonly RouteCandidate[],
@@ -168,7 +178,7 @@ export function finalizeCandidates(
     candidates.push(candidate);
   }
 
-  if (context.kind !== "sightseeing") {
+  if (context.kind === "custom") {
     return {
       candidates,
       appliedRadiusMeters: context.baseRadiusMeters,
@@ -191,7 +201,7 @@ export function finalizeCandidates(
           if (seen.has(point.id)) {
             return [];
           }
-          if (point.source === "spot" && point.category === "food") {
+          if (!isEligibleFallback(point, context.kind)) {
             return [];
           }
           const distance = distanceFromCenter(context.center, point);
@@ -220,6 +230,31 @@ export function finalizeCandidates(
   }
 
   return { candidates, appliedRadiusMeters, minimumCount: minimum };
+}
+
+/** True when a pool entry is a食事どころ from the spot catalogue. */
+function isFoodPoint(point: FallbackPoint): boolean {
+  return point.source === "spot" && point.category === "food";
+}
+
+/**
+ * Whether a pool entry may stand in for this candidate kind.
+ *
+ * - `sightseeing`: temples and non-food spots. A restaurant is not a sight.
+ * - `food` / `cafe`: food spots only. A 札所 is not lunch.
+ * - `custom`: never reaches here — {@link finalizeCandidates} returns first.
+ *
+ * `cafe` accepting any food spot is a deliberate approximation: the catalogue
+ * maps OSM's `restaurant`, `cafe` and `fast_food` all to a single `food`
+ * category, so the pool cannot tell a coffee house from a ramen shop. The card
+ * shows the real name either way, so nothing misrepresents the place, and a deck
+ * with two cards is worse than one with five.
+ */
+function isEligibleFallback(point: FallbackPoint, kind: RouteCandidateKind): boolean {
+  if (kind === "food" || kind === "cafe") {
+    return isFoodPoint(point);
+  }
+  return !isFoodPoint(point);
 }
 
 /** Distance from the area centre, or `null` when the point has no usable location. */
