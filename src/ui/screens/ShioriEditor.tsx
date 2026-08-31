@@ -14,28 +14,16 @@
  *     foot than in a car. Every figure is a straight-line estimate and is
  *     labelled as such.
  *  3. **What is the plan?** {@link ItineraryCard} keeps the map plus the
- *     time-ordered timeline, and the spot list underneath stays the editable
- *     bag of places.
+ *     time-ordered timeline. The former flat spot list is intentionally omitted:
+ *     it mixed places from every saved trip and duplicated the active itinerary.
  *
- * Behaviour of the spot list (unchanged):
- *  - Lists the spots added to the しおり (`useTourism().shiori` — the spots
- *    swiped 上, Req 6.1), in their saved order (Req 6.2).
- *  - Reorders items with **accessible up/down move buttons** (each with an
- *    aria-label naming the spot) rather than drag-only, driving the pure
- *    {@link reorder} via `useTourism().reorderShiori` (Req 6.2, Property 11).
- *    Buttons disable at the list boundaries.
- *  - Removes an item with `useTourism().removeFromShiori` (Req 6.3,
- *    Property 10).
- *  - The しおり is persisted through the StoragePort under the `"shiori"` key by
- *    the {@link TourismProvider}; persistence is resilient, so reordering /
- *    removing keep working even if a save fails (Req 6.4).
- *  - Embeds {@link PlanShare}, handing it the current しおり as a shareable plan
- *    (Req 7.1–7.3).
+ * {@link PlanShare} still receives the persisted しおり spots as a shareable plan
+ * (Req 7.1–7.3).
  *
  * The only dependency it takes is the {@link MapLocationPort}, used once on mount
  * to read the current location. It is **optional**: without it the screen renders
- * exactly as before minus the distance block, which keeps the component mountable
- * in a test with nothing but a {@link TourismProvider}.
+ * without the distance block, which keeps the component mountable in a test with
+ * nothing but a {@link TourismProvider}.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -56,19 +44,13 @@ import {
   type TravelEstimate,
   type TravelMode,
 } from "../../domain/travelEstimate";
-import type { GeoPoint, LangCode, SavedItinerary, Spot } from "../../domain/types";
+import type { GeoPoint, SavedItinerary } from "../../domain/types";
 import { useI18n } from "../../i18n";
 import type { MapLocationPort } from "../../ports";
 import { Button } from "../components/Button";
 import { GoogleTourismMap } from "../components/GoogleTourismMap";
-import { PlaceholderImage } from "../components/PlaceholderImage";
 import { Tag } from "../components/Tag";
 import { PlanShare } from "./PlanShare";
-
-/** Resolve a spot's description in the active language, falling back to ja. */
-function localizedDescription(spot: Spot, lang: LangCode): string {
-  return spot.localizedDescriptions[lang] ?? spot.localizedDescriptions.ja ?? "";
-}
 
 /**
  * What the screen knows about where the user is.
@@ -109,11 +91,9 @@ export function ShioriEditor({
   map,
   onCreateItinerary,
 }: ShioriEditorProps = {}): JSX.Element {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
   const {
     shiori,
-    removeFromShiori,
-    reorderShiori,
     savedItineraries,
     savedItinerary,
     selectItinerary,
@@ -200,8 +180,7 @@ export function ShioriEditor({
         />
       ) : null}
 
-      {/* 確定した行程（時刻 + 地図）。立寄先リストより先に置く: 「何時にどこへ」
-          が当日いちばん知りたい情報で、下の一覧はその編集用という関係。
+      {/* 確定した行程（見出し + 現在地からの距離 + 時刻 + 地図）。
           key に id を与えているので、しおりを切り替えるとカード内の編集状態
           （見出しの下書き、選択中のピン）が持ち越されない。 */}
       {savedItinerary ? (
@@ -213,77 +192,6 @@ export function ShioriEditor({
           onClear={clearItinerary}
         />
       ) : null}
-
-      {shiori.length === 0 ? (
-        <div className="shiori__empty" data-testid="shiori-empty">
-          <PlaceholderImage
-            motif="spot"
-            label={t("shiori.empty.title")}
-            sublabel={t("shiori.empty.lead")}
-            aspectRatio="4 / 3"
-          />
-        </div>
-      ) : (
-        <ol className="shiori__list" data-testid="shiori-list">
-          {shiori.map((spot, index) => (
-            <li key={spot.id} className="shiori-item" data-testid={`shiori-item-${spot.id}`}>
-              <span className="shiori-item__order" aria-hidden="true">
-                {index + 1}
-              </span>
-
-              <span className="shiori-item__thumb">
-                <SpotThumb spot={spot} />
-              </span>
-
-              <span className="shiori-item__meta">
-                <span className="shiori-item__name">{spot.name}</span>
-                <span className="shiori-item__desc">
-                  {localizedDescription(spot, lang)}
-                </span>
-              </span>
-
-              {/* Accessible reordering — up/down move buttons (Req 6.2). */}
-              <span
-                className="shiori-item__moves"
-                role="group"
-                aria-label={t("shiori.moveControls").replace("{name}", spot.name)}
-              >
-                <button
-                  type="button"
-                  className="shiori-item__move"
-                  aria-label={t("shiori.moveUp").replace("{name}", spot.name)}
-                  data-testid={`shiori-up-${spot.id}`}
-                  disabled={index === 0}
-                  onClick={() => reorderShiori(index, index - 1)}
-                >
-                  <span aria-hidden="true">▲</span>
-                </button>
-                <button
-                  type="button"
-                  className="shiori-item__move"
-                  aria-label={t("shiori.moveDown").replace("{name}", spot.name)}
-                  data-testid={`shiori-down-${spot.id}`}
-                  disabled={index === shiori.length - 1}
-                  onClick={() => reorderShiori(index, index + 1)}
-                >
-                  <span aria-hidden="true">▼</span>
-                </button>
-              </span>
-
-              {/* Remove from しおり (Req 6.3). */}
-              <button
-                type="button"
-                className="shiori-item__remove"
-                aria-label={t("shiori.remove").replace("{name}", spot.name)}
-                data-testid={`shiori-remove-${spot.id}`}
-                onClick={() => removeFromShiori(spot.id)}
-              >
-                <span aria-hidden="true">✕</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-      )}
 
       {/* プラン共有 (Req 7) — shares the current しおり as a plan. */}
       <PlanShare plan={plan} />
@@ -416,8 +324,8 @@ function ItineraryLibrary({
  *  - the map numbers its pins with the itinerary position, so the map and the
  *    timeline below can be matched by eye without tapping anything;
  *  - the timeline shows time, name and — when the location is known — how far
- *    that stop is from the user. Descriptions live in the spot list underneath;
- *    repeating them here would bury the schedule.
+ *    that stop is from the user. Descriptions are omitted here so they do not
+ *    bury the schedule.
  *
  * The saved date is rendered from the ISO prefix (`YYYY-MM-DD`) rather than a
  * locale format: it is stable across locales and time zones, needs no
@@ -738,23 +646,4 @@ function formatDurationLabel(
   return t("progress.next.durationHm")
     .replace("{h}", String(parts.hours))
     .replace("{m}", String(parts.minutes));
-}
-
-/**
- * A spot thumbnail that renders the real image when usable and otherwise the
- * on-brand placeholder (Req 4.7). Stateless — falls back when no URL is present.
- */
-function SpotThumb({ spot }: { spot: Spot }): JSX.Element {
-  const url = spot.imageUrls[0];
-  if (!url) {
-    return <PlaceholderImage motif="spot" label={spot.name} aspectRatio="1 / 1" />;
-  }
-  return (
-    <img
-      className="shiori-item__img"
-      src={url}
-      alt={spot.name}
-      loading="lazy"
-    />
-  );
 }
