@@ -242,3 +242,17 @@ export function useDiscovery(): DiscoveryContextValue {
   }
   return ctx;
 }
+
+/**
+ * The discovery store when one is mounted, or `null`.
+ *
+ * Throwing is right for the 発見 screen: it *is* this store, and a missing
+ * provider there is a wiring bug worth failing loudly on. The shared Places photo
+ * cache is a different matter — the ルート提案 deck reads it to avoid paying for a
+ * lookup twice, which is an optimisation, not a requirement. Asking with
+ * {@link useDiscovery} there made the route builder impossible to mount without a
+ * provider it does not own; this lets it degrade to "no cache" instead.
+ */
+export function useOptionalDiscovery(): DiscoveryContextValue | null {
+  return useContext(DiscoveryContext);
+}
