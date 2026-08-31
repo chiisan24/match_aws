@@ -349,15 +349,32 @@ export interface SavedItineraryStop {
  * Deliberately a **projection** of {@link RecommendedPlan} rather than the plan
  * itself. A plan carries the full `RecommendedPlace` for every stop (photos,
  * attributions, opening hours, ratings), none of which the しおり shows, and all
- * of which would bloat the single `localStorage` value this is persisted as.
+ * of which would bloat the `localStorage` value this is persisted as.
  *
  * Stored on its own storage key, separate from the しおり's `Spot[]` list: the
  * two describe different things (a scheduled route vs. a bag of places) and are
  * written independently, so neither can corrupt or block the other.
+ *
+ * Several of these are kept at once (the `"savedItineraries"` key holds a list),
+ * so `id` identifies **this saved copy**, not the plan it came from — building
+ * the same plan twice must produce two entries the user can tell apart, rename
+ * and delete independently.
  */
 export interface SavedItinerary {
-  /** Id of the plan this was saved from. */
+  /**
+   * Id of this saved itinerary, unique within the saved list. Distinct from
+   * {@link SavedItinerary.planId} so the same plan can be saved more than once.
+   */
   id: string;
+  /**
+   * Id of the plan this was saved from. Absent on entries written by builds
+   * that predate multiple itineraries, where `id` *was* the plan id.
+   */
+  planId?: string;
+  /**
+   * Heading shown in the しおり list. Defaults to the plan's title and is
+   * user-editable, which is why it is not derived from the plan on render.
+   */
   title: string;
   /** ISO-8601 timestamp of when it was saved. */
   savedAt: string;
@@ -534,7 +551,16 @@ export interface OfflineEntry {
 export type StorageKey =
   | "favorites"
   | "shiori"
-  /** The confirmed itinerary saved from the route builder ({@link SavedItinerary}). */
+  /**
+   * The しおり library: every itinerary saved from the route builder, newest
+   * first ({@link SavedItinerary}`[]`).
+   */
+  | "savedItineraries"
+  /**
+   * Superseded by `"savedItineraries"`. Held a **single** {@link SavedItinerary};
+   * still read once at start-up so a user who saved a schedule on an older build
+   * does not lose it, then cleared. Never written with a new value.
+   */
   | "savedItinerary"
   /** Ids of spots decided on the 発見 screen — the achievement-rate record. */
   | "discoverySeen"

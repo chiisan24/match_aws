@@ -117,5 +117,13 @@ function AppFlow({ map, chat }: AppFlowProps): JSX.Element {
     return <Settings onClose={() => setShowSettings(false)} />;
   }
 
-  return <ModeShell onOpenSettings={() => setShowSettings(true)} map={map} />;
+  return (
+    <ModeShell
+      onOpenSettings={() => setShowSettings(true)}
+      map={map}
+      // しおりは何本でも作れる: 保存済みは残したまま、プラン選択からやり直す。
+      // `routeTheme` は次に選ばれたテーマで上書きされるので、ここでは触らない。
+      onCreateItinerary={() => setPhase("plan-select")}
+    />
+  );
 }

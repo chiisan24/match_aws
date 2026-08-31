@@ -2317,6 +2317,18 @@ UI_LABELS["shiori.lead"] = {
   en: "The stops you confirmed with “Start this route” gather here. Reorder them to shape your day.",
   iyo: "「このルートで旅を始める」で決めた立寄先が並ぶけん。順番を入れ替えて行程を整えよや。",
 };
+// しおりを増やす唯一の入口。保存済みが0件でも出すので、文面は「もう1本」ではなく
+// 「作る」で通す。押すとプラン選択に戻り、確定すると新しいしおりが1件増える。
+UI_LABELS["shiori.create"] = {
+  ja: "新しいしおりを作る",
+  en: "Plan another itinerary",
+  "zh-Hans": "制作新行程",
+  "zh-Hant": "製作新行程",
+  ko: "새 일정 만들기",
+  fr: "Créer un autre itinéraire",
+  ar: "إنشاء خط رحلة جديد",
+  iyo: "新しいしおりを作るけん",
+};
 UI_LABELS["shiori.empty.title"] = {
   ja: "しおりはまだ空っぽです",
   en: "Your itinerary is empty",
@@ -2414,14 +2426,263 @@ UI_LABELS["shiori.itinerary.mapFallback"] = {
   iyo: "地図は出せんけど、行程は下の一覧で見れるけん。",
 };
 UI_LABELS["shiori.itinerary.clear"] = {
-  ja: "行程を削除",
-  en: "Delete this schedule",
+  ja: "このしおりを削除",
+  en: "Delete this itinerary",
   "zh-Hans": "删除该行程",
   "zh-Hant": "刪除該行程",
   ko: "일정 삭제",
-  fr: "Supprimer ce programme",
-  ar: "حذف هذا الجدول",
-  iyo: "行程を消す",
+  fr: "Supprimer cet itinéraire",
+  ar: "حذف خط الرحلة",
+  iyo: "このしおりを消す",
+};
+
+// ---- しおりの見出し編集 ------------------------------------------------------
+// 見出しはプランのタイトルが既定で、ユーザーが変えられる。複数しおりを並べたとき
+// 「松山まちあるき」が3つ並ぶと見分けられないので、命名が管理の要になる。
+UI_LABELS["shiori.itinerary.rename"] = {
+  ja: "見出しを変える",
+  en: "Rename",
+  "zh-Hans": "修改标题",
+  "zh-Hant": "修改標題",
+  ko: "제목 변경",
+  fr: "Renommer",
+  ar: "إعادة التسمية",
+  iyo: "見出しを変えるけん",
+};
+UI_LABELS["shiori.itinerary.renameLabel"] = {
+  ja: "しおりの見出し",
+  en: "Itinerary heading",
+  "zh-Hans": "行程标题",
+  "zh-Hant": "行程標題",
+  ko: "일정 제목",
+  fr: "Titre de l’itinéraire",
+  ar: "عنوان خط الرحلة",
+  iyo: "しおりの見出し",
+};
+UI_LABELS["shiori.itinerary.renameSave"] = {
+  ja: "保存",
+  en: "Save",
+  "zh-Hans": "保存",
+  "zh-Hant": "儲存",
+  ko: "저장",
+  fr: "Enregistrer",
+  ar: "حفظ",
+  iyo: "保存",
+};
+UI_LABELS["shiori.itinerary.renameCancel"] = {
+  ja: "取消",
+  en: "Cancel",
+  "zh-Hans": "取消",
+  "zh-Hant": "取消",
+  ko: "취소",
+  fr: "Annuler",
+  ar: "إلغاء",
+  iyo: "やめる",
+};
+
+// ---- しおり一覧（複数のしおりを切り替える）----------------------------------
+// ルートを確定するたびに1件増えるので、一覧は「どれを見ているか」と「他に何が
+// あるか」の2点だけを担う。行程の中身は下のカードが受け持つ。
+UI_LABELS["shiori.library.heading"] = {
+  ja: "保存したしおり",
+  en: "Saved itineraries",
+  "zh-Hans": "已保存的行程",
+  "zh-Hant": "已儲存的行程",
+  ko: "저장한 일정",
+  fr: "Itinéraires enregistrés",
+  ar: "خطوط الرحلات المحفوظة",
+  iyo: "保存したしおり",
+};
+UI_LABELS["shiori.library.lead"] = {
+  ja: "ルートを確定するたびに新しいしおりが増えます。見出しを選ぶと切り替わります。",
+  en: "Each confirmed route is saved as its own itinerary. Pick a heading to switch.",
+  "zh-Hans": "每次确定路线都会保存为独立行程。点选标题即可切换。",
+  "zh-Hant": "每次確定路線都會存成獨立行程。點選標題即可切換。",
+  ko: "루트를 확정할 때마다 새 일정이 저장됩니다. 제목을 선택하면 전환됩니다.",
+  fr: "Chaque route confirmée devient un itinéraire. Choisissez un titre pour basculer.",
+  ar: "كل مسار تؤكده يُحفظ كخط رحلة مستقل. اختر عنوانًا للتبديل.",
+  iyo: "ルートを決めるたびに新しいしおりが増えるけん。見出しを選んだら切り替わるよ。",
+};
+UI_LABELS["shiori.library.count"] = {
+  // {count} replaced at render time.
+  ja: "{count}件",
+  en: "{count} saved",
+  "zh-Hans": "{count} 件",
+  "zh-Hant": "{count} 件",
+  ko: "{count}건",
+  fr: "{count} enregistrés",
+  ar: "{count} محفوظة",
+  iyo: "{count}件",
+};
+UI_LABELS["shiori.library.select"] = {
+  // {title} replaced at render time.
+  ja: "{title}を開く",
+  en: "Open {title}",
+  "zh-Hans": "打开{title}",
+  "zh-Hant": "開啟{title}",
+  ko: "{title} 열기",
+  fr: "Ouvrir {title}",
+  ar: "فتح {title}",
+  iyo: "{title}を開くけん",
+};
+UI_LABELS["shiori.library.current"] = {
+  ja: "表示中",
+  en: "Open",
+  "zh-Hans": "正在查看",
+  "zh-Hant": "正在查看",
+  ko: "보는 중",
+  fr: "Affiché",
+  ar: "مفتوح",
+  iyo: "見とるやつ",
+};
+UI_LABELS["shiori.library.remove"] = {
+  // {title} replaced at render time.
+  ja: "{title}を削除",
+  en: "Delete {title}",
+  "zh-Hans": "删除{title}",
+  "zh-Hant": "刪除{title}",
+  ko: "{title} 삭제",
+  fr: "Supprimer {title}",
+  ar: "حذف {title}",
+  iyo: "{title}を消す",
+};
+UI_LABELS["shiori.library.full"] = {
+  // {max} replaced at render time.
+  ja: "保存できるしおりは{max}件までです。これ以上増えると、古いものから消えます。",
+  en: "Up to {max} itineraries are kept; saving another drops the oldest.",
+  "zh-Hans": "最多保存 {max} 份行程，超出后将删除最早的一份。",
+  "zh-Hant": "最多儲存 {max} 份行程，超出後會刪除最舊的一份。",
+  ko: "일정은 최대 {max}건까지 보관되며, 초과하면 가장 오래된 것이 삭제됩니다.",
+  fr: "{max} itinéraires au maximum ; au-delà, le plus ancien est supprimé.",
+  ar: "يُحفظ {max} خطوط رحلات كحد أقصى، وأي إضافة تحذف الأقدم.",
+  iyo: "しおりは{max}件までしか置けんけん。増えたら古いのから消えるよ。",
+};
+
+// ---- 現在地から出発地点までのアクセス ---------------------------------------
+// 「このしおり、今からだと行けるん？」に答えるブロック。距離は1つ（直線）に絞り、
+// 交通手段ごとに経路距離と所要時間を並べる。すべて目安なので注記を必ず添える。
+UI_LABELS["shiori.access.heading"] = {
+  ja: "現在地から出発地点まで",
+  en: "From where you are to the first stop",
+  "zh-Hans": "从当前位置到出发地",
+  "zh-Hant": "從目前位置到出發地",
+  ko: "현재 위치에서 출발지까지",
+  fr: "De votre position au premier arrêt",
+  ar: "من موقعك إلى أول محطة",
+  iyo: "今おるとこから出発地点まで",
+};
+UI_LABELS["shiori.access.startStop"] = {
+  // {order} / {title} replaced at render time.
+  ja: "{order}. {title}",
+  en: "{order}. {title}",
+  "zh-Hans": "{order}. {title}",
+  "zh-Hant": "{order}. {title}",
+  ko: "{order}. {title}",
+  fr: "{order}. {title}",
+  ar: "{order}. {title}",
+  iyo: "{order}. {title}",
+};
+UI_LABELS["shiori.access.straight"] = {
+  // {distance} replaced at render time (already formatted, e.g. "2.3 km").
+  ja: "直線 {distance}",
+  en: "{distance} as the crow flies",
+  "zh-Hans": "直线 {distance}",
+  "zh-Hant": "直線 {distance}",
+  ko: "직선 {distance}",
+  fr: "{distance} à vol d’oiseau",
+  ar: "{distance} بخط مستقيم",
+  iyo: "まっすぐで {distance}",
+};
+UI_LABELS["shiori.access.locating"] = {
+  ja: "現在地を確認しています…",
+  en: "Finding your location…",
+  "zh-Hans": "正在获取当前位置…",
+  "zh-Hant": "正在取得目前位置…",
+  ko: "현재 위치를 확인하는 중…",
+  fr: "Localisation en cours…",
+  ar: "جارٍ تحديد موقعك…",
+  iyo: "今おるとこを確認しとるよ…",
+};
+UI_LABELS["shiori.access.unavailable"] = {
+  ja: "現在地が分からないため、距離は出せません。位置情報の許可を確認してください。",
+  en: "Without your location the distances cannot be worked out. Check the location permission.",
+  "zh-Hans": "无法获取当前位置，因此无法计算距离。请检查定位权限。",
+  "zh-Hant": "無法取得目前位置，因此無法計算距離。請檢查定位權限。",
+  ko: "현재 위치를 알 수 없어 거리를 계산할 수 없습니다. 위치 권한을 확인하세요.",
+  fr: "Sans votre position, les distances sont incalculables. Vérifiez l’autorisation de localisation.",
+  ar: "لا يمكن حساب المسافات دون معرفة موقعك. تحقّق من إذن الموقع.",
+  iyo: "今おるとこが分からんけん、距離は出せんのよ。位置情報の許可を見てみて。",
+};
+UI_LABELS["shiori.access.noLocation"] = {
+  ja: "この行程には座標のある立寄先がないため、距離は出せません。",
+  en: "No stop in this schedule has coordinates, so distances cannot be shown.",
+  "zh-Hans": "该行程没有带坐标的地点，因此无法显示距离。",
+  "zh-Hant": "此行程沒有帶座標的地點，因此無法顯示距離。",
+  ko: "이 일정에는 좌표가 있는 장소가 없어 거리를 표시할 수 없습니다.",
+  fr: "Aucune étape de ce programme n’a de coordonnées : pas de distance possible.",
+  ar: "لا تحتوي أي محطة في هذا الجدول على إحداثيات، لذا لا يمكن عرض المسافات.",
+  iyo: "この行程は座標のある立寄先がないけん、距離は出せんのよ。",
+};
+UI_LABELS["shiori.access.note"] = {
+  ja: "※ 距離・所要時間は直線距離をもとにした目安です。実際の経路・道路状況・運行本数で変わります。",
+  en: "Estimates based on straight-line distance. Real routes, traffic and timetables will differ.",
+  "zh-Hans": "※ 距离与时间为基于直线距离的估算值，实际路线、路况与班次会有差异。",
+  "zh-Hant": "※ 距離與時間為依直線距離推估，實際路線、路況與班次會有差異。",
+  ko: "※ 직선거리를 기준으로 한 예상치입니다. 실제 경로·교통 상황·운행 편수에 따라 달라집니다.",
+  fr: "Estimations à vol d’oiseau : itinéraires réels, trafic et horaires varieront.",
+  ar: "تقديرات مبنية على المسافة المستقيمة؛ المسارات الفعلية والحركة والمواعيد تختلف.",
+  iyo: "※ 距離も時間もまっすぐの距離からの目安やけん。実際の道や本数で変わるよ。",
+};
+UI_LABELS["shiori.access.mode.walk"] = {
+  ja: "徒歩",
+  en: "Walking",
+  "zh-Hans": "步行",
+  "zh-Hant": "步行",
+  ko: "도보",
+  fr: "À pied",
+  ar: "سيرًا",
+  iyo: "歩き",
+};
+UI_LABELS["shiori.access.mode.bicycle"] = {
+  ja: "自転車",
+  en: "Cycling",
+  "zh-Hans": "骑行",
+  "zh-Hant": "騎行",
+  ko: "자전거",
+  fr: "À vélo",
+  ar: "بالدراجة",
+  iyo: "自転車",
+};
+UI_LABELS["shiori.access.mode.car"] = {
+  ja: "車",
+  en: "Driving",
+  "zh-Hans": "驾车",
+  "zh-Hant": "開車",
+  ko: "자동차",
+  fr: "En voiture",
+  ar: "بالسيارة",
+  iyo: "車",
+};
+UI_LABELS["shiori.access.mode.transit"] = {
+  ja: "公共交通",
+  en: "Transit",
+  "zh-Hans": "公共交通",
+  "zh-Hant": "公共運輸",
+  ko: "대중교통",
+  fr: "Transports",
+  ar: "النقل العام",
+  iyo: "電車・バス",
+};
+UI_LABELS["shiori.access.stopDistance"] = {
+  // {distance} replaced at render time.
+  ja: "現在地から {distance}",
+  en: "{distance} from you",
+  "zh-Hans": "距当前位置 {distance}",
+  "zh-Hant": "距目前位置 {distance}",
+  ko: "현재 위치에서 {distance}",
+  fr: "{distance} de vous",
+  ar: "{distance} من موقعك",
+  iyo: "今おるとこから {distance}",
 };
 
 // ---- プラン共有 / Plan sharing (Req 7.1–7.3) -------------------------------
