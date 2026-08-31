@@ -37,7 +37,16 @@ import {
 
 import { reorder } from "../domain/reorder";
 import { appendUniqueById } from "../domain/routeCandidate";
-import type { RecommendedPlan, Spot, StorageKey } from "../domain/types";
+import {
+  isSavedItinerary,
+  savedItineraryFromPlan,
+} from "../domain/savedItinerary";
+import type {
+  RecommendedPlan,
+  SavedItinerary,
+  Spot,
+  StorageKey,
+} from "../domain/types";
 import type { StoragePort } from "../ports";
 
 /**
@@ -156,6 +165,23 @@ export interface TourismContextValue {
    * (Property 11). Accessible up/down controls in the editor drive this.
    */
   reorderShiori: (from: number, to: number) => void;
+  /**
+   * The confirmed itinerary saved from the route builder — the scheduled route
+   * the しおり renders as a map plus a timeline. `null` until a plan is saved.
+   *
+   * Distinct from {@link TourismContextValue.activePlan}, which is the live
+   * in-memory selection driving the map and is deliberately not persisted.
+   */
+  savedItinerary: SavedItinerary | null;
+  /**
+   * Save a confirmed plan as the しおり's itinerary, replacing any previous one.
+   *
+   * One itinerary is kept rather than a history: the しおり is a single travel
+   * notebook, and the route builder always produces "the trip I am taking now".
+   */
+  saveItinerary: (plan: RecommendedPlan) => void;
+  /** Discard the saved itinerary, leaving the しおり's spot list untouched. */
+  clearItinerary: () => void;
 }
 
 const TourismContext = createContext<TourismContextValue | null>(null);
@@ -164,6 +190,8 @@ const TourismContext = createContext<TourismContextValue | null>(null);
 const SHIORI_KEY: StorageKey = "shiori";
 /** Storage key お気に入り is persisted under (Req 3.1, 3.2). */
 const FAVORITES_KEY: StorageKey = "favorites";
+/** Storage key the confirmed itinerary is persisted under. */
+const SAVED_ITINERARY_KEY: StorageKey = "savedItinerary";
 
 /** Internal store shape held in a single state object. */
 interface TourismState {
@@ -172,6 +200,8 @@ interface TourismState {
   favorites: Spot[];
   /** しおり (Req 4.4). */
   shiori: Spot[];
+  /** The scheduled route saved from the route builder. */
+  savedItinerary: SavedItinerary | null;
 }
 
 export interface TourismProviderProps {
@@ -192,6 +222,7 @@ function createInitialState(): TourismState {
     activePlan: null,
     favorites: [],
     shiori: [],
+    savedItinerary: null,
   };
 }
 
@@ -280,6 +311,49 @@ export function TourismProvider({
     });
   }, [storage, state.favorites]);
 
+  // Third independent hydration guard. Kept separate from the two above so the
+  // itinerary, お気に入り and しおり each hydrate and save on their own schedule
+  // and one key's failure never blocks another's write.
+  const itineraryHydratedRef = useRef(false);
+
+  // Rehydrate the saved itinerary once on mount. Storage is untrusted, so the
+  // loaded value goes through `isSavedItinerary`: an older shape, a hand-edited
+  // value or a truncated write is discarded and the screen simply shows "no
+  // itinerary yet" instead of rendering a half-built card.
+  useEffect(() => {
+    if (!storage) {
+      itineraryHydratedRef.current = true;
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const saved = await storage.load<unknown>(SAVED_ITINERARY_KEY);
+        if (!cancelled && isSavedItinerary(saved)) {
+          setState((s) => ({ ...s, savedItinerary: saved }));
+        }
+      } catch {
+        // Ignore — keep the in-memory itinerary.
+      }
+      if (!cancelled) itineraryHydratedRef.current = true;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [storage]);
+
+  // Persist the saved itinerary whenever it changes (after hydration). A failed
+  // save is swallowed: the in-memory itinerary stays authoritative and the
+  // しおり keeps rendering.
+  useEffect(() => {
+    if (!storage || !itineraryHydratedRef.current) return;
+    void storage
+      .save<SavedItinerary | null>(SAVED_ITINERARY_KEY, state.savedItinerary)
+      .catch(() => {
+        // Persistence failed — in-memory itinerary remains authoritative.
+      });
+  }, [storage, state.savedItinerary]);
+
   // Add a spot to one of the route-driven collections, de-duplicated by id so
   // re-deciding the same place never creates duplicate entries. Returns the same
   // state reference when the spot is already present (cheap no-op).
@@ -352,6 +426,18 @@ export function TourismProvider({
     setState((s) => ({ ...s, activePlan: plan }));
   }, []);
 
+  // Project the plan down to what the しおり renders. The timestamp is taken
+  // here rather than inside the pure converter so the conversion stays testable
+  // without freezing the clock.
+  const saveItinerary = useCallback((plan: RecommendedPlan): void => {
+    const itinerary = savedItineraryFromPlan(plan, new Date().toISOString());
+    setState((s) => ({ ...s, savedItinerary: itinerary }));
+  }, []);
+
+  const clearItinerary = useCallback((): void => {
+    setState((s) => (s.savedItinerary === null ? s : { ...s, savedItinerary: null }));
+  }, []);
+
   const value = useMemo<TourismContextValue>(
     () => ({
       activePlan: state.activePlan,
@@ -364,6 +450,9 @@ export function TourismProvider({
       addSpotsToShiori,
       removeFromShiori,
       reorderShiori,
+      savedItinerary: state.savedItinerary,
+      saveItinerary,
+      clearItinerary,
     }),
     [
       state,
@@ -374,6 +463,8 @@ export function TourismProvider({
       addSpotsToShiori,
       removeFromShiori,
       reorderShiori,
+      saveItinerary,
+      clearItinerary,
     ],
   );
 

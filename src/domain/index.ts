@@ -21,6 +21,16 @@ export {
   appendUniqueById,
 } from "./routeCandidate";
 
+// Confirmed plan -> しおり saved itinerary, plus the map pins and the
+// at-a-glance summary the しおり header shows.
+export {
+  savedItineraryFromPlan,
+  itineraryMapItems,
+  itinerarySummary,
+  isSavedItinerary,
+} from "./savedItinerary";
+export type { ItineraryMapItem, ItinerarySummary } from "./savedItinerary";
+
 // Task 4.5 — shiori reorder, temple filter, geofence, layer filter, label resolution.
 export { reorder } from "./reorder";
 export {

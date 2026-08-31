@@ -2357,6 +2357,73 @@ UI_LABELS["shiori.plan.title"] = {
   iyo: "わたしの愛媛しおり",
 };
 
+// ---- しおりの行程カード（地図 + 時刻タイムライン）---------------------------
+// ルート作成で確定したプランを、時刻・地図つきでぱっと見で追えるようにまとめる。
+// 立寄先リスト (Spot[]) とは別の保存データ (SavedItinerary) を描画する。
+UI_LABELS["shiori.itinerary.heading"] = {
+  ja: "当日の行程",
+  en: "Your day",
+  "zh-Hans": "当天行程",
+  "zh-Hant": "當天行程",
+  ko: "당일 일정",
+  fr: "Votre journée",
+  ar: "جدول يومك",
+  iyo: "当日の行程",
+};
+UI_LABELS["shiori.itinerary.savedAt"] = {
+  // {date} replaced at render time (YYYY-MM-DD).
+  ja: "{date} に保存",
+  en: "Saved {date}",
+  "zh-Hans": "{date} 保存",
+  "zh-Hant": "{date} 儲存",
+  ko: "{date} 저장",
+  fr: "Enregistré le {date}",
+  ar: "حُفظ في {date}",
+  iyo: "{date} に保存したよ",
+};
+UI_LABELS["shiori.itinerary.stops"] = {
+  // {count} replaced at render time.
+  ja: "{count}か所",
+  en: "{count} stops",
+  "zh-Hans": "{count} 处",
+  "zh-Hant": "{count} 處",
+  ko: "{count}곳",
+  fr: "{count} étapes",
+  ar: "{count} محطات",
+  iyo: "{count}か所",
+};
+UI_LABELS["shiori.itinerary.span"] = {
+  // {start} / {end} replaced at render time (HH:MM).
+  ja: "{start}〜{end}",
+  en: "{start}–{end}",
+  "zh-Hans": "{start}–{end}",
+  "zh-Hant": "{start}–{end}",
+  ko: "{start}–{end}",
+  fr: "{start}–{end}",
+  ar: "{start}–{end}",
+  iyo: "{start}〜{end}",
+};
+UI_LABELS["shiori.itinerary.mapFallback"] = {
+  ja: "地図は表示できませんが、行程は下の一覧で確認できます。",
+  en: "The map is unavailable; the schedule below still lists every stop.",
+  "zh-Hans": "无法显示地图，但下方列表仍可查看全部行程。",
+  "zh-Hant": "無法顯示地圖，但下方列表仍可查看全部行程。",
+  ko: "지도를 표시할 수 없지만 아래 목록에서 일정을 확인할 수 있습니다.",
+  fr: "La carte est indisponible ; la liste ci-dessous conserve toutes les étapes.",
+  ar: "الخريطة غير متاحة، لكن القائمة أدناه تعرض كل المحطات.",
+  iyo: "地図は出せんけど、行程は下の一覧で見れるけん。",
+};
+UI_LABELS["shiori.itinerary.clear"] = {
+  ja: "行程を削除",
+  en: "Delete this schedule",
+  "zh-Hans": "删除该行程",
+  "zh-Hant": "刪除該行程",
+  ko: "일정 삭제",
+  fr: "Supprimer ce programme",
+  ar: "حذف هذا الجدول",
+  iyo: "行程を消す",
+};
+
 // ---- プラン共有 / Plan sharing (Req 7.1–7.3) -------------------------------
 UI_LABELS["share.title"] = {
   ja: "プランを共有する",

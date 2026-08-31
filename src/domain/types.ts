@@ -328,6 +328,48 @@ export interface RecommendedPlansResult {
   degraded: boolean;
 }
 
+/** One stop inside a {@link SavedItinerary}. */
+export interface SavedItineraryStop {
+  /** Scheduled arrival in 24-hour `HH:MM`. */
+  time: string;
+  kind: RouteCandidateKind;
+  title: string;
+  /**
+   * Coordinates. Absent when the source stop had none, in which case the stop
+   * still appears on the timeline but cannot be placed on the map.
+   */
+  location?: GeoPoint;
+}
+
+/**
+ * A confirmed itinerary saved to the しおり — the route builder's result kept in
+ * a form the しおり screen can render at a glance: a time-ordered list plus the
+ * area needed to frame the map.
+ *
+ * Deliberately a **projection** of {@link RecommendedPlan} rather than the plan
+ * itself. A plan carries the full `RecommendedPlace` for every stop (photos,
+ * attributions, opening hours, ratings), none of which the しおり shows, and all
+ * of which would bloat the single `localStorage` value this is persisted as.
+ *
+ * Stored on its own storage key, separate from the しおり's `Spot[]` list: the
+ * two describe different things (a scheduled route vs. a bag of places) and are
+ * written independently, so neither can corrupt or block the other.
+ */
+export interface SavedItinerary {
+  /** Id of the plan this was saved from. */
+  id: string;
+  title: string;
+  /** ISO-8601 timestamp of when it was saved. */
+  savedAt: string;
+  /** Human-readable trip length, e.g. 「約6時間」. Carried from the plan. */
+  duration: string;
+  /** Human-readable transport summary, e.g. 「レンタカー」. */
+  transport: string;
+  /** Area used to frame the map. Absent when the plan had none. */
+  area?: GeoArea;
+  stops: SavedItineraryStop[];
+}
+
 export interface RecommendationExclusion {
   id: string;
   title: string;
@@ -492,6 +534,8 @@ export interface OfflineEntry {
 export type StorageKey =
   | "favorites"
   | "shiori"
+  /** The confirmed itinerary saved from the route builder ({@link SavedItinerary}). */
+  | "savedItinerary"
   | "visitRecords"
   | "progress"
   | "language"

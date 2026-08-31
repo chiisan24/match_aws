@@ -54,7 +54,7 @@ function AppFlow({ map, chat }: AppFlowProps): JSX.Element {
   const [phase, setPhase] = useState<Phase>("welcome");
   const [routeTheme, setRouteTheme] = useState<RecommendedPlan | null>(null);
   const { switchMode, setTab } = useMode();
-  const { selectPlan } = useTourism();
+  const { selectPlan, saveItinerary } = useTourism();
   const [showSettings, setShowSettings] = useState(false);
 
   if (phase === "welcome") {
@@ -95,6 +95,11 @@ function AppFlow({ map, chat }: AppFlowProps): JSX.Element {
         onBack={() => setPhase("plan-select")}
         onComplete={(plan) => {
           selectPlan(plan);
+          // Keep the confirmed schedule so the しおり can show it with times and
+          // a map after a reload. `selectPlan` only feeds the live map and is
+          // deliberately not persisted, so without this the times are lost the
+          // moment the builder unmounts.
+          saveItinerary(plan);
           switchMode("tourism");
           setTab("map", "tourism");
           setPhase("app");
