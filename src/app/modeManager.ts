@@ -27,10 +27,11 @@ export interface ModeState {
 }
 
 /**
- * Bottom-nav tabs for 通常観光モード (Req 2.2): マップ / お気に入り / しおり.
- * The first entry doubles as the mode's landing tab via {@link DEFAULT_TAB}.
+ * Bottom-nav tabs for 通常観光モード (Req 2.2): マップ / 発見 / お気に入り / しおり.
+ * The first entry doubles as the mode's landing tab via {@link DEFAULT_TAB}, so
+ * the app still lands on the map and 発見 is somewhere the user chooses to go.
  */
-export const TOURISM_TABS = ["map", "favorites", "shiori"] as const;
+export const TOURISM_TABS = ["map", "discover", "favorites", "shiori"] as const;
 export type TourismTab = (typeof TOURISM_TABS)[number];
 
 /**

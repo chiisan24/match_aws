@@ -21,6 +21,31 @@ export {
   appendUniqueById,
 } from "./routeCandidate";
 
+// 発見 (discovery): the persisted LRU of Google Places photo lookups.
+export {
+  photoCacheGet,
+  photoCacheHas,
+  photoCachePut,
+  normalizePhotoCache,
+  PHOTO_CACHE_LIMIT,
+} from "./photoCache";
+export type { PhotoCache, PhotoCacheEntry } from "./photoCache";
+
+// 発見 (discovery) collection game: deck order, area classification and the
+// achievement rate / badges.
+export {
+  deckOrder,
+  classifyArea,
+  discoveryProgress,
+  DISCOVERY_AREAS,
+} from "./discovery";
+export type {
+  DiscoveryArea,
+  DiscoveryBadge,
+  DiscoveryBadgeKind,
+  DiscoveryProgress,
+} from "./discovery";
+
 // Confirmed plan -> しおり saved itinerary, plus the map pins and the
 // at-a-glance summary the しおり header shows.
 export {

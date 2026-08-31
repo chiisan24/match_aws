@@ -9,6 +9,7 @@
  * screen is a type error here (Req 7.11):
  *
  *  - `map`       → TourismLayeredMap
+ *  - `discover`  → DiscoveryScreen
  *  - `favorites` → FavoritesView
  *  - `shiori`    → ShioriEditor / PlanShare
  *
@@ -23,6 +24,7 @@ import type { ReactNode } from "react";
 
 import type { TourismTab } from "../../app/modeManager";
 import type { MapLocationPort } from "../../ports";
+import { DiscoveryScreen } from "./DiscoveryScreen";
 import { FavoritesView } from "./FavoritesView";
 import { ShioriEditor } from "./ShioriEditor";
 import { TourismLayeredMap } from "./TourismLayeredMap";
@@ -43,6 +45,7 @@ export type TourismTabRenderer = (ctx: TourismTabContext) => ReactNode;
  */
 export const TOURISM_TAB_CONTENT: Record<TourismTab, TourismTabRenderer> = {
   map: ({ map }) => <TourismLayeredMap map={map} />,
+  discover: () => <DiscoveryScreen />,
   favorites: () => <FavoritesView />,
   shiori: () => <ShioriEditor />,
 };

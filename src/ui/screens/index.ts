@@ -10,6 +10,8 @@ export type { AIPlanFirstProps } from "./AIPlanFirst";
 
 export { TourismRouteBuilder } from "./TourismRouteBuilder";
 
+export { DiscoveryScreen } from "./DiscoveryScreen";
+
 export { FavoritesView } from "./FavoritesView";
 
 export { ShioriEditor } from "./ShioriEditor";

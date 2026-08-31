@@ -20,11 +20,20 @@ describe("modeManager", () => {
     expect(activeTab(s)).toBe("map");
   });
 
-  // Regression guard for AC 6.2 / 7.2: the removed chat / swipe screens must not
-  // creep back into the 通常観光モード bottom nav. TOURISM_TABS[0] also fixes the
-  // mode's landing tab as `map` (AC 7.3).
-  it("exposes exactly マップ / お気に入り / しおり as the 通常観光モード tabs", () => {
-    expect(TOURISM_TABS).toEqual(["map", "favorites", "shiori"]);
+  /**
+   * The bottom nav's exact contents, pinned in one place.
+   *
+   * Two separate claims live here. The order fixes what 発見 sits between
+   * (swipe-discovery-game AC 1.1) and, because `createInitialModeState` derives
+   * the landing tab from `TOURISM_TABS[0]`, it also fixes that the app still
+   * opens on the map rather than the game (AC 1.2).
+   *
+   * The negative assertions are the regression guard: `chat` and the old
+   * four-direction `swipe` screen were deleted deliberately, and adding a tab is
+   * exactly the kind of change that would quietly bring them back (AC 12.4).
+   */
+  it("exposes exactly マップ / 発見 / お気に入り / しおり as the 通常観光モード tabs", () => {
+    expect(TOURISM_TABS).toEqual(["map", "discover", "favorites", "shiori"]);
     expect(TOURISM_TABS).not.toContain("chat");
     expect(TOURISM_TABS).not.toContain("swipe");
   });

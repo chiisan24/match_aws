@@ -536,6 +536,10 @@ export type StorageKey =
   | "shiori"
   /** The confirmed itinerary saved from the route builder ({@link SavedItinerary}). */
   | "savedItinerary"
+  /** Ids of spots decided on the 発見 screen — the achievement-rate record. */
+  | "discoverySeen"
+  /** Cached Google Places photo lookups for the 発見 screen. */
+  | "discoveryPhotos"
   | "visitRecords"
   | "progress"
   | "language"

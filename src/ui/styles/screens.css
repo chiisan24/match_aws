@@ -5592,3 +5592,278 @@ textarea.nokyocho-field__control {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+/* ===========================================================================
+   発見 (discovery) — スポット収集スワイプ (swipe-discovery-game)
+   ---------------------------------------------------------------------------
+   達成率ゲージとバッジを先に見せ、その下に1枚のカードを置く。カードの操作感は
+   ルートビルダーの `.route-builder-swipe` と同じ（同じ閾値、同じ傾き予告）に
+   そろえてあるので、画面をまたいでも指の感覚を覚え直さなくてよい。
+   =========================================================================== */
+
+.discover {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-bottom: var(--space-5);
+}
+
+.discover__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.discover__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--color-teal-800);
+  font-size: var(--text-xl);
+}
+
+.discover__lead {
+  margin: 0;
+  color: var(--color-ink-soft);
+  font-size: var(--text-sm);
+}
+
+/* ---- 達成率ゲージとバッジ ---------------------------------------------- */
+
+.discover-progress {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.discover-progress__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.discover-progress__percent {
+  color: var(--color-mikan-700);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.discover-progress__count {
+  color: var(--color-ink-soft);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.discover-progress__gauge {
+  block-size: 0.6rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-teal-50);
+  overflow: hidden;
+}
+
+.discover-progress__gauge-fill {
+  display: block;
+  block-size: 100%;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(90deg, var(--color-teal-500), var(--color-mikan-500));
+  transition: inline-size var(--dur-base) var(--ease-soft);
+}
+
+.discover-progress__badges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* 未獲得は淡いまま、獲得済みはみかん色で塗る。色だけに頼らず、ラベル側にも
+   「獲得」/「n / m」というテキストが出るので読み上げでも区別できる。 */
+.discover-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-pill);
+  background: var(--color-paper);
+  color: var(--color-ink-faint);
+  font-size: var(--text-xs);
+}
+
+.discover-badge--earned {
+  border-color: var(--color-mikan-500);
+  background: var(--color-mikan-100);
+  color: var(--color-mikan-700);
+  font-weight: var(--weight-bold);
+}
+
+.discover-badge__state {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- カード ------------------------------------------------------------ */
+
+.discover__position {
+  margin: 0;
+  color: var(--color-ink-faint);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* 次のカードを1枚だけ後ろに覗かせる。重ねるので stage は position: relative。 */
+.discover__stage {
+  position: relative;
+  min-height: 24rem;
+}
+
+.discover-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  touch-action: pan-y;
+  cursor: grab;
+}
+
+.discover-card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring), var(--shadow-md);
+}
+
+.discover-card--peek {
+  position: absolute;
+  inset: 0;
+  transform: scale(0.96) translateY(0.5rem);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.discover-card--like {
+  border-color: var(--color-mikan-500);
+}
+
+.discover-card--skip {
+  border-color: var(--color-danger);
+}
+
+.discover-card__badge {
+  position: absolute;
+  inset-block-start: var(--space-3);
+  z-index: 1;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-pill);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.discover-card__badge--like {
+  inset-inline-end: var(--space-3);
+  background: var(--color-mikan-500);
+}
+
+.discover-card__badge--skip {
+  inset-inline-start: var(--space-3);
+  background: var(--color-danger);
+}
+
+.discover-card__photo-wrap {
+  position: relative;
+  height: 15rem;
+  background: var(--color-paper-deep);
+}
+
+.discover-card__photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Google の帰属表示。Places 由来の写真を出しているカードの内側にだけ置く。 */
+.discover-card__credit {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline: 0;
+  padding: 0.2rem var(--space-2);
+  background: rgba(10, 27, 42, 0.55);
+  color: #fff;
+  font-size: 0.65rem;
+  line-height: 1.4;
+}
+
+.discover-card__credit a {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.discover-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.discover-card__title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.discover-card__name {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--color-teal-800);
+}
+
+.discover-card__desc {
+  margin: 0;
+  color: var(--color-ink-soft);
+  font-size: var(--text-sm);
+}
+
+.discover__actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.discover__hint {
+  margin: 0;
+  color: var(--color-ink-faint);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+.discover__done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-mikan-300);
+  border-radius: var(--radius-lg);
+  background: var(--color-mikan-100);
+  color: var(--color-mikan-700);
+  text-align: center;
+}
+
+.discover__done p {
+  margin: 0;
+}

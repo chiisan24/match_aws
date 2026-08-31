@@ -12,6 +12,7 @@ import {
   WelcomeScreen,
 } from "../ui/screens";
 import { createGateway } from "./gateway";
+import { DiscoveryProvider } from "./DiscoveryContext";
 import { ImageProvider } from "./ImageContext";
 import { ModeProvider, useMode } from "./ModeContext";
 import { SpotProvider } from "./SpotContext";
@@ -32,9 +33,13 @@ export function App(): JSX.Element {
         <ImageProvider image={gateway.image}>
           <SpotProvider spots={gateway.spots}>
             <TourismProvider storage={gateway.storage}>
-              <main className="app-shell">
-                <AppFlow map={gateway.map} chat={gateway.chat} />
-              </main>
+              {/* 発見画面の進捗と写真キャッシュ。お気に入り (TourismProvider) を
+                  読むので内側に置くが、永続化キーは独立している。 */}
+              <DiscoveryProvider storage={gateway.storage}>
+                <main className="app-shell">
+                  <AppFlow map={gateway.map} chat={gateway.chat} />
+                </main>
+              </DiscoveryProvider>
             </TourismProvider>
           </SpotProvider>
         </ImageProvider>

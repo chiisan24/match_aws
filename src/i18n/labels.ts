@@ -2879,3 +2879,191 @@ Object.assign(UI_LABELS, {
   "debug.skipToFinal": { ja: "最終プランへジャンプ", en: "Jump to final plan", iyo: "最終プランへ飛ぶ" },
   "debug.skipScreen": { ja: "この画面ごとスキップ", en: "Skip this screen", iyo: "この画面ごと飛ばす" },
 } satisfies LangDict);
+
+// ---- 発見 (discovery) — スポット収集スワイプ (swipe-discovery-game Req 11) ----
+// 接頭辞 `discover.` で統一し、各キーに ja / en / zh-Hans / ko / fr / ar / iyo を
+// 宣言する (Req 11.2, 11.3)。カテゴリ名は既存の `spot.category.*` を流用するので
+// ここでは宣言しない (Req 11.4)。件数を含む文言はプレースホルダー付きの1キーで
+// 表現する (Req 11.8)。
+Object.assign(UI_LABELS, {
+  // 下部ナビのタブラベル (Req 11.5)。
+  "nav.tourism.discover": {
+    ja: "発見",
+    en: "Discover",
+    "zh-Hans": "发现",
+    ko: "발견",
+    fr: "Découvrir",
+    ar: "استكشاف",
+    iyo: "発見",
+  },
+  "discover.title": {
+    ja: "愛媛を集める",
+    en: "Collect Ehime",
+    "zh-Hans": "收集爱媛",
+    ko: "에히메 모으기",
+    fr: "Collectionner Ehime",
+    ar: "اجمع إيهيمي",
+    iyo: "愛媛を集めよや",
+  },
+  "discover.lead": {
+    ja: "気になったら「興味あり」。お気に入りに入って、集めた分だけ達成率が上がります。",
+    en: "Tap 「興味あり」 on anything you like. It joins your favorites, and your completion rate climbs.",
+    "zh-Hans": "喜欢就选「有兴趣」。会加入收藏，达成率也会上升。",
+    ko: "마음에 들면 「관심 있음」. 즐겨찾기에 담기고 달성률이 올라갑니다.",
+    fr: "Marquez ce qui vous plaît : le lieu rejoint vos favoris et votre taux de complétion grimpe.",
+    ar: "اختر ما يعجبك؛ يُضاف إلى المفضلة وترتفع نسبة إنجازك.",
+    iyo: "気になったら「興味あり」。お気に入りに入って、集めた分だけ達成率が上がるけん。",
+  },
+  "discover.loading": {
+    ja: "スポットを読み込んでいます…",
+    en: "Loading spots…",
+    "zh-Hans": "正在加载景点…",
+    ko: "스폿을 불러오는 중…",
+    fr: "Chargement des lieux…",
+    ar: "جارٍ تحميل الأماكن…",
+    iyo: "スポットを読み込みよるけん…",
+  },
+  // Req 3.7: カタログが空のときの案内文。
+  "discover.empty": {
+    ja: "表示できるスポットがまだありません。",
+    en: "There are no spots to show yet.",
+    "zh-Hans": "暂时没有可显示的景点。",
+    ko: "표시할 스폿이 아직 없습니다.",
+    fr: "Aucun lieu à afficher pour le moment.",
+    ar: "لا توجد أماكن لعرضها بعد.",
+    iyo: "出せるスポットがまだないわ。",
+  },
+  // Req 2.13: 判定ごとに更新される読み上げ用の進捗。
+  "discover.position": {
+    ja: "{current} / {total}件",
+    en: "{current} of {total}",
+    "zh-Hans": "第 {current} / {total} 个",
+    ko: "{current} / {total}번째",
+    fr: "{current} sur {total}",
+    ar: "{current} من {total}",
+    iyo: "{current} / {total}件",
+  },
+  "discover.interested": {
+    ja: "興味あり",
+    en: "Interested",
+    "zh-Hans": "有兴趣",
+    ko: "관심 있음",
+    fr: "Ça m'intéresse",
+    ar: "يهمني",
+    iyo: "興味あり",
+  },
+  "discover.skip": {
+    ja: "興味なし",
+    en: "Not for me",
+    "zh-Hans": "没兴趣",
+    ko: "관심 없음",
+    fr: "Pas pour moi",
+    ar: "لا يهمني",
+    iyo: "興味なし",
+  },
+  "discover.hint": {
+    ja: "左右にスワイプ、または矢印キーでも選べます。",
+    en: "Swipe left or right — the arrow keys work too.",
+    "zh-Hans": "可左右滑动，也可使用方向键。",
+    ko: "좌우로 스와이프하거나 방향키로도 선택할 수 있습니다.",
+    fr: "Glissez à gauche ou à droite ; les flèches fonctionnent aussi.",
+    ar: "اسحب يمينًا أو يسارًا، أو استخدم مفاتيح الأسهم.",
+    iyo: "左右にスワイプするか、矢印キーでも選べるけん。",
+  },
+  // Req 4.1: 判定済み件数とカタログ件数をどちらも数値で出す。
+  "discover.progress": {
+    ja: "{seen} / {total}件",
+    en: "{seen} of {total}",
+    "zh-Hans": "{seen} / {total} 个",
+    ko: "{seen} / {total}곳",
+    fr: "{seen} sur {total}",
+    ar: "{seen} من {total}",
+    iyo: "{seen} / {total}件",
+  },
+  "discover.gaugeLabel": {
+    ja: "愛媛のスポット達成率",
+    en: "Ehime spot completion rate",
+    "zh-Hans": "爱媛景点达成率",
+    ko: "에히메 스폿 달성률",
+    fr: "Taux de complétion des lieux d'Ehime",
+    ar: "نسبة إنجاز أماكن إيهيمي",
+    iyo: "愛媛のスポット達成率",
+  },
+  // Req 5.1: 全件到達を伝える表示。
+  "discover.complete": {
+    ja: "全部見ました。愛媛コンプリートです。",
+    en: "That's all of them — Ehime complete.",
+    "zh-Hans": "全部看完了，爱媛已收集完成。",
+    ko: "모두 확인했습니다. 에히메 컴플리트입니다.",
+    fr: "Vous avez tout vu — Ehime est complet.",
+    ar: "لقد رأيتها كلها — أكملت إيهيمي.",
+    iyo: "全部見たね。愛媛コンプリートやわ。",
+  },
+  // デッキを最後まで送ったが未判定が残っている場合（再周回中など）。
+  "discover.deckEnd": {
+    ja: "このデッキは最後まで見ました。",
+    en: "You've reached the end of this deck.",
+    "zh-Hans": "这一组已经看到最后了。",
+    ko: "이 덱을 끝까지 봤습니다.",
+    fr: "Vous êtes arrivé au bout de ce paquet.",
+    ar: "وصلت إلى نهاية هذه المجموعة.",
+    iyo: "このデッキは最後まで見たけん。",
+  },
+  "discover.again": {
+    ja: "もう一度見る",
+    en: "Look again",
+    "zh-Hans": "再看一遍",
+    ko: "다시 보기",
+    fr: "Revoir",
+    ar: "شاهد مرة أخرى",
+    iyo: "もう一回見る",
+  },
+  // Req 4.9: 獲得済みは読み上げテキストでも区別する。
+  "discover.badgeEarned": {
+    ja: "獲得",
+    en: "Earned",
+    "zh-Hans": "已获得",
+    ko: "획득",
+    fr: "Obtenu",
+    ar: "تم الحصول عليه",
+    iyo: "獲得",
+  },
+  // Req 4.10: 未獲得バッジは判定済み件数と総件数を出す。
+  "discover.badgeProgress": {
+    ja: "{seen} / {total}",
+    en: "{seen} / {total}",
+    "zh-Hans": "{seen} / {total}",
+    ko: "{seen} / {total}",
+    fr: "{seen} / {total}",
+    ar: "{seen} / {total}",
+    iyo: "{seen} / {total}",
+  },
+  // エリア名。愛媛で実際に使われる3区分。
+  "discover.area.touyo": {
+    ja: "東予",
+    en: "Toyo (east)",
+    "zh-Hans": "东予",
+    ko: "도요(동부)",
+    fr: "Toyo (est)",
+    ar: "تويو (الشرق)",
+    iyo: "東予",
+  },
+  "discover.area.chuuyo": {
+    ja: "中予",
+    en: "Chuyo (central)",
+    "zh-Hans": "中予",
+    ko: "주요(중부)",
+    fr: "Chuyo (centre)",
+    ar: "تشويو (الوسط)",
+    iyo: "中予",
+  },
+  "discover.area.nanyo": {
+    ja: "南予",
+    en: "Nanyo (south)",
+    "zh-Hans": "南予",
+    ko: "난요(남부)",
+    fr: "Nanyo (sud)",
+    ar: "نانيو (الجنوب)",
+    iyo: "南予",
+  },
+} satisfies LangDict);

@@ -21,8 +21,9 @@ interface TabMeta {
 
 const TOURISM_TAB_META: TabMeta[] = [
   { id: TOURISM_TABS[0], navKey: "nav.tourism.map", icon: "🗺️" },
-  { id: TOURISM_TABS[1], navKey: "nav.tourism.favorites", icon: "♥" },
-  { id: TOURISM_TABS[2], navKey: "nav.tourism.shiori", icon: "📖" },
+  { id: TOURISM_TABS[1], navKey: "nav.tourism.discover", icon: "🃏" },
+  { id: TOURISM_TABS[2], navKey: "nav.tourism.favorites", icon: "♥" },
+  { id: TOURISM_TABS[3], navKey: "nav.tourism.shiori", icon: "📖" },
 ];
 
 /** Tourism-only application shell. */
